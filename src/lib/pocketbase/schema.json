@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-01T00:57:28.225Z",
+  "generatedAt": "2026-08-01T01:02:37.546Z",
   "collections": [
     {
       "name": "users",
@@ -29,24 +29,206 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": [
         "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
         "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+      ]
+    },
+    {
+      "name": "clients",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "company",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_clients_name ON clients (name)"]
+    },
+    {
+      "name": "service_records",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "client_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "client_email",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "client_phone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "client_company",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "contact_reason",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Dúvida",
+            "Reclamação",
+            "Suporte Técnico",
+            "Orçamento",
+            "Cancelamento",
+            "Outro"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "priority",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Baixa", "Média", "Alta"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Aberto", "Em Andamento", "Concluído", "Cancelado"]
+        },
+        {
+          "name": "start_time",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "duration",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "end_time",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "assigned_agent",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tasks",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_sr_status ON service_records (status)",
+        "CREATE INDEX idx_sr_reason ON service_records (contact_reason)",
+        "CREATE INDEX idx_sr_priority ON service_records (priority)",
+        "CREATE INDEX idx_sr_user ON service_records (user_id)",
+        "CREATE INDEX idx_sr_created ON service_records (created DESC)"
       ]
     }
   ]
