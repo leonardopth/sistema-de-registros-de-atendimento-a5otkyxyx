@@ -182,9 +182,7 @@ export function ServiceRecordDetailModal({
 
           <div className="grid grid-cols-2 gap-4 items-center">
             <div>
-              <label className="text-xs font-medium text-slate-500 block mb-1">
-                Canal
-              </label>
+              <label className="text-xs font-medium text-slate-500 block mb-1">Canal</label>
               <Select value={channel} onValueChange={(val) => setChannel(val as ServiceChannel)}>
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="Selecione um canal" />
@@ -199,13 +197,12 @@ export function ServiceRecordDetailModal({
               </Select>
             </div>
             <div>
-              <span className="text-xs font-medium text-slate-500 block mb-1">
-                Canal Atual
-              </span>
+              <span className="text-xs font-medium text-slate-500 block mb-1">Canal Atual</span>
               <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 h-9">
                 {record.channel || 'Não informado'}
               </div>
             </div>
+          </div>
 
           <div>
             <span className="text-xs font-medium text-slate-500 block mb-1">

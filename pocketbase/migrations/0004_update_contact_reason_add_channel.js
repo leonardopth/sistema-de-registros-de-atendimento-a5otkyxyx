@@ -4,27 +4,19 @@ migrate(
 
     var reasonField = srCol.fields.getByName('contact_reason')
     if (reasonField) {
-      srCol.fields.remove(reasonField)
+      reasonField.values = [
+        'Bagagem',
+        'Assento',
+        'cálculo reemissão',
+        'reembolso',
+        'cotação',
+        'reserva',
+        'cancelamento',
+        'regras tarifárias',
+        'erro RF',
+        'outros',
+      ]
     }
-    srCol.fields.add(
-      new SelectField({
-        name: 'contact_reason',
-        required: true,
-        values: [
-          'Bagagem',
-          'Assento',
-          'cálculo reemissão',
-          'reembolso',
-          'cotação',
-          'reserva',
-          'cancelamento',
-          'regras tarifárias',
-          'erro RF',
-          'outros',
-        ],
-        maxSelect: 1,
-      }),
-    )
 
     if (!srCol.fields.getByName('channel')) {
       srCol.fields.add(
@@ -62,20 +54,14 @@ migrate(
 
     var reasonField2 = srCol.fields.getByName('contact_reason')
     if (reasonField2) {
-      srCol.fields.remove(reasonField2)
-    }
-    srCol.fields.add(
-      new SelectField({
-        name: 'contact_reason',
-        required: true,
-        values: ['Dúvida', 'Reclamação', 'Suporte Técnico', 'Orçamento', 'Cancelamento', 'Outro'],
-        maxSelect: 1,
-      }),
-    )
-
-    var channelField = srCol.fields.getByName('channel')
-    if (channelField) {
-      srCol.fields.remove(channelField)
+      reasonField2.values = [
+        'Dúvida',
+        'Reclamação',
+        'Suporte Técnico',
+        'Orçamento',
+        'Cancelamento',
+        'Outro',
+      ]
     }
 
     app.save(srCol)

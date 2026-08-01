@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-01T01:53:42.344Z",
+  "generatedAt": "2026-08-01T02:02:40.925Z",
   "collections": [
     {
       "name": "users",
@@ -146,20 +146,6 @@
           "system": false
         },
         {
-          "name": "contact_reason",
-          "type": "select",
-          "required": true,
-          "system": false,
-          "selectValues": [
-            "Dúvida",
-            "Reclamação",
-            "Suporte Técnico",
-            "Orçamento",
-            "Cancelamento",
-            "Outro"
-          ]
-        },
-        {
           "name": "description",
           "type": "text",
           "required": true,
@@ -236,6 +222,31 @@
           "required": true,
           "system": false,
           "collectionRef": "users"
+        },
+        {
+          "name": "contact_reason",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Bagagem",
+            "Assento",
+            "cálculo reemissão",
+            "reembolso",
+            "cotação",
+            "reserva",
+            "cancelamento",
+            "regras tarifárias",
+            "erro RF",
+            "outros"
+          ]
+        },
+        {
+          "name": "channel",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Telefone", "e-mail", "whatsapp", "comercial", "outros"]
         }
       ],
       "indexes": [
