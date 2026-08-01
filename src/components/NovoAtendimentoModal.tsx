@@ -267,136 +267,130 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Descrição / Observações *</Label>
-              <Textarea
-                rows={3}
-                required
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Detalhes do atendimento prestado..."
+              <Label className="text-xs">Duração Estimada (minutos)</Label>
+              <Input
+                type="number"
+                min={1}
+                className="h-9 text-xs"
+                value={duration}
+                onChange={(e) => setDuration(Number(e.target.value))}
               />
             </div>
+          </div>
 
-            <div className="grid grid-cols-2 gap-3 items-center">
-              <div className="space-y-1">
-                <Label className="text-xs">Prioridade</Label>
-                <RadioGroup
-                  value={priority}
-                  onValueChange={(v) => setPriority(v as ServicePriority)}
-                  className="flex gap-4 pt-1"
+          <div className="space-y-1">
+            <Label className="text-xs">Descrição / Observações *</Label>
+            <Textarea
+              rows={3}
+              required
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Detalhes do atendimento prestado..."
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Prioridade</Label>
+            <RadioGroup
+              value={priority}
+              onValueChange={(v) => setPriority(v as ServicePriority)}
+              className="flex gap-4 pt-1"
+            >
+              <div className="flex items-center space-x-1">
+                <RadioGroupItem value="Baixa" id="m-low" />
+                <Label htmlFor="m-low" className="text-xs cursor-pointer">
+                  Baixa
+                </Label>
+              </div>
+              <div className="flex items-center space-x-1">
+                <RadioGroupItem value="Média" id="m-med" />
+                <Label htmlFor="m-med" className="text-xs cursor-pointer text-amber-600">
+                  Média
+                </Label>
+              </div>
+              <div className="flex items-center space-x-1">
+                <RadioGroupItem value="Alta" id="m-high" />
+                <Label
+                  htmlFor="m-high"
+                  className="text-xs cursor-pointer text-red-600 font-semibold"
                 >
-                  <div className="flex items-center space-x-1">
-                    <RadioGroupItem value="Baixa" id="m-low" />
-                    <Label htmlFor="m-low" className="text-xs cursor-pointer">
-                      Baixa
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <RadioGroupItem value="Média" id="m-med" />
-                    <Label htmlFor="m-med" className="text-xs cursor-pointer text-amber-600">
-                      Média
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <RadioGroupItem value="Alta" id="m-high" />
-                    <Label
-                      htmlFor="m-high"
-                      className="text-xs cursor-pointer text-red-600 font-semibold"
-                    >
-                      Alta
-                    </Label>
-                  </div>
-                </RadioGroup>
+                  Alta
+                </Label>
               </div>
+            </RadioGroup>
+          </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs">Duração Estimada (minutos)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  className="h-9 text-xs"
-                  value={duration}
-                  onChange={(e) => setDuration(Number(e.target.value))}
-                />
-              </div>
-            </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Responsável *</Label>
+            <Select
+              value={assignedUserId}
+              onValueChange={(id) => {
+                setAssignedUserId(id)
+                const u = users.find((u) => u.id === id)
+                if (u) setAssignedAgent(u.name)
+              }}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Selecione o responsável" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name} ({u.role})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs">Responsável *</Label>
-              <Select
-                value={assignedUserId}
-                onValueChange={(id) => {
-                  setAssignedUserId(id)
-                  const u = users.find((u) => u.id === id)
-                  if (u) setAssignedAgent(u.name)
-                }}
+          <div className="space-y-2 border-t pt-3">
+            <Label className="text-xs font-semibold text-slate-700">
+              Tarefas de Acompanhamento
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                className="h-8 text-xs flex-1"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                placeholder="Nova tarefa..."
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleAddTask}
+                variant="outline"
+                className="h-8"
               >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Selecione o responsável" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name} ({u.role})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add
+              </Button>
             </div>
-
-            <div className="space-y-2 border-t pt-3">
-              <Label className="text-xs font-semibold text-slate-700">
-                Tarefas de Acompanhamento
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  className="h-8 text-xs flex-1"
-                  value={newTaskTitle}
-                  onChange={(e) => setNewTaskTitle(e.target.value)}
-                  placeholder="Nova tarefa..."
-                />
+            {tasks.map((t, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between text-xs bg-slate-50 p-2 rounded border"
+              >
+                <span>{t.title}</span>
                 <Button
                   type="button"
-                  size="sm"
-                  onClick={handleAddTask}
-                  variant="outline"
-                  className="h-8"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-red-500"
+                  onClick={() => handleRemoveTask(idx)}
                 >
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Add
+                  <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
-              {tasks.map((t, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between text-xs bg-slate-50 p-2 rounded border"
-                >
-                  <span>{t.title}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-red-500"
-                    onClick={() => handleRemoveTask(idx)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+            ))}
+          </div>
 
-            <div className="pt-2 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-indigo-600 hover:bg-indigo-700"
-              >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Atendimento
-              </Button>
-            </div>
+          <div className="pt-2 flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar Atendimento
+            </Button>
           </div>
         </form>
       </DialogContent>
