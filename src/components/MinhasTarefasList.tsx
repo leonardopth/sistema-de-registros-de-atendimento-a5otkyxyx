@@ -26,7 +26,7 @@ export function MinhasTarefasList({ records, onViewRecord }: MinhasTarefasListPr
   return (
     <div className="space-y-3">
       {records.map((r) => {
-        const tasks = r.tasks || []
+        const tasks = Array.isArray(r.tasks) ? r.tasks : []
         const completedTasks = tasks.filter((t) => t.done).length
         return (
           <Card key={r.id} className="border-slate-200 shadow-subtle overflow-hidden">

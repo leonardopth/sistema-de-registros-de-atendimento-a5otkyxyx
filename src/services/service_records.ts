@@ -2,10 +2,9 @@ import pb from '@/lib/pocketbase/client'
 import { ServiceRecord } from '@/types/service_record'
 
 export const getServiceRecords = (filter?: string, sort: string = '-created') => {
-  return pb.collection('service_records').getFullList<ServiceRecord>({
-    filter: filter || '',
-    sort,
-  })
+  const params: { sort: string; filter?: string } = { sort }
+  if (filter) params.filter = filter
+  return pb.collection('service_records').getFullList<ServiceRecord>(params)
 }
 
 export const getMyServiceRecords = (userId: string) => {
@@ -35,7 +34,11 @@ export const deleteServiceRecord = (id: string) => {
 }
 
 export const batchUpdateStatus = async (ids: string[], status: ServiceRecord['status']) => {
-  const promises = ids.map((id) => pb.collection('service_records').update(id, { status }))
+  const updateData: Record<string, unknown> = { status }
+  if (status === 'Concluído') {
+    updateData.end_time = new Date().toISOString()
+  }
+  const promises = ids.map((id) => pb.collection('service_records').update(id, updateData))
   return Promise.all(promises)
 }
 

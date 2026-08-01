@@ -59,7 +59,7 @@ export function ServiceRecordDetailModal({
     if (record) {
       setStatus(record.status)
       setChannel(record.channel || '')
-      setTasks(record.tasks || [])
+      setTasks(Array.isArray(record.tasks) ? record.tasks : [])
     }
   }, [record])
 
@@ -163,7 +163,7 @@ export function ServiceRecordDetailModal({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-xs font-medium text-slate-500 block mb-1">
-                Lista de contatos
+                Motivo do Contato
               </span>
               <span className="font-semibold text-slate-800 bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md text-xs inline-block">
                 {record.contact_reason}
@@ -213,32 +213,21 @@ export function ServiceRecordDetailModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 items-center">
-            <div>
-              <label className="text-xs font-medium text-slate-500 block mb-1">
-                Alterar Status
-              </label>
-              <Select value={status} onValueChange={(val) => setStatus(val as ServiceStatus)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Aberto">Aberto</SelectItem>
-                  <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                  <SelectItem value="Concluído">Concluído</SelectItem>
-                  <SelectItem value="Cancelado">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <span className="text-xs font-medium text-slate-500 block mb-1">
-                Tempo de Atendimento
-              </span>
-              <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 h-9">
-                <Clock className="h-4 w-4 text-indigo-600" />
-                {record.duration ? `${record.duration} minutos` : 'Não especificado'}
-              </div>
-            </div>
+          <div>
+            <label className="text-xs font-medium text-slate-500 block mb-1">Canal de Atendimento</label>
+            <Select value={channel} onValueChange={(val) => setChannel(val as ServiceChannel)}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Selecione um canal" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Telefone">Telefone</SelectItem>
+                <SelectItem value="e-mail">e-mail</SelectItem>
+                <SelectItem value="whatsapp">whatsapp</SelectItem>
+                <SelectItem value="comercial">comercial</SelectItem>
+                <SelectItem value="outros">outros</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>            </div>
           </div>
 
           <div>
