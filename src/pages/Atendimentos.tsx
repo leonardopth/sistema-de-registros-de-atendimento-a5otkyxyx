@@ -182,12 +182,16 @@ export default function Atendimentos() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os Motivos</SelectItem>
-              <SelectItem value="Dúvida">Dúvida</SelectItem>
-              <SelectItem value="Reclamação">Reclamação</SelectItem>
-              <SelectItem value="Suporte Técnico">Suporte Técnico</SelectItem>
-              <SelectItem value="Orçamento">Orçamento</SelectItem>
-              <SelectItem value="Cancelamento">Cancelamento</SelectItem>
-              <SelectItem value="Outro">Outro</SelectItem>
+              <SelectItem value="Bagagem">Bagagem</SelectItem>
+              <SelectItem value="Assento">Assento</SelectItem>
+              <SelectItem value="cálculo reemissão">cálculo reemissão</SelectItem>
+              <SelectItem value="reembolso">reembolso</SelectItem>
+              <SelectItem value="cotação">cotação</SelectItem>
+              <SelectItem value="reserva">reserva</SelectItem>
+              <SelectItem value="cancelamento">cancelamento</SelectItem>
+              <SelectItem value="regras tarifárias">regras tarifárias</SelectItem>
+              <SelectItem value="erro RF">erro RF</SelectItem>
+              <SelectItem value="outros">outros</SelectItem>
             </SelectContent>
           </Select>
 
@@ -269,7 +273,7 @@ export default function Atendimentos() {
                     />
                   </TableHead>
                   <TableHead className="text-xs font-bold">Cliente</TableHead>
-                  <TableHead className="text-xs font-bold">Motivo</TableHead>
+                  <TableHead className="text-xs font-bold">Contato</TableHead>
                   <TableHead className="text-xs font-bold">Status</TableHead>
                   <TableHead className="text-xs font-bold">Prioridade</TableHead>
                   <TableHead className="text-xs font-bold">Duração</TableHead>

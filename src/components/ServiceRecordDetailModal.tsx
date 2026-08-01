@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { ServiceRecord, ServiceStatus, TaskItem } from '@/types/service_record'
+import { ServiceRecord, ServiceStatus, ServiceChannel, TaskItem } from '@/types/service_record'
 import { StatusBadge } from './StatusBadge'
 import { PriorityBadge } from './PriorityBadge'
 import { updateServiceRecord, deleteServiceRecord } from '@/services/service_records'
@@ -49,6 +49,7 @@ export function ServiceRecordDetailModal({
   onUpdateSuccess,
 }: ServiceRecordDetailModalProps) {
   const [status, setStatus] = useState<ServiceStatus>('Aberto')
+  const [channel, setChannel] = useState<ServiceChannel | ''>('')
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -57,6 +58,7 @@ export function ServiceRecordDetailModal({
   useEffect(() => {
     if (record) {
       setStatus(record.status)
+      setChannel(record.channel || '')
       setTasks(record.tasks || [])
     }
   }, [record])
@@ -75,6 +77,7 @@ export function ServiceRecordDetailModal({
       const isCompletedNow = status === 'Concluído' && record.status !== 'Concluído'
       await updateServiceRecord(record.id, {
         status,
+        channel: channel || undefined,
         tasks,
         end_time: isCompletedNow ? new Date().toISOString() : record.end_time,
       })
@@ -160,7 +163,7 @@ export function ServiceRecordDetailModal({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-xs font-medium text-slate-500 block mb-1">
-                Motivo do Contato
+                Lista de contatos
               </span>
               <span className="font-semibold text-slate-800 bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md text-xs inline-block">
                 {record.contact_reason}
@@ -176,6 +179,33 @@ export function ServiceRecordDetailModal({
               </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-4 items-center">
+            <div>
+              <label className="text-xs font-medium text-slate-500 block mb-1">
+                Canal
+              </label>
+              <Select value={channel} onValueChange={(val) => setChannel(val as ServiceChannel)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione um canal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Telefone">Telefone</SelectItem>
+                  <SelectItem value="e-mail">e-mail</SelectItem>
+                  <SelectItem value="whatsapp">whatsapp</SelectItem>
+                  <SelectItem value="comercial">comercial</SelectItem>
+                  <SelectItem value="outros">outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-slate-500 block mb-1">
+                Canal Atual
+              </span>
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 h-9">
+                {record.channel || 'Não informado'}
+              </div>
+            </div>
 
           <div>
             <span className="text-xs font-medium text-slate-500 block mb-1">

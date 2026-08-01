@@ -7,12 +7,18 @@ export interface TaskItem {
 }
 
 export type ContactReason =
-  | 'Dúvida'
-  | 'Reclamação'
-  | 'Suporte Técnico'
-  | 'Orçamento'
-  | 'Cancelamento'
-  | 'Outro'
+  | 'Bagagem'
+  | 'Assento'
+  | 'cálculo reemissão'
+  | 'reembolso'
+  | 'cotação'
+  | 'reserva'
+  | 'cancelamento'
+  | 'regras tarifárias'
+  | 'erro RF'
+  | 'outros'
+
+export type ServiceChannel = 'Telefone' | 'e-mail' | 'whatsapp' | 'comercial' | 'outros'
 
 export type ServicePriority = 'Baixa' | 'Média' | 'Alta'
 
@@ -35,6 +41,7 @@ export interface ServiceRecord {
   end_time?: string
   assigned_agent?: string
   assigned_user?: string
+  channel?: ServiceChannel
   tasks?: TaskItem[]
   user_id: string
   created: string

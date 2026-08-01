@@ -18,6 +18,7 @@ import { getClients } from '@/services/clients'
 import {
   ClientRecord,
   ContactReason,
+  ServiceChannel,
   ServicePriority,
   ServiceStatus,
   TaskItem,
@@ -42,7 +43,8 @@ export default function NovoAtendimento() {
   const [clientPhone, setClientPhone] = useState('')
   const [clientCompany, setClientCompany] = useState('')
 
-  const [contactReason, setContactReason] = useState<ContactReason>('Suporte Técnico')
+  const [contactReason, setContactReason] = useState<ContactReason>('outros')
+  const [channel, setChannel] = useState<ServiceChannel | ''>('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<ServicePriority>('Média')
   const [status, setStatus] = useState<ServiceStatus>('Aberto')
@@ -100,6 +102,7 @@ export default function NovoAtendimento() {
         client_phone: clientPhone.trim(),
         client_company: clientCompany.trim(),
         contact_reason: contactReason,
+        channel: channel || undefined,
         description: description.trim(),
         priority,
         status,
@@ -221,7 +224,7 @@ export default function NovoAtendimento() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Motivo do Contato *</Label>
+                <Label>Lista de contatos *</Label>
                 <Select
                   value={contactReason}
                   onValueChange={(v) => setContactReason(v as ContactReason)}
@@ -230,16 +233,38 @@ export default function NovoAtendimento() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Dúvida">Dúvida</SelectItem>
-                    <SelectItem value="Reclamação">Reclamação</SelectItem>
-                    <SelectItem value="Suporte Técnico">Suporte Técnico</SelectItem>
-                    <SelectItem value="Orçamento">Orçamento</SelectItem>
-                    <SelectItem value="Cancelamento">Cancelamento</SelectItem>
-                    <SelectItem value="Outro">Outro</SelectItem>
+                    <SelectItem value="Bagagem">Bagagem</SelectItem>
+                    <SelectItem value="Assento">Assento</SelectItem>
+                    <SelectItem value="cálculo reemissão">cálculo reemissão</SelectItem>
+                    <SelectItem value="reembolso">reembolso</SelectItem>
+                    <SelectItem value="cotação">cotação</SelectItem>
+                    <SelectItem value="reserva">reserva</SelectItem>
+                    <SelectItem value="cancelamento">cancelamento</SelectItem>
+                    <SelectItem value="regras tarifárias">regras tarifárias</SelectItem>
+                    <SelectItem value="erro RF">erro RF</SelectItem>
+                    <SelectItem value="outros">outros</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
+              <div className="space-y-1.5">
+                <Label>Canal</Label>
+                <Select value={channel} onValueChange={(v) => setChannel(v as ServiceChannel)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um canal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Telefone">Telefone</SelectItem>
+                    <SelectItem value="e-mail">e-mail</SelectItem>
+                    <SelectItem value="whatsapp">whatsapp</SelectItem>
+                    <SelectItem value="comercial">comercial</SelectItem>
+                    <SelectItem value="outros">outros</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Nível de Prioridade</Label>
                 <RadioGroup
