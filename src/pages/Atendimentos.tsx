@@ -29,7 +29,18 @@ import { PriorityBadge } from '@/components/PriorityBadge'
 import { ServiceRecordDetailModal } from '@/components/ServiceRecordDetailModal'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
-import { Search, Filter, RotateCcw, Eye, CheckCircle2, Trash2, ArrowUpDown } from 'lucide-react'
+import {
+  Search,
+  Filter,
+  RotateCcw,
+  Eye,
+  CheckCircle2,
+  Trash2,
+  ArrowUpDown,
+  ListChecks,
+} from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
+import { MinhasTarefasList } from '@/components/MinhasTarefasList'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -43,8 +54,10 @@ export default function Atendimentos() {
   const [selectedRecord, setSelectedRecord] = useState<ServiceRecord | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [sortAsc, setSortAsc] = useState(false)
+  const [view, setView] = useState<'all' | 'mine'>('all')
 
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const loadData = async () => {
     try {
@@ -74,6 +87,8 @@ export default function Atendimentos() {
 
     return matchesSearch && matchesStatus && matchesReason
   })
+
+  const myRecords = filteredRecords.filter((r) => r.assigned_user === user?.id)
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -212,95 +227,124 @@ export default function Atendimentos() {
         )}
       </Card>
 
-      <Card className="border-slate-200 shadow-subtle overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-slate-50">
-              <TableRow>
-                <TableHead className="w-10">
-                  <Checkbox
-                    checked={
-                      selectedIds.length > 0 && selectedIds.length === filteredRecords.length
-                    }
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-                <TableHead className="text-xs font-bold">Cliente</TableHead>
-                <TableHead className="text-xs font-bold">Motivo</TableHead>
-                <TableHead className="text-xs font-bold">Status</TableHead>
-                <TableHead className="text-xs font-bold">Prioridade</TableHead>
-                <TableHead className="text-xs font-bold">Duração</TableHead>
-                <TableHead className="text-xs font-bold">Atendente</TableHead>
-                <TableHead
-                  className="text-xs font-bold cursor-pointer select-none flex items-center gap-1 py-3"
-                  onClick={() => setSortAsc(!sortAsc)}
-                >
-                  Criado em <ArrowUpDown className="h-3 w-3" />
-                </TableHead>
-                <TableHead className="text-xs font-bold text-right">Ação</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRecords.map((r) => (
-                <TableRow key={r.id} className="hover:bg-slate-50">
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedIds.includes(r.id)}
-                      onCheckedChange={(checked) => handleSelectRow(r.id, !!checked)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-semibold text-slate-900 text-xs">
-                    {r.client_name}
-                    {r.client_company && (
-                      <span className="block text-[10px] text-slate-500 font-normal">
-                        {r.client_company}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-slate-700">{r.contact_reason}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={r.status} />
-                  </TableCell>
-                  <TableCell>
-                    <PriorityBadge priority={r.priority} />
-                  </TableCell>
-                  <TableCell className="text-xs text-slate-600">
-                    {r.duration ? `${r.duration} min` : '-'}
-                  </TableCell>
-                  <TableCell className="text-xs text-slate-600">
-                    {r.assigned_agent || '-'}
-                  </TableCell>
-                  <TableCell className="text-xs text-slate-500">
-                    {r.created
-                      ? format(new Date(r.created), 'dd/MM/yyyy HH:mm', { locale: ptBR })
-                      : '-'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-indigo-600"
-                      onClick={() => {
-                        setSelectedRecord(r)
-                        setDetailOpen(true)
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredRecords.length === 0 && (
+      <div className="flex gap-2">
+        <Button
+          variant={view === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setView('all')}
+          className="text-xs"
+        >
+          <Filter className="h-3.5 w-3.5 mr-1.5" /> Todos os Atendimentos
+        </Button>
+        <Button
+          variant={view === 'mine' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setView('mine')}
+          className="text-xs"
+        >
+          <ListChecks className="h-3.5 w-3.5 mr-1.5" /> Minhas Tarefas
+        </Button>
+      </div>
+
+      {view === 'mine' ? (
+        <MinhasTarefasList
+          records={myRecords}
+          onViewRecord={(r) => {
+            setSelectedRecord(r)
+            setDetailOpen(true)
+          }}
+        />
+      ) : (
+        <Card className="border-slate-200 shadow-subtle overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-slate-50">
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-12 text-slate-400 text-xs">
-                    Nenhum atendimento encontrado para os filtros selecionados.
-                  </TableCell>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={
+                        selectedIds.length > 0 && selectedIds.length === filteredRecords.length
+                      }
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead className="text-xs font-bold">Cliente</TableHead>
+                  <TableHead className="text-xs font-bold">Motivo</TableHead>
+                  <TableHead className="text-xs font-bold">Status</TableHead>
+                  <TableHead className="text-xs font-bold">Prioridade</TableHead>
+                  <TableHead className="text-xs font-bold">Duração</TableHead>
+                  <TableHead className="text-xs font-bold">Atendente</TableHead>
+                  <TableHead
+                    className="text-xs font-bold cursor-pointer select-none flex items-center gap-1 py-3"
+                    onClick={() => setSortAsc(!sortAsc)}
+                  >
+                    Criado em <ArrowUpDown className="h-3 w-3" />
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-right">Ação</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {filteredRecords.map((r) => (
+                  <TableRow key={r.id} className="hover:bg-slate-50">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.includes(r.id)}
+                        onCheckedChange={(checked) => handleSelectRow(r.id, !!checked)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-semibold text-slate-900 text-xs">
+                      {r.client_name}
+                      {r.client_company && (
+                        <span className="block text-[10px] text-slate-500 font-normal">
+                          {r.client_company}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-700">{r.contact_reason}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={r.status} />
+                    </TableCell>
+                    <TableCell>
+                      <PriorityBadge priority={r.priority} />
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-600">
+                      {r.duration ? `${r.duration} min` : '-'}
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-600">
+                      {r.assigned_agent || '-'}
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-500">
+                      {r.created
+                        ? format(new Date(r.created), 'dd/MM/yyyy HH:mm', { locale: ptBR })
+                        : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-indigo-600"
+                        onClick={() => {
+                          setSelectedRecord(r)
+                          setDetailOpen(true)
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredRecords.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-12 text-slate-400 text-xs">
+                      Nenhum atendimento encontrado para os filtros selecionados.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
 
       <ServiceRecordDetailModal
         record={selectedRecord}

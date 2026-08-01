@@ -21,9 +21,11 @@ import {
   ServicePriority,
   ServiceStatus,
   TaskItem,
+  UserRecord,
 } from '@/types/service_record'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
+import { getUsers } from '@/services/users'
 import { Headset, Plus, Trash2, Save, ArrowLeft, Loader2 } from 'lucide-react'
 
 export default function NovoAtendimento() {
@@ -50,10 +52,15 @@ export default function NovoAtendimento() {
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [loading, setLoading] = useState(false)
+  const [users, setUsers] = useState<UserRecord[]>([])
+  const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
 
   useEffect(() => {
     getClients()
       .then(setClients)
+      .catch(() => {})
+    getUsers()
+      .then(setUsers)
       .catch(() => {})
   }, [])
 
@@ -80,7 +87,7 @@ export default function NovoAtendimento() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!clientName.trim() || !description.trim()) {
+    if (!clientName.trim() || !description.trim() || !assignedUserId) {
       toast({ variant: 'destructive', title: 'Preencha os campos obrigatórios' })
       return
     }
@@ -99,6 +106,7 @@ export default function NovoAtendimento() {
         start_time: new Date().toISOString(),
         duration,
         assigned_agent: assignedAgent,
+        assigned_user: assignedUserId,
         tasks,
       })
 
@@ -306,8 +314,26 @@ export default function NovoAtendimento() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Atendente Responsável</Label>
-                <Input value={assignedAgent} onChange={(e) => setAssignedAgent(e.target.value)} />
+                <Label>Responsável *</Label>
+                <Select
+                  value={assignedUserId}
+                  onValueChange={(id) => {
+                    setAssignedUserId(id)
+                    const u = users.find((u) => u.id === id)
+                    if (u) setAssignedAgent(u.name)
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o responsável" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name} ({u.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

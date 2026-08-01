@@ -20,9 +20,11 @@ import {
   ServicePriority,
   ServiceStatus,
   TaskItem,
+  UserRecord,
 } from '@/types/service_record'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
+import { getUsers } from '@/services/users'
 import { Headset, Plus, Trash2, Loader2 } from 'lucide-react'
 
 interface NovoAtendimentoModalProps {
@@ -54,13 +56,19 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [loading, setLoading] = useState(false)
+  const [users, setUsers] = useState<UserRecord[]>([])
+  const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
 
   useEffect(() => {
     if (open) {
       getClients()
         .then(setClients)
         .catch(() => {})
+      getUsers()
+        .then(setUsers)
+        .catch(() => {})
       if (user?.name) setAssignedAgent(user.name)
+      if (user?.id) setAssignedUserId(user.id)
     }
   }, [open, user])
 
@@ -87,7 +95,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!clientName.trim() || !description.trim()) {
+    if (!clientName.trim() || !description.trim() || !assignedUserId) {
       toast({ variant: 'destructive', title: 'Preencha os campos obrigatórios' })
       return
     }
@@ -106,6 +114,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
         start_time: new Date().toISOString(),
         duration,
         assigned_agent: assignedAgent,
+        assigned_user: assignedUserId,
         tasks,
       })
 
@@ -286,6 +295,29 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 onChange={(e) => setDuration(Number(e.target.value))}
               />
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Responsável *</Label>
+            <Select
+              value={assignedUserId}
+              onValueChange={(id) => {
+                setAssignedUserId(id)
+                const u = users.find((u) => u.id === id)
+                if (u) setAssignedAgent(u.name)
+              }}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Selecione o responsável" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name} ({u.role})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2 border-t pt-3">

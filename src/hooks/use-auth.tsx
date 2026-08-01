@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import pb from '@/lib/pocketbase/client'
+import { UserRole } from '@/types/service_record'
 
 interface AuthContextType {
   user: any
   isAuthenticated: boolean
-  signUp: (email: string, password: string) => Promise<{ error: any }>
+  signUp: (email: string, password: string, name: string, role: UserRole) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => void
   loading: boolean
@@ -43,9 +44,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, name: string, role: UserRole) => {
     try {
-      await pb.collection('users').create({ email, password, passwordConfirm: password })
+      await pb
+        .collection('users')
+        .create({ email, password, passwordConfirm: password, name, role })
       await pb.collection('users').authWithPassword(email, password)
       return { error: null }
     } catch (error) {

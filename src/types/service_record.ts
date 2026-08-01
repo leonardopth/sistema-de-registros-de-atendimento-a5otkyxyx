@@ -18,6 +18,8 @@ export type ServicePriority = 'Baixa' | 'Média' | 'Alta'
 
 export type ServiceStatus = 'Aberto' | 'Em Andamento' | 'Concluído' | 'Cancelado'
 
+export type UserRole = 'Gerentes' | 'Supervisores' | 'Líderes' | 'Consultores'
+
 export interface ServiceRecord {
   id: string
   client_name: string
@@ -32,10 +34,18 @@ export interface ServiceRecord {
   duration?: number
   end_time?: string
   assigned_agent?: string
+  assigned_user?: string
   tasks?: TaskItem[]
   user_id: string
   created: string
   updated: string
+}
+
+export interface UserRecord {
+  id: string
+  name: string
+  email: string
+  role: UserRole
 }
 
 export interface ClientRecord {

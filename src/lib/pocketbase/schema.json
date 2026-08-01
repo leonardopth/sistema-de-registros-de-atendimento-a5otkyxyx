@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-08-01T01:02:37.546Z",
+  "generatedAt": "2026-08-01T01:38:10.131Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id",
-        "view": "id = @request.auth.id",
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
         "create": "",
         "update": "id = @request.auth.id",
         "delete": "id = @request.auth.id"
@@ -37,11 +37,19 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Gerentes", "Supervisores", "Líderes", "Consultores"]
         }
       ],
       "indexes": [
         "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
-        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''",
+        "CREATE INDEX `idx_users_role` ON `users` (role)"
       ]
     },
     {
@@ -106,11 +114,11 @@
       "name": "service_records",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "assigned_user = @request.auth.id || user_id = @request.auth.id",
+        "view": "assigned_user = @request.auth.id || user_id = @request.auth.id",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "update": "assigned_user = @request.auth.id || user_id = @request.auth.id",
+        "delete": "assigned_user = @request.auth.id || user_id = @request.auth.id"
       },
       "fields": [
         {
@@ -221,6 +229,13 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "assigned_user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
         }
       ],
       "indexes": [
@@ -228,7 +243,8 @@
         "CREATE INDEX idx_sr_reason ON service_records (contact_reason)",
         "CREATE INDEX idx_sr_priority ON service_records (priority)",
         "CREATE INDEX idx_sr_user ON service_records (user_id)",
-        "CREATE INDEX idx_sr_created ON service_records (created DESC)"
+        "CREATE INDEX idx_sr_created ON service_records (created DESC)",
+        "CREATE INDEX `idx_sr_assigned_user` ON `service_records` (assigned_user)"
       ]
     }
   ]

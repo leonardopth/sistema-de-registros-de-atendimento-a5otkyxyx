@@ -8,6 +8,13 @@ export const getServiceRecords = (filter?: string, sort: string = '-created') =>
   })
 }
 
+export const getMyServiceRecords = (userId: string) => {
+  return pb.collection('service_records').getFullList<ServiceRecord>({
+    filter: `assigned_user = "${userId}"`,
+    sort: '-created',
+  })
+}
+
 export const getServiceRecord = (id: string) => {
   return pb.collection('service_records').getOne<ServiceRecord>(id)
 }

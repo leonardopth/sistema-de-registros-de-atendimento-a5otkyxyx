@@ -142,6 +142,9 @@ export function Layout() {
                   {user?.name || 'Atendente'}
                 </p>
                 <p className="text-[10px] text-slate-500 truncate">{user?.email || 'online'}</p>
+                {user?.role && (
+                  <span className="text-[10px] text-indigo-600 font-semibold">{user.role}</span>
+                )}
               </div>
             )}
           </div>
@@ -224,6 +227,11 @@ export function Layout() {
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{user?.name || 'Atendente'}</p>
                     <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    {user?.role && (
+                      <span className="text-[10px] text-indigo-600 font-semibold leading-none">
+                        {user.role}
+                      </span>
+                    )}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

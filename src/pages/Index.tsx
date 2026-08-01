@@ -18,6 +18,8 @@ import { ServiceRecordDetailModal } from '@/components/ServiceRecordDetailModal'
 import { NovoAtendimentoModal } from '@/components/NovoAtendimentoModal'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Headset, PlayCircle, CheckCircle2, Clock, Plus, Eye, ArrowUpRight } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
+import { MinhasTarefasList } from '@/components/MinhasTarefasList'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -26,6 +28,7 @@ export default function Index() {
   const [selectedRecord, setSelectedRecord] = useState<ServiceRecord | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [novoModalOpen, setNovoModalOpen] = useState(false)
+  const { user } = useAuth()
 
   const loadData = async () => {
     try {
@@ -51,6 +54,7 @@ export default function Index() {
     (r) => r.status === 'Concluído' && r.updated && r.updated.startsWith(todayStr),
   )
 
+  const myRecords = records.filter((r) => r.assigned_user === user?.id)
   const totalDuration = records.reduce((acc, r) => acc + (r.duration || 0), 0)
   const avgDuration = records.length > 0 ? Math.round(totalDuration / records.length) : 0
 
@@ -144,6 +148,20 @@ export default function Index() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-bold text-slate-900">Minhas Tarefas</h3>
+          <span className="text-xs text-slate-500">{myRecords.length} atribuída(s) a você</span>
+        </div>
+        <MinhasTarefasList
+          records={myRecords}
+          onViewRecord={(r) => {
+            setSelectedRecord(r)
+            setDetailOpen(true)
+          }}
+        />
       </div>
 
       <Card className="border-slate-200 shadow-subtle">
