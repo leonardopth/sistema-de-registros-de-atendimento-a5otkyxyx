@@ -202,15 +202,15 @@ export default function Atendimentos() {
         </div>
 
         {selectedIds.length > 0 && (
-          <div className="flex items-center justify-between bg-indigo-50 p-2.5 rounded-lg border border-indigo-100">
-            <span className="text-xs font-semibold text-indigo-900">
+          <div className="flex items-center justify-between bg-cyan-50 p-2.5 rounded-lg border border-cyan-100">
+            <span className="text-xs font-bold text-cyan-950">
               {selectedIds.length} item(ns) selecionado(s)
             </span>
             <div className="flex gap-2">
               <Button
                 size="sm"
                 onClick={handleBatchComplete}
-                className="bg-emerald-600 hover:bg-emerald-700 h-8 text-xs"
+                className="bg-emerald-600 hover:bg-emerald-700 h-8 text-xs font-semibold"
               >
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Marcar como Concluído
               </Button>
@@ -218,7 +218,7 @@ export default function Atendimentos() {
                 size="sm"
                 variant="destructive"
                 onClick={handleBatchDelete}
-                className="h-8 text-xs"
+                className="h-8 text-xs font-semibold"
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir Selecionados
               </Button>

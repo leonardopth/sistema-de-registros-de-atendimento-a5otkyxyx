@@ -72,7 +72,7 @@ export default function Index() {
         <div className="flex gap-2">
           <Button
             onClick={() => setNovoModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 font-semibold shadow-sm"
+            className="bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold shadow-md transition-all"
           >
             <Plus className="h-4 w-4 mr-1.5" />
             Novo Atendimento
@@ -81,69 +81,71 @@ export default function Index() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-slate-200 shadow-subtle hover:shadow-elevation transition-all bg-gradient-to-br from-white to-blue-50/30">
+        <Card className="border-slate-200 shadow-subtle hover:shadow-elevation transition-all bg-gradient-to-br from-white via-cyan-50/20 to-blue-50/30 border-t-4 border-t-cyan-500">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Atendimentos Hoje
               </p>
               <h3 className="text-2xl font-black text-slate-900 mt-1">{todayRecords.length}</h3>
-              <p className="text-[11px] text-blue-600 font-medium mt-1 flex items-center gap-0.5">
+              <p className="text-[11px] text-cyan-600 font-semibold mt-1 flex items-center gap-0.5">
                 {records.length} no total registrado
               </p>
             </div>
-            <div className="h-12 w-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+            <div className="h-12 w-12 rounded-xl bg-cyan-100/80 text-cyan-700 flex items-center justify-center shadow-xs">
               <Headset className="h-6 w-6" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 shadow-subtle hover:shadow-elevation transition-all bg-gradient-to-br from-white to-amber-50/30">
+        <Card className="border-slate-200 shadow-subtle hover:shadow-elevation transition-all bg-gradient-to-br from-white via-purple-50/20 to-indigo-50/30 border-t-4 border-t-purple-500">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Em Andamento
               </p>
               <h3 className="text-2xl font-black text-slate-900 mt-1">
                 {inProgressRecords.length}
               </h3>
-              <p className="text-[11px] text-amber-600 font-medium mt-1">Requer atenção imediata</p>
+              <p className="text-[11px] text-purple-600 font-semibold mt-1">
+                Requer atenção imediata
+              </p>
             </div>
-            <div className="h-12 w-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+            <div className="h-12 w-12 rounded-xl bg-purple-100/80 text-purple-700 flex items-center justify-center shadow-xs">
               <PlayCircle className="h-6 w-6" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 shadow-subtle hover:shadow-elevation transition-all bg-gradient-to-br from-white to-emerald-50/30">
+        <Card className="border-slate-200 shadow-subtle hover:shadow-elevation transition-all bg-gradient-to-br from-white via-emerald-50/20 to-teal-50/30 border-t-4 border-t-emerald-500">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Concluídos Hoje
               </p>
               <h3 className="text-2xl font-black text-slate-900 mt-1">{completedToday.length}</h3>
-              <p className="text-[11px] text-emerald-600 font-medium mt-1">
+              <p className="text-[11px] text-emerald-600 font-semibold mt-1">
                 Resolvidos com sucesso
               </p>
             </div>
-            <div className="h-12 w-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+            <div className="h-12 w-12 rounded-xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center shadow-xs">
               <CheckCircle2 className="h-6 w-6" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 shadow-subtle hover:shadow-elevation transition-all bg-gradient-to-br from-white to-indigo-50/30">
+        <Card className="border-slate-200 shadow-subtle hover:shadow-elevation transition-all bg-gradient-to-br from-white via-rose-50/20 to-orange-50/30 border-t-4 border-t-rose-400">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Tempo Médio
               </p>
               <h3 className="text-2xl font-black text-slate-900 mt-1">{avgDuration} min</h3>
-              <p className="text-[11px] text-indigo-600 font-medium mt-1">
+              <p className="text-[11px] text-rose-600 font-semibold mt-1">
                 Duração média de chamado
               </p>
             </div>
-            <div className="h-12 w-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+            <div className="h-12 w-12 rounded-xl bg-rose-100/80 text-rose-700 flex items-center justify-center shadow-xs">
               <Clock className="h-6 w-6" />
             </div>
           </CardContent>
@@ -172,7 +174,7 @@ export default function Index() {
           </div>
           <Link
             to="/atendimentos"
-            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+            className="text-xs font-bold text-cyan-600 hover:text-cyan-800 flex items-center gap-1"
           >
             Ver Todos <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
@@ -245,7 +247,7 @@ export default function Index() {
 
       <Button
         onClick={() => setNovoModalOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-elevation flex items-center justify-center transition-transform hover:scale-105 z-30"
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-gradient-to-r from-cyan-500 via-indigo-600 to-purple-600 hover:from-cyan-600 hover:via-indigo-700 hover:to-purple-700 text-white shadow-xl flex items-center justify-center transition-transform hover:scale-105 z-30"
       >
         <Plus className="h-7 w-7" />
       </Button>

@@ -114,7 +114,7 @@ export default function Clientes() {
         </div>
         <Button
           onClick={() => setNewModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 font-semibold"
+          className="bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold shadow-md"
         >
           <UserPlus className="h-4 w-4 mr-1.5" /> Novo Cliente
         </Button>
@@ -126,7 +126,7 @@ export default function Clientes() {
             variant="ghost"
             size="sm"
             onClick={() => setSelectedClient(null)}
-            className="text-indigo-600"
+            className="text-cyan-700 font-bold"
           >
             <ArrowLeft className="h-4 w-4 mr-1.5" /> Voltar para lista de clientes
           </Button>
@@ -192,7 +192,7 @@ export default function Clientes() {
               <Button
                 onClick={handleSaveClient}
                 disabled={saving}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-xs"
+                className="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-700 hover:to-indigo-700 text-xs font-bold text-white shadow-sm"
               >
                 {saving ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-1.5" />

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,10 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Headset, Lock, Mail, Loader2, ArrowRight, User } from 'lucide-react'
+import { Lock, Mail, Loader2, ArrowRight, User } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 import { UserRole } from '@/types/service_record'
+import logoImg from '../assets/image-b4a05.png'
 
 export default function Login() {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
@@ -94,28 +95,29 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-      <Card className="w-full max-w-md shadow-elevation border-slate-200">
-        <CardHeader className="text-center space-y-2 pb-4">
-          <div className="mx-auto h-12 w-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
-            <Headset className="h-6 w-6" />
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4 relative overflow-hidden">
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-cyan-500/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] pointer-events-none" />
+
+      <Card className="w-full max-w-md shadow-2xl border-slate-800 bg-slate-900/90 backdrop-blur-xl text-slate-100 overflow-hidden">
+        <div className="p-6 bg-slate-950 border-b border-slate-800/80 text-center relative">
+          <div className="mx-auto flex items-center justify-center py-2">
+            <img src={logoImg} alt="RexturAdvance Logo" className="h-11 object-contain" />
           </div>
-          <CardTitle className="text-2xl font-extrabold text-slate-900">
-            Registro de Atendimentos
-          </CardTitle>
-          <CardDescription className="text-slate-500 text-xs">
-            {mode === 'login'
-              ? 'Acesse seu painel operacional para registrar e gerenciar chamados'
-              : 'Crie sua conta para começar a registrar atendimentos'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-lg">
+          <p className="text-xs text-slate-400 mt-2 font-medium">
+            Sistema de Registros e Gestão de Atendimento
+          </p>
+        </div>
+
+        <CardContent className="p-6 space-y-4">
+          <div className="flex gap-2 p-1 bg-slate-950 rounded-lg border border-slate-800">
             <button
               type="button"
               onClick={() => switchMode('login')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors ${
-                mode === 'login' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'
+              className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+                mode === 'login'
+                  ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               Entrar
@@ -123,8 +125,10 @@ export default function Login() {
             <button
               type="button"
               onClick={() => switchMode('signup')}
-              className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors ${
-                mode === 'signup' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'
+              className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+                mode === 'signup'
+                  ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               Cadastrar
@@ -132,32 +136,36 @@ export default function Login() {
           </div>
 
           {mode === 'login' ? (
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4 pt-2">
               <div className="space-y-1.5">
-                <Label htmlFor="email">E-mail Corporativo</Label>
+                <Label htmlFor="email" className="text-slate-300 text-xs font-medium">
+                  E-mail Corporativo
+                </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                   <Input
                     id="email"
                     type="email"
                     required
-                    className="pl-9"
+                    className="pl-9 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-cyan-500"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu.email@empresa.com"
+                    placeholder="seu.email@rexturadvance.com.br"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password">Senha de Acesso</Label>
+                <Label htmlFor="password" className="text-slate-300 text-xs font-medium">
+                  Senha de Acesso
+                </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                   <Input
                     id="password"
                     type="password"
                     required
-                    className="pl-9"
+                    className="pl-9 bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-cyan-500"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
@@ -168,98 +176,104 @@ export default function Login() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 h-10 font-semibold"
+                className="w-full bg-gradient-to-r from-cyan-500 via-indigo-600 to-purple-600 hover:from-cyan-600 hover:via-indigo-700 hover:to-purple-700 text-white h-10 font-bold shadow-lg transition-all"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <span className="flex items-center gap-2">
-                    Entrar no Sistema <ArrowRight className="h-4 w-4" />
+                    Acessar Painel <ArrowRight className="h-4 w-4" />
                   </span>
                 )}
               </Button>
 
-              <div className="mt-6 p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-center">
-                <p className="text-xs text-indigo-900 font-medium">Conta Demo Pré-configurada</p>
-                <p className="text-[11px] text-indigo-700 mt-0.5">
-                  Usando <strong>leonardopth@gmail.com</strong> / <strong>Skip@Pass</strong>
+              <div className="mt-4 p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-center">
+                <p className="text-xs text-cyan-400 font-semibold">Conta Demo RexturAdvance</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  <strong>leonardopth@gmail.com</strong> / <strong>Skip@Pass</strong>
                 </p>
               </div>
             </form>
           ) : (
-            <form onSubmit={handleSignup} className="space-y-4">
+            <form onSubmit={handleSignup} className="space-y-4 pt-2">
               <div className="space-y-1.5">
-                <Label htmlFor="name">Nome Completo</Label>
+                <Label htmlFor="name" className="text-slate-300 text-xs font-medium">
+                  Nome Completo
+                </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <User className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                   <Input
                     id="name"
                     required
-                    className="pl-9"
+                    className="pl-9 bg-slate-950 border-slate-800 text-slate-100 focus:border-cyan-500"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Seu nome completo"
                   />
                 </div>
-                {fieldErrors.name && <p className="text-xs text-red-500">{fieldErrors.name}</p>}
+                {fieldErrors.name && <p className="text-xs text-rose-400">{fieldErrors.name}</p>}
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="signup-email">E-mail</Label>
+                <Label htmlFor="signup-email" className="text-slate-300 text-xs font-medium">
+                  E-mail
+                </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                   <Input
                     id="signup-email"
                     type="email"
                     required
-                    className="pl-9"
+                    className="pl-9 bg-slate-950 border-slate-800 text-slate-100 focus:border-cyan-500"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu.email@empresa.com"
+                    placeholder="seu.email@rexturadvance.com.br"
                   />
                 </div>
-                {fieldErrors.email && <p className="text-xs text-red-500">{fieldErrors.email}</p>}
+                {fieldErrors.email && <p className="text-xs text-rose-400">{fieldErrors.email}</p>}
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="signup-password">Senha</Label>
+                <Label htmlFor="signup-password" className="text-slate-300 text-xs font-medium">
+                  Senha
+                </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                   <Input
                     id="signup-password"
                     type="password"
                     required
-                    className="pl-9"
+                    className="pl-9 bg-slate-950 border-slate-800 text-slate-100 focus:border-cyan-500"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mínimo 8 caracteres"
                   />
                 </div>
                 {fieldErrors.password && (
-                  <p className="text-xs text-red-500">{fieldErrors.password}</p>
+                  <p className="text-xs text-rose-400">{fieldErrors.password}</p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <Label>Categoria do Usuário *</Label>
+                <Label className="text-slate-300 text-xs font-medium">Categoria do Usuário *</Label>
                 <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-                  <SelectTrigger className="h-10">
+                  <SelectTrigger className="h-10 bg-slate-950 border-slate-800 text-slate-100">
                     <SelectValue placeholder="Selecione sua categoria" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
                     <SelectItem value="Gerentes">Gerentes</SelectItem>
                     <SelectItem value="Supervisores">Supervisores</SelectItem>
                     <SelectItem value="Líderes">Líderes</SelectItem>
                     <SelectItem value="Consultores">Consultores</SelectItem>
                   </SelectContent>
                 </Select>
-                {fieldErrors.role && <p className="text-xs text-red-500">{fieldErrors.role}</p>}
+                {fieldErrors.role && <p className="text-xs text-rose-400">{fieldErrors.role}</p>}
               </div>
 
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 h-10 font-semibold"
+                className="w-full bg-gradient-to-r from-cyan-500 via-indigo-600 to-purple-600 hover:from-cyan-600 hover:via-indigo-700 hover:to-purple-700 text-white h-10 font-bold shadow-lg"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

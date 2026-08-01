@@ -26,6 +26,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import logoImg from '../assets/image-b4a05.png'
 
 export function Layout() {
   const { user, signOut } = useAuth()
@@ -50,7 +51,7 @@ export function Layout() {
   }
 
   const getInitials = (name?: string) => {
-    if (!name) return 'AT'
+    if (!name) return 'RA'
     return name
       .split(' ')
       .map((n) => n[0])
@@ -63,23 +64,22 @@ export function Layout() {
     <div className="min-h-screen flex bg-slate-50 text-slate-900 font-sans">
       <aside
         className={cn(
-          'hidden md:flex flex-col bg-white border-r border-slate-200 transition-all duration-300 z-20 sticky top-0 h-screen',
+          'hidden md:flex flex-col bg-slate-900 border-r border-slate-800 text-slate-100 transition-all duration-300 z-20 sticky top-0 h-screen',
           collapsed ? 'w-20' : 'w-[250px]',
         )}
       >
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 overflow-hidden">
-            <div className="h-9 w-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-extrabold text-lg shadow-md shrink-0">
-              S
+        <div className="p-3 border-b border-slate-800 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2 overflow-hidden w-full">
+            <div className="bg-slate-950/80 p-2 rounded-xl flex items-center justify-center border border-slate-800/80 w-full">
+              <img
+                src={logoImg}
+                alt="RexturAdvance"
+                className={cn(
+                  'h-7 object-contain transition-all',
+                  collapsed ? 'w-7 object-right' : 'w-auto',
+                )}
+              />
             </div>
-            {!collapsed && (
-              <div className="flex flex-col leading-tight">
-                <span className="font-bold text-slate-900 text-sm tracking-tight">Atendimento</span>
-                <span className="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider">
-                  Gestão Pro
-                </span>
-              </div>
-            )}
           </Link>
         </div>
 
@@ -94,14 +94,14 @@ export function Layout() {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group',
                   isActive
-                    ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600 font-semibold'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                    ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-300 border-l-4 border-cyan-400 font-semibold shadow-sm'
+                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-100',
                 )}
               >
                 <Icon
                   className={cn(
-                    'h-5 w-5 shrink-0',
-                    isActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600',
+                    'h-5 w-5 shrink-0 transition-colors',
+                    isActive ? 'text-cyan-400' : 'text-slate-400 group-hover:text-cyan-300',
                   )}
                 />
                 {!collapsed && <span>{item.label}</span>}
@@ -110,11 +110,11 @@ export function Layout() {
           })}
         </nav>
 
-        <div className="p-3 border-t border-slate-100 space-y-2">
+        <div className="p-3 border-t border-slate-800 space-y-2">
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-center text-slate-400 hover:text-slate-700"
+            className="w-full justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-800"
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? (
@@ -127,23 +127,23 @@ export function Layout() {
 
           <div
             className={cn(
-              'flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 border border-slate-100',
+              'flex items-center gap-2.5 p-2 rounded-lg bg-slate-950 border border-slate-800',
               collapsed && 'justify-center',
             )}
           >
-            <Avatar className="h-8 w-8 bg-indigo-600 text-white font-semibold text-xs">
-              <AvatarFallback className="bg-indigo-600 text-white">
+            <Avatar className="h-8 w-8 bg-gradient-to-br from-cyan-500 to-indigo-600 text-white font-semibold text-xs border border-cyan-400/30">
+              <AvatarFallback className="bg-transparent text-white">
                 {getInitials(user?.name)}
               </AvatarFallback>
             </Avatar>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-slate-800 truncate">
+                <p className="text-xs font-semibold text-slate-100 truncate">
                   {user?.name || 'Atendente'}
                 </p>
-                <p className="text-[10px] text-slate-500 truncate">{user?.email || 'online'}</p>
+                <p className="text-[10px] text-slate-400 truncate">{user?.email || 'online'}</p>
                 {user?.role && (
-                  <span className="text-[10px] text-indigo-600 font-semibold">{user.role}</span>
+                  <span className="text-[10px] text-cyan-400 font-semibold">{user.role}</span>
                 )}
               </div>
             )}
@@ -152,22 +152,22 @@ export function Layout() {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-4">
+        <header className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-4 shadow-xs">
           <div className="flex items-center gap-3">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
-                  <Menu className="h-5 w-5" />
+                  <Menu className="h-5 w-5 text-slate-700" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[260px] p-0">
-                <div className="p-4 border-b border-slate-100 flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-md bg-indigo-600 text-white flex items-center justify-center font-bold">
-                    S
-                  </div>
-                  <span className="font-bold text-slate-900 text-sm">Registro de Atendimento</span>
+              <SheetContent
+                side="left"
+                className="w-[270px] p-0 bg-slate-900 border-slate-800 text-slate-100"
+              >
+                <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center">
+                  <img src={logoImg} alt="RexturAdvance" className="h-8 w-auto object-contain" />
                 </div>
-                <nav className="p-2 space-y-1">
+                <nav className="p-3 space-y-1">
                   {navItems.map((item) => {
                     const Icon = item.icon
                     const isActive = location.pathname === item.path
@@ -179,11 +179,11 @@ export function Layout() {
                         className={cn(
                           'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium',
                           isActive
-                            ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                            : 'text-slate-600',
+                            ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-300 font-semibold'
+                            : 'text-slate-400 hover:text-slate-100',
                         )}
                       >
-                        <Icon className="h-5 w-5 text-indigo-600" />
+                        <Icon className="h-5 w-5 text-cyan-400" />
                         {item.label}
                       </Link>
                     )
@@ -192,12 +192,14 @@ export function Layout() {
               </SheetContent>
             </Sheet>
 
-            <h1 className="text-lg font-bold text-slate-900 hidden sm:block">
-              {location.pathname === '/' && 'Painel de Controle'}
-              {location.pathname === '/novo-atendimento' && 'Novo Atendimento'}
-              {location.pathname === '/atendimentos' && 'Histórico de Atendimentos'}
-              {location.pathname === '/clientes' && 'Gestão de Clientes'}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-bold text-slate-900 hidden sm:block">
+                {location.pathname === '/' && 'Painel Geral de Atendimentos'}
+                {location.pathname === '/novo-atendimento' && 'Novo Registros de Atendimento'}
+                {location.pathname === '/atendimentos' && 'Histórico de Atendimentos'}
+                {location.pathname === '/clientes' && 'Gestão de Clientes'}
+              </h1>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 flex-1 justify-end max-w-md">
@@ -206,7 +208,7 @@ export function Layout() {
               <Input
                 type="search"
                 placeholder="Buscar cliente ou atendimento..."
-                className="pl-9 h-9 text-xs bg-slate-50 border-slate-200 focus:bg-white"
+                className="pl-9 h-9 text-xs bg-slate-50 border-slate-200 focus:border-cyan-500"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -214,9 +216,12 @@ export function Layout() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                  <Avatar className="h-9 w-9 bg-indigo-600 text-white">
-                    <AvatarFallback className="bg-indigo-600 text-white">
+                <Button
+                  variant="ghost"
+                  className="relative h-9 w-9 rounded-full ring-2 ring-cyan-500/20"
+                >
+                  <Avatar className="h-9 w-9 bg-gradient-to-br from-cyan-500 to-indigo-600 text-white font-bold">
+                    <AvatarFallback className="bg-transparent text-white">
                       {getInitials(user?.name)}
                     </AvatarFallback>
                   </Avatar>
@@ -228,7 +233,7 @@ export function Layout() {
                     <p className="text-sm font-medium leading-none">{user?.name || 'Atendente'}</p>
                     <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                     {user?.role && (
-                      <span className="text-[10px] text-indigo-600 font-semibold leading-none">
+                      <span className="text-[10px] text-cyan-600 font-semibold leading-none">
                         {user.role}
                       </span>
                     )}
@@ -242,7 +247,7 @@ export function Layout() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={signOut}
-                  className="text-xs text-red-600 gap-2 cursor-pointer"
+                  className="text-xs text-rose-600 gap-2 cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                   Sair do Sistema
@@ -256,9 +261,11 @@ export function Layout() {
           <Outlet />
         </main>
 
-        <footer className="py-3 px-6 text-center text-xs text-slate-400 border-t border-slate-200 bg-white">
-          Sistema de Registro de Atendimento v1.0 &copy; {new Date().getFullYear()} — Todos os
-          direitos reservados.
+        <footer className="py-3 px-6 text-center text-xs text-slate-500 border-t border-slate-200 bg-white flex items-center justify-between">
+          <span className="font-semibold text-slate-700">
+            RexturAdvance &copy; {new Date().getFullYear()}
+          </span>
+          <span>Sistema de Registros de Atendimento — Todos os direitos reservados.</span>
         </footer>
       </div>
     </div>

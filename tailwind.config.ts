@@ -31,6 +31,12 @@ export default {
         display: ['SF Pro Display', 'Inter var', 'system-ui', 'sans-serif'],
       },
       colors: {
+        rextur: {
+          cyan: '#00A3E0',
+          purple: '#7C3AED',
+          coral: '#FF5252',
+          dark: '#0B132B',
+        },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
