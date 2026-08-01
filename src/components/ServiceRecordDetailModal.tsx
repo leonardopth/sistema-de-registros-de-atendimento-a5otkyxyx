@@ -214,23 +214,6 @@ export function ServiceRecordDetailModal({
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-500 block mb-1">Canal de Atendimento</label>
-            <Select value={channel} onValueChange={(val) => setChannel(val as ServiceChannel)}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Selecione um canal" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Telefone">Telefone</SelectItem>
-                <SelectItem value="e-mail">e-mail</SelectItem>
-                <SelectItem value="whatsapp">whatsapp</SelectItem>
-                <SelectItem value="comercial">comercial</SelectItem>
-                <SelectItem value="outros">outros</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>            </div>
-          </div>
-
-          <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
                 <CheckSquare className="h-3.5 w-3.5" /> Tarefas do Atendimento ({tasks.length})
