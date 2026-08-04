@@ -22,7 +22,6 @@ interface NewClientModalProps {
 
 export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModalProps) {
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [company, setCompany] = useState('')
   const [notes, setNotes] = useState('')
@@ -37,7 +36,6 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
     try {
       await createClient({
         name: name.trim(),
-        email: email.trim(),
         phone: phone.trim(),
         company: company.trim(),
         notes: notes.trim(),
@@ -47,7 +45,6 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
         description: 'O cliente foi adicionado com sucesso.',
       })
       setName('')
-      setEmail('')
       setPhone('')
       setCompany('')
       setNotes('')
@@ -84,7 +81,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="c-name">Nome do agente *</Label>
+            <Label htmlFor="c-name">Nome do Executivo de Contas *</Label>
             <Input
               id="c-name"
               required
@@ -93,26 +90,14 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
               placeholder="Ex: Ana Maria Silva"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="c-email">e-mail do agente</Label>
-              <Input
-                id="c-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="cliente@email.com"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="c-phone">Telefone / Celular</Label>
-              <Input
-                id="c-phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(00) 00000-0000"
-              />
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="c-phone">Telefone / Celular</Label>
+            <Input
+              id="c-phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="(00) 00000-0000"
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="c-notes">Observações</Label>

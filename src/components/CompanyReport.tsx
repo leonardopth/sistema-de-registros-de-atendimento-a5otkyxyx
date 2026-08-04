@@ -45,7 +45,9 @@ function computeReport(
 
   const items: CompanyReportItem[] = []
   for (const [company, companyRecords] of companyMap) {
-    const matchingClientIds = new Set(clients.filter((c) => c.company === company).map((c) => c.id))
+    const matchingClients = clients.filter((c) => c.company === company)
+    const matchingClientIds = new Set(matchingClients.map((c) => c.id))
+    const executives = [...new Set(matchingClients.map((c) => c.name).filter(Boolean))]
     const companyAgents = agents.filter((a) => matchingClientIds.has(a.client_id))
 
     const statusBreakdown: Record<string, number> = {}
@@ -66,6 +68,7 @@ function computeReport(
       agentCount: companyAgents.length,
       totalRecords: companyRecords.length,
       statusBreakdown,
+      executives,
       agents: agentData,
     })
   }
@@ -164,6 +167,13 @@ export function CompanyReport({ records, clients, agents, onCompanyClick }: Comp
                   </Badge>
                 </div>
               </div>
+
+              {item.executives.length > 0 && (
+                <div className="text-xs text-slate-600">
+                  <span className="font-semibold text-slate-700">Executivo de Contas: </span>
+                  {item.executives.join(', ')}
+                </div>
+              )}
 
               <div className="flex flex-wrap gap-1.5">
                 {STATUSES.map((s) => (
