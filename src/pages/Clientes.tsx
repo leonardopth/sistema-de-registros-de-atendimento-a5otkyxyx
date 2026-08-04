@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table'
 import { getClients, updateClient } from '@/services/clients'
 import { getServiceRecords } from '@/services/service_records'
 import { ClientRecord, ServiceRecord } from '@/types/service_record'
@@ -9,20 +17,9 @@ import { NewClientModal } from '@/components/NewClientModal'
 import { AgentManager } from '@/components/AgentManager'
 import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
 import { StatusBadge } from '@/components/StatusBadge'
+import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
-import {
-  Users,
-  UserPlus,
-  Search,
-  Building,
-  Mail,
-  Phone,
-  FileText,
-  Save,
-  Headset,
-  ArrowLeft,
-  Loader2,
-} from 'lucide-react'
+import { UserPlus, Search, Headset, ArrowLeft, Loader2, Save, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -34,19 +31,18 @@ export default function Clientes() {
   const [newModalOpen, setNewModalOpen] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [detailsCompany, setDetailsCompany] = useState('')
-
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editCompany, setEditCompany] = useState('')
+  const [editCity, setEditCity] = useState('')
+  const [editState, setEditState] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [saving, setSaving] = useState(false)
-
   const { toast } = useToast()
 
   const loadClients = async () => {
     try {
-      const data = await getClients()
-      setClients(data)
+      setClients(await getClients())
     } catch (err) {
       console.error(err)
     }
@@ -55,22 +51,27 @@ export default function Clientes() {
   useEffect(() => {
     loadClients()
   }, [])
+  useRealtime('clients', () => {
+    loadClients()
+  })
 
   const handleSelectClient = async (c: ClientRecord) => {
     setSelectedClient(c)
     setEditName(c.name)
     setEditPhone(c.phone || '')
     setEditCompany(c.company || '')
+    setEditCity(c.city || '')
+    setEditState(c.state || '')
     setEditNotes(c.notes || '')
-
     try {
       const records = await getServiceRecords('', '-created')
-      const filtered = records.filter(
-        (r) =>
-          r.client_name.toLowerCase() === c.name.toLowerCase() ||
-          (c.email && r.client_email && r.client_email.toLowerCase() === c.email.toLowerCase()),
+      setClientRecords(
+        records.filter(
+          (r) =>
+            r.client_name.toLowerCase() === c.name.toLowerCase() ||
+            (c.email && r.client_email && r.client_email.toLowerCase() === c.email.toLowerCase()),
+        ),
       )
-      setClientRecords(filtered)
     } catch (err) {
       console.error(err)
     }
@@ -84,6 +85,8 @@ export default function Clientes() {
         name: editName,
         phone: editPhone,
         company: editCompany,
+        city: editCity,
+        state: editState,
         notes: editNotes,
       })
       toast({ title: 'Cliente atualizado com sucesso' })
@@ -95,11 +98,15 @@ export default function Clientes() {
     }
   }
 
+  const openDetails = (c: ClientRecord) => {
+    setDetailsCompany(c.company || c.name)
+    setDetailsModalOpen(true)
+  }
+
   const filteredClients = clients.filter(
     (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.company && c.company.toLowerCase().includes(search.toLowerCase())) ||
-      (c.email && c.email.toLowerCase().includes(search.toLowerCase())),
+      (c.company || '').toLowerCase().includes(search.toLowerCase()) ||
+      c.name.toLowerCase().includes(search.toLowerCase()),
   )
 
   return (
@@ -131,7 +138,6 @@ export default function Clientes() {
           >
             <ArrowLeft className="h-4 w-4 mr-1.5" /> Voltar para lista de clientes
           </Button>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-1 border-slate-200 p-5 space-y-4">
               <div className="flex items-center gap-3 border-b pb-3">
@@ -149,21 +155,47 @@ export default function Clientes() {
               </div>
               <div className="space-y-3">
                 <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">Agência</label>
+                  <Input
+                    className="h-9 text-xs"
+                    value={editCompany}
+                    onChange={(e) => setEditCompany(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-600">Cidade</label>
+                    <Input
+                      className="h-9 text-xs"
+                      value={editCity}
+                      onChange={(e) => setEditCity(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-600">Estado</label>
+                    <Input
+                      className="h-9 text-xs"
+                      value={editState}
+                      onChange={(e) => setEditState(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">Telefone / Celular</label>
+                  <Input
+                    className="h-9 text-xs"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-600">
-                    Nome do Executivo de Contas
+                    Executivo de Contas RA
                   </label>
                   <Input
                     className="h-9 text-xs"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">Telefone</label>
-                  <Input
-                    className="h-9 text-xs"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
@@ -176,7 +208,6 @@ export default function Clientes() {
                   />
                 </div>
               </div>
-
               <Button
                 onClick={handleSaveClient}
                 disabled={saving}
@@ -190,7 +221,6 @@ export default function Clientes() {
                 Salvar Alterações
               </Button>
             </Card>
-
             <Card className="lg:col-span-2 border-slate-200 p-5 space-y-4">
               <div className="flex items-center justify-between border-b pb-3">
                 <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
@@ -198,7 +228,6 @@ export default function Clientes() {
                   {clientRecords.length})
                 </h3>
               </div>
-
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                 {clientRecords.map((r) => (
                   <div key={r.id} className="p-3.5 bg-slate-50 border rounded-lg space-y-2">
@@ -225,7 +254,6 @@ export default function Clientes() {
               </div>
             </Card>
           </div>
-
           <Card className="border-slate-200 p-5">
             <AgentManager clientId={selectedClient.id} />
           </Card>
@@ -235,69 +263,67 @@ export default function Clientes() {
           <div className="max-w-md relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Buscar cliente por nome, empresa ou email..."
+              placeholder="Buscar por empresa ou executivo..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-9 text-xs"
             />
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredClients.map((c) => (
-              <Card
-                key={c.id}
-                className="border-slate-200 hover:border-indigo-300 hover:shadow-elevation transition-all cursor-pointer p-4 space-y-3"
-                onClick={() => handleSelectClient(c)}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-xs">
-                      {(c.company || c.name).substring(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 text-sm">
-                        {c.company || 'Pessoa Física'}
-                      </h3>
-                      <p className="text-xs text-slate-500">{c.name}</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs h-7"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setDetailsCompany(c.company || c.name)
-                      setDetailsModalOpen(true)
-                    }}
+          <Card className="border-slate-200 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 hover:bg-slate-50">
+                  <TableHead className="text-xs font-bold text-slate-600">
+                    Nome da Empresa
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-slate-600">Cidade</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-600">Estado</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-600">
+                    Executivo de Contas
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-slate-600 text-right w-[80px]">
+                    Ações
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredClients.map((c) => (
+                  <TableRow
+                    key={c.id}
+                    className="cursor-pointer hover:bg-indigo-50/50 transition-colors"
+                    onClick={() => openDetails(c)}
                   >
-                    Detalhes
-                  </Button>
-                </div>
-
-                <div className="space-y-1 text-xs text-slate-600 border-t pt-2">
-                  {c.email && (
-                    <div className="flex items-center gap-1.5">
-                      <Mail className="h-3.5 w-3.5 text-slate-400" />
-                      {c.email}
-                    </div>
-                  )}
-                  {c.phone && (
-                    <div className="flex items-center gap-1.5">
-                      <Phone className="h-3.5 w-3.5 text-slate-400" />
-                      {c.phone}
-                    </div>
-                  )}
-                </div>
-              </Card>
-            ))}
-
-            {filteredClients.length === 0 && (
-              <div className="col-span-full py-12 text-center text-slate-400 text-xs">
-                Nenhum cliente encontrado.
-              </div>
-            )}
-          </div>
+                    <TableCell className="text-xs font-semibold text-slate-900">
+                      {c.company || 'Pessoa Física'}
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-600">{c.city || '—'}</TableCell>
+                    <TableCell className="text-xs text-slate-600">{c.state || '—'}</TableCell>
+                    <TableCell className="text-xs text-slate-600">{c.name || '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-7 text-indigo-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleSelectClient(c)
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredClients.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-xs text-slate-400 py-8">
+                      Nenhum cliente encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Card>
         </div>
       )}
 

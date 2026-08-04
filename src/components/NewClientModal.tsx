@@ -11,8 +11,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/services/clients'
+import { createAgent } from '@/services/agents'
 import { useToast } from '@/hooks/use-toast'
-import { UserPlus, Loader2 } from 'lucide-react'
+import { UserPlus, Loader2, Trash2, Plus, Headset } from 'lucide-react'
+
+interface AgentFormEntry {
+  name: string
+  email: string
+  phone: string
+}
 
 interface NewClientModalProps {
   open: boolean
@@ -24,37 +31,87 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [company, setCompany] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
   const [notes, setNotes] = useState('')
+  const [agents, setAgents] = useState<AgentFormEntry[]>([])
+  const [agentErrors, setAgentErrors] = useState<Record<number, { name?: string; email?: string }>>(
+    {},
+  )
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
+
+  const resetForm = () => {
+    setName('')
+    setPhone('')
+    setCompany('')
+    setCity('')
+    setState('')
+    setNotes('')
+    setAgents([])
+    setAgentErrors({})
+  }
+
+  const addAgent = () => setAgents([...agents, { name: '', email: '', phone: '' }])
+  const removeAgent = (i: number) => {
+    setAgents(agents.filter((_, idx) => idx !== i))
+    setAgentErrors({})
+  }
+  const updateAgent = (i: number, field: keyof AgentFormEntry, value: string) => {
+    setAgents(agents.map((a, idx) => (idx === i ? { ...a, [field]: value } : a)))
+    setAgentErrors({})
+  }
+
+  const validateAgents = (): boolean => {
+    const errors: Record<number, { name?: string; email?: string }> = {}
+    let hasErrors = false
+    agents.forEach((agent, i) => {
+      if (!agent.name.trim() && !agent.email.trim() && !agent.phone.trim()) return
+      if (!agent.name.trim()) {
+        errors[i] = { ...errors[i], name: 'Nome do agente é obrigatório' }
+        hasErrors = true
+      }
+      if (agent.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(agent.email.trim())) {
+        errors[i] = { ...errors[i], email: 'E-mail inválido' }
+        hasErrors = true
+      }
+    })
+    setAgentErrors(errors)
+    return !hasErrors
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
-
+    if (!validateAgents()) return
     setLoading(true)
     try {
-      await createClient({
+      const client = await createClient({
         name: name.trim(),
         phone: phone.trim(),
         company: company.trim(),
+        city: city.trim(),
+        state: state.trim(),
         notes: notes.trim(),
       })
-      toast({
-        title: 'Cliente cadastrado',
-        description: 'O cliente foi adicionado com sucesso.',
-      })
-      setName('')
-      setPhone('')
-      setCompany('')
-      setNotes('')
+      const validAgents = agents.filter((a) => a.name.trim() || a.email.trim() || a.phone.trim())
+      for (const agent of validAgents) {
+        await createAgent({
+          name: agent.name.trim(),
+          email: agent.email.trim(),
+          phone: agent.phone.trim(),
+          client_id: client.id,
+        })
+      }
+      toast({ title: 'Cliente cadastrado', description: 'O cliente foi adicionado com sucesso.' })
+      resetForm()
       onOpenChange(false)
       onSuccess?.()
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Erro ao cadastrar',
-        description: 'Não foi possível salvar os dados do cliente.',
+        description: 'Não foi possível salvar os dados.',
       })
     } finally {
       setLoading(false)
@@ -62,8 +119,14 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) resetForm()
+        onOpenChange(v)
+      }}
+    >
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-indigo-950">
             <UserPlus className="h-5 w-5 text-indigo-600" />
@@ -72,23 +135,33 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label htmlFor="c-company">Empresa / Organização</Label>
+            <Label htmlFor="c-company">Agência</Label>
             <Input
               id="c-company"
               value={company}
               onChange={(e) => setCompany(e.target.value)}
-              placeholder="Nome da empresa"
+              placeholder="Nome da agência"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="c-name">Nome do Executivo de Contas *</Label>
-            <Input
-              id="c-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Ana Maria Silva"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="c-city">Cidade</Label>
+              <Input
+                id="c-city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Cidade"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="c-state">Estado</Label>
+              <Input
+                id="c-state"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                placeholder="Estado"
+              />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="c-phone">Telefone / Celular</Label>
@@ -100,14 +173,92 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
             />
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="c-name">Executivo de Contas RA *</Label>
+            <Input
+              id="c-name"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Ana Maria Silva"
+            />
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="c-notes">Observações</Label>
             <Textarea
               id="c-notes"
-              rows={3}
+              rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Anotações internas sobre o cliente..."
+              placeholder="Anotações internas..."
             />
+          </div>
+          <div className="space-y-3 border-t pt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                <Headset className="h-4 w-4 text-indigo-600" /> Agentes (opcional)
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs text-indigo-600 h-7"
+                onClick={addAgent}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Agente
+              </Button>
+            </div>
+            {agents.map((agent, i) => (
+              <div key={i} className="space-y-2 p-3 bg-slate-50 border rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-600">Agente {i + 1}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-red-500"
+                    onClick={() => removeAgent(i)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Nome do Agente *</Label>
+                  <Input
+                    className="h-9 text-xs"
+                    value={agent.name}
+                    onChange={(e) => updateAgent(i, 'name', e.target.value)}
+                    placeholder="Nome completo"
+                  />
+                  {agentErrors[i]?.name && (
+                    <p className="text-xs text-red-500">{agentErrors[i].name}</p>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">E-mail do Agente</Label>
+                    <Input
+                      className="h-9 text-xs"
+                      type="email"
+                      value={agent.email}
+                      onChange={(e) => updateAgent(i, 'email', e.target.value)}
+                      placeholder="email@exemplo.com"
+                    />
+                    {agentErrors[i]?.email && (
+                      <p className="text-xs text-red-500">{agentErrors[i].email}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Telefone</Label>
+                    <Input
+                      className="h-9 text-xs"
+                      value={agent.phone}
+                      onChange={(e) => updateAgent(i, 'phone', e.target.value)}
+                      placeholder="(00) 00000-0000"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
