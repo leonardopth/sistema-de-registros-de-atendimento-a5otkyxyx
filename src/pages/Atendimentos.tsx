@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,6 +56,16 @@ export default function Atendimentos() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [sortAsc, setSortAsc] = useState(false)
   const [view, setView] = useState<'all' | 'mine'>('all')
+  const [wrongDeptFilter, setWrongDeptFilter] = useState<string>('todos')
+
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    const wdParam = searchParams.get('wrong_department')
+    if (wdParam === 'sim' || wdParam === 'nao') {
+      setWrongDeptFilter(wdParam)
+    }
+  }, [searchParams])
 
   const { toast } = useToast()
   const { user } = useAuth()
@@ -84,8 +95,12 @@ export default function Atendimentos() {
 
     const matchesStatus = statusFilter === 'todos' || r.status === statusFilter
     const matchesReason = reasonFilter === 'todos' || r.contact_reason === reasonFilter
+    const matchesWrongDept =
+      wrongDeptFilter === 'todos' ||
+      (wrongDeptFilter === 'sim' && r.wrong_department === true) ||
+      (wrongDeptFilter === 'nao' && !r.wrong_department)
 
-    return matchesSearch && matchesStatus && matchesReason
+    return matchesSearch && matchesStatus && matchesReason && matchesWrongDept
   })
 
   const myRecords = filteredRecords.filter((r) => r.assigned_user === user?.id)
@@ -138,6 +153,11 @@ export default function Atendimentos() {
     setSearch('')
     setStatusFilter('todos')
     setReasonFilter('todos')
+    setWrongDeptFilter('todos')
+    if (searchParams.get('wrong_department')) {
+      searchParams.delete('wrong_department')
+      setSearchParams(searchParams)
+    }
   }
 
   return (
@@ -203,6 +223,33 @@ export default function Atendimentos() {
           >
             <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar Filtros
           </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+            <Filter className="h-3.5 w-3.5 text-amber-500" /> Departamento errado:
+          </span>
+          <Select
+            value={wrongDeptFilter}
+            onValueChange={(val) => {
+              setWrongDeptFilter(val)
+              if (val === 'todos') {
+                searchParams.delete('wrong_department')
+              } else {
+                searchParams.set('wrong_department', val)
+              }
+              setSearchParams(searchParams)
+            }}
+          >
+            <SelectTrigger className="h-9 text-xs w-40">
+              <SelectValue placeholder="Departamento" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="sim">Sim</SelectItem>
+              <SelectItem value="nao">Não</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {selectedIds.length > 0 && (

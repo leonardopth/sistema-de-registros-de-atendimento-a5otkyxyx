@@ -27,6 +27,7 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { getUsers } from '@/services/users'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Headset, Plus, Trash2, Save, ArrowLeft, Loader2 } from 'lucide-react'
 
 export default function NovoAtendimento() {
@@ -54,6 +55,8 @@ export default function NovoAtendimento() {
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [loading, setLoading] = useState(false)
+  const [wrongDepartment, setWrongDepartment] = useState(false)
+  const [wrongDepartmentExplanation, setWrongDepartmentExplanation] = useState('')
   const [users, setUsers] = useState<UserRecord[]>([])
   const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
 
@@ -94,6 +97,11 @@ export default function NovoAtendimento() {
       return
     }
 
+    if (wrongDepartment && !wrongDepartmentExplanation.trim()) {
+      toast({ variant: 'destructive', title: 'Informe a explicação do departamento errado' })
+      return
+    }
+
     setLoading(true)
     try {
       await createServiceRecord({
@@ -111,6 +119,8 @@ export default function NovoAtendimento() {
         assigned_agent: assignedAgent,
         assigned_user: assignedUserId,
         tasks,
+        wrong_department: wrongDepartment,
+        wrong_department_explanation: wrongDepartment ? wrongDepartmentExplanation.trim() : '',
       })
 
       toast({
@@ -361,6 +371,37 @@ export default function NovoAtendimento() {
                 </Select>
               </div>
             </div>
+          </div>
+
+          {/* Seção 5: Departamento Errado */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-sm font-bold text-indigo-950 uppercase tracking-wider border-b pb-2">
+              5. Encaminhamento
+            </h3>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="p-wrong-dept"
+                checked={wrongDepartment}
+                onCheckedChange={(checked) => {
+                  setWrongDepartment(!!checked)
+                  if (!checked) setWrongDepartmentExplanation('')
+                }}
+              />
+              <Label htmlFor="p-wrong-dept" className="cursor-pointer font-medium">
+                Atendimento entrou no departamento errado
+              </Label>
+            </div>
+            {wrongDepartment && (
+              <div className="space-y-1.5">
+                <Label>Explicação *</Label>
+                <Textarea
+                  rows={3}
+                  value={wrongDepartmentExplanation}
+                  onChange={(e) => setWrongDepartmentExplanation(e.target.value)}
+                  placeholder="Explique o motivo do encaminhamento incorreto..."
+                />
+              </div>
+            )}
           </div>
 
           {/* Seção 4: Tarefas */}

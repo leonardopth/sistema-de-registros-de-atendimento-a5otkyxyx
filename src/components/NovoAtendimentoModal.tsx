@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -58,6 +59,8 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [loading, setLoading] = useState(false)
+  const [wrongDepartment, setWrongDepartment] = useState(false)
+  const [wrongDepartmentExplanation, setWrongDepartmentExplanation] = useState('')
   const [users, setUsers] = useState<UserRecord[]>([])
   const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
 
@@ -102,6 +105,11 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
       return
     }
 
+    if (wrongDepartment && !wrongDepartmentExplanation.trim()) {
+      toast({ variant: 'destructive', title: 'Informe a explicação do departamento errado' })
+      return
+    }
+
     setLoading(true)
     try {
       await createServiceRecord({
@@ -119,9 +127,13 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
         assigned_agent: assignedAgent,
         assigned_user: assignedUserId,
         tasks,
+        wrong_department: wrongDepartment,
+        wrong_department_explanation: wrongDepartment ? wrongDepartmentExplanation.trim() : '',
       })
 
       toast({ title: 'Atendimento criado com sucesso!' })
+      setWrongDepartment(false)
+      setWrongDepartmentExplanation('')
       onOpenChange(false)
       onSuccess?.()
     } catch (err) {
@@ -381,6 +393,34 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 </Button>
               </div>
             ))}
+          </div>
+
+          <div className="space-y-2 border-t pt-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="m-wrong-dept"
+                checked={wrongDepartment}
+                onCheckedChange={(checked) => {
+                  setWrongDepartment(!!checked)
+                  if (!checked) setWrongDepartmentExplanation('')
+                }}
+              />
+              <Label htmlFor="m-wrong-dept" className="text-xs cursor-pointer">
+                Atendimento entrou no departamento errado
+              </Label>
+            </div>
+            {wrongDepartment && (
+              <div className="space-y-1 pl-6">
+                <Label className="text-xs">Explicação *</Label>
+                <Textarea
+                  rows={2}
+                  value={wrongDepartmentExplanation}
+                  onChange={(e) => setWrongDepartmentExplanation(e.target.value)}
+                  placeholder="Explique o motivo do encaminhamento incorreto..."
+                  className="text-xs"
+                />
+              </div>
+            )}
           </div>
 
           <div className="pt-2 flex justify-end gap-2">

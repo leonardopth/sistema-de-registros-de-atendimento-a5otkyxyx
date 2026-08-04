@@ -147,7 +147,7 @@ export default function Clientes() {
 
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">Nome</label>
+                  <label className="text-xs font-semibold text-slate-600">Nome do agente</label>
                   <Input
                     className="h-9 text-xs"
                     value={editName}
@@ -155,7 +155,7 @@ export default function Clientes() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">E-mail</label>
+                  <label className="text-xs font-semibold text-slate-600">e-mail do agente</label>
                   <Input
                     className="h-9 text-xs"
                     value={editEmail}

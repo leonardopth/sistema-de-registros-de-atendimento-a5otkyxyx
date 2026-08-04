@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-01T16:44:08.991Z",
+  "generatedAt": "2026-08-04T18:23:44.738Z",
   "collections": [
     {
       "name": "users",
@@ -247,6 +247,18 @@
           "required": false,
           "system": false,
           "selectValues": ["Telefone", "e-mail", "whatsapp", "comercial", "outros"]
+        },
+        {
+          "name": "wrong_department",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "wrong_department_explanation",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [

@@ -48,6 +48,7 @@ export default function Index() {
   const myRecords = records.filter((r) => r.assigned_user === user?.id)
   const totalDuration = records.reduce((acc, r) => acc + (r.duration || 0), 0)
   const avgDuration = records.length > 0 ? Math.round(totalDuration / records.length) : 0
+  const wrongDeptCount = records.filter((r) => r.wrong_department === true).length
   const recentRecords = records.slice(0, 10)
 
   const handleToggleSelect = (id: string) => {
@@ -109,6 +110,7 @@ export default function Index() {
         inProgressCount={inProgressRecords.length}
         completedTodayCount={completedToday.length}
         avgDuration={avgDuration}
+        wrongDeptCount={wrongDeptCount}
       />
 
       <div>

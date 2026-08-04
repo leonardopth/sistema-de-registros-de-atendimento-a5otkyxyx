@@ -43,6 +43,8 @@ export interface ServiceRecord {
   assigned_user?: string
   channel?: ServiceChannel
   tasks?: TaskItem[]
+  wrong_department?: boolean
+  wrong_department_explanation?: string
   user_id: string
   created: string
   updated: string

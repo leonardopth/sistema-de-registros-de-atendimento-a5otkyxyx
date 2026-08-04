@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ServiceRecord, ServiceStatus, ServiceChannel, TaskItem } from '@/types/service_record'
 import { StatusBadge } from './StatusBadge'
 import { PriorityBadge } from './PriorityBadge'
@@ -53,6 +53,8 @@ export function ServiceRecordDetailModal({
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [wrongDepartment, setWrongDepartment] = useState(false)
+  const [wrongDepartmentExplanation, setWrongDepartmentExplanation] = useState('')
   const { toast } = useToast()
 
   useEffect(() => {
@@ -60,6 +62,8 @@ export function ServiceRecordDetailModal({
       setStatus(record.status)
       setChannel(record.channel || '')
       setTasks(Array.isArray(record.tasks) ? record.tasks : [])
+      setWrongDepartment(!!record.wrong_department)
+      setWrongDepartmentExplanation(record.wrong_department_explanation || '')
     }
   }, [record])
 
@@ -72,6 +76,11 @@ export function ServiceRecordDetailModal({
   }
 
   const handleSave = async () => {
+    if (wrongDepartment && !wrongDepartmentExplanation.trim()) {
+      toast({ variant: 'destructive', title: 'Informe a explicação do departamento errado' })
+      return
+    }
+
     setLoading(true)
     try {
       const isCompletedNow = status === 'Concluído' && record.status !== 'Concluído'
@@ -80,6 +89,8 @@ export function ServiceRecordDetailModal({
         channel: channel || undefined,
         tasks,
         end_time: isCompletedNow ? new Date().toISOString() : record.end_time,
+        wrong_department: wrongDepartment,
+        wrong_department_explanation: wrongDepartment ? wrongDepartmentExplanation.trim() : '',
       })
       toast({
         title: 'Atendimento atualizado',
@@ -246,6 +257,37 @@ export function ServiceRecordDetailModal({
               </div>
             )}
           </div>
+        </div>
+
+        <div className="space-y-2 border-t pt-3">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="d-wrong-dept"
+              checked={wrongDepartment}
+              onCheckedChange={(checked) => {
+                setWrongDepartment(!!checked)
+                if (!checked) setWrongDepartmentExplanation('')
+              }}
+            />
+            <label
+              htmlFor="d-wrong-dept"
+              className="text-xs font-medium text-slate-500 cursor-pointer"
+            >
+              Atendimento entrou no departamento errado
+            </label>
+          </div>
+          {wrongDepartment && (
+            <div className="space-y-1 pl-6">
+              <label className="text-xs font-medium text-slate-500 block">Explicação *</label>
+              <textarea
+                rows={2}
+                className="w-full text-sm p-2 border rounded-md"
+                value={wrongDepartmentExplanation}
+                onChange={(e) => setWrongDepartmentExplanation(e.target.value)}
+                placeholder="Explique o motivo do encaminhamento incorreto..."
+              />
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex items-center justify-between border-t pt-3 sm:justify-between">

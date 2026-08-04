@@ -75,7 +75,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label htmlFor="c-name">Nome do Cliente *</Label>
+            <Label htmlFor="c-name">Nome do agente *</Label>
             <Input
               id="c-name"
               required
@@ -86,7 +86,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="c-email">E-mail</Label>
+              <Label htmlFor="c-email">e-mail do agente</Label>
               <Input
                 id="c-email"
                 type="email"

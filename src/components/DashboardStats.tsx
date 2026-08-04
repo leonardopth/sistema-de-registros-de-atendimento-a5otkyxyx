@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card'
-import { Headset, PlayCircle, CheckCircle2, Clock } from 'lucide-react'
+import { Headset, PlayCircle, CheckCircle2, Clock, AlertTriangle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 interface DashboardStatsProps {
   todayCount: number
@@ -7,6 +8,7 @@ interface DashboardStatsProps {
   inProgressCount: number
   completedTodayCount: number
   avgDuration: number
+  wrongDeptCount: number
 }
 
 export function DashboardStats({
@@ -15,9 +17,12 @@ export function DashboardStats({
   inProgressCount,
   completedTodayCount,
   avgDuration,
+  wrongDeptCount,
 }: DashboardStatsProps) {
+  const navigate = useNavigate()
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       <Card className="border-slate-200 shadow-subtle hover:shadow-elevation transition-all bg-gradient-to-br from-white via-cyan-50/20 to-blue-50/30 border-t-4 border-t-cyan-500">
         <CardContent className="p-4 flex items-center justify-between">
           <div>
@@ -78,6 +83,26 @@ export function DashboardStats({
           </div>
           <div className="h-12 w-12 rounded-xl bg-rose-100/80 text-rose-700 flex items-center justify-center shadow-xs">
             <Clock className="h-6 w-6" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card
+        className="border-slate-200 shadow-subtle hover:shadow-elevation transition-all bg-gradient-to-br from-white via-amber-50/20 to-yellow-50/30 border-t-4 border-t-amber-500 cursor-pointer"
+        onClick={() => navigate('/atendimentos?wrong_department=sim')}
+      >
+        <CardContent className="p-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Departamento Errado
+            </p>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">{wrongDeptCount}</h3>
+            <p className="text-[11px] text-amber-600 font-semibold mt-1">
+              Atendimentos mal direcionados
+            </p>
+          </div>
+          <div className="h-12 w-12 rounded-xl bg-amber-100/80 text-amber-700 flex items-center justify-center shadow-xs">
+            <AlertTriangle className="h-6 w-6" />
           </div>
         </CardContent>
       </Card>
