@@ -42,6 +42,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { MinhasTarefasList } from '@/components/MinhasTarefasList'
+import { DateRangeFilter } from '@/components/DateRangeFilter'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -57,6 +58,8 @@ export default function Atendimentos() {
   const [sortAsc, setSortAsc] = useState(false)
   const [view, setView] = useState<'all' | 'mine'>('all')
   const [wrongDeptFilter, setWrongDeptFilter] = useState<string>('todos')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -100,7 +103,18 @@ export default function Atendimentos() {
       (wrongDeptFilter === 'sim' && r.wrong_department === true) ||
       (wrongDeptFilter === 'nao' && !r.wrong_department)
 
-    return matchesSearch && matchesStatus && matchesReason && matchesWrongDept
+    const recDate = r.created ? r.created.substring(0, 10) : ''
+    const matchesDateFrom = !dateFrom || recDate >= dateFrom
+    const matchesDateTo = !dateTo || recDate <= dateTo
+
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesReason &&
+      matchesWrongDept &&
+      matchesDateFrom &&
+      matchesDateTo
+    )
   })
 
   const myRecords = filteredRecords.filter((r) => r.assigned_user === user?.id)
@@ -154,6 +168,8 @@ export default function Atendimentos() {
     setStatusFilter('todos')
     setReasonFilter('todos')
     setWrongDeptFilter('todos')
+    setDateFrom('')
+    setDateTo('')
     if (searchParams.get('wrong_department')) {
       searchParams.delete('wrong_department')
       setSearchParams(searchParams)
@@ -251,6 +267,18 @@ export default function Atendimentos() {
             </SelectContent>
           </Select>
         </div>
+
+        <DateRangeFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+          onClear={() => {
+            setDateFrom('')
+            setDateTo('')
+          }}
+          hasActiveFilter={!!dateFrom || !!dateTo}
+        />
 
         {selectedIds.length > 0 && (
           <div className="flex items-center justify-between bg-cyan-50 p-2.5 rounded-lg border border-cyan-100">

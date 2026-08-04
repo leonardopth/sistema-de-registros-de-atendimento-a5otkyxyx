@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ServiceRecord, ClientRecord, AgentRecord, ServiceStatus } from '@/types/service_record'
-import { Building2, Users, Headset } from 'lucide-react'
+import { Building2, Users, Headset, MapPin } from 'lucide-react'
 import {
   CompanyReportItem,
   reportToCSV,
@@ -48,6 +48,9 @@ function computeReport(
     const matchingClients = clients.filter((c) => c.company === company)
     const matchingClientIds = new Set(matchingClients.map((c) => c.id))
     const executives = [...new Set(matchingClients.map((c) => c.name).filter(Boolean))]
+    const clientWithLocation = matchingClients.find((c) => c.city || c.state)
+    const city = clientWithLocation?.city || '—'
+    const state = clientWithLocation?.state || '—'
     const companyAgents = agents.filter((a) => matchingClientIds.has(a.client_id))
 
     const statusBreakdown: Record<string, number> = {}
@@ -65,6 +68,8 @@ function computeReport(
 
     items.push({
       company,
+      city,
+      state,
       agentCount: companyAgents.length,
       totalRecords: companyRecords.length,
       statusBreakdown,
@@ -166,6 +171,18 @@ export function CompanyReport({ records, clients, agents, onCompanyClick }: Comp
                     <Headset className="h-3 w-3" /> {item.totalRecords}
                   </Badge>
                 </div>
+              </div>
+
+              <div className="flex items-center gap-1 text-xs text-slate-600">
+                <MapPin className="h-3 w-3 text-slate-400" />
+                <span className="font-semibold text-slate-700">Cidade/Estado: </span>
+                {item.city !== '—' && item.state !== '—'
+                  ? `${item.city}/${item.state}`
+                  : item.city !== '—'
+                    ? item.city
+                    : item.state !== '—'
+                      ? item.state
+                      : '—'}
               </div>
 
               {item.executives.length > 0 && (

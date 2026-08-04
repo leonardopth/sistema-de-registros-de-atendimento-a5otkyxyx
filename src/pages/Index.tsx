@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { ServiceRecord } from '@/types/service_record'
+import { DateRangeFilter } from '@/components/DateRangeFilter'
 import { ServiceRecordDetailModal } from '@/components/ServiceRecordDetailModal'
 import { NovoAtendimentoModal } from '@/components/NovoAtendimentoModal'
 import { useRealtime } from '@/hooks/use-realtime'
@@ -15,6 +17,7 @@ import { getAgents } from '@/services/agents'
 import { ClientRecord, AgentRecord } from '@/types/service_record'
 import { CompanyReport } from '@/components/CompanyReport'
 import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
+import { PeriodComparison } from '@/components/PeriodComparison'
 import { Plus } from 'lucide-react'
 
 export default function Index() {
@@ -28,6 +31,8 @@ export default function Index() {
   const [novoModalOpen, setNovoModalOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const { user } = useAuth()
   const { toast } = useToast()
 
@@ -63,16 +68,54 @@ export default function Index() {
   })
 
   const todayStr = new Date().toISOString().split('T')[0]
-  const todayRecords = records.filter((r) => r.created && r.created.startsWith(todayStr))
-  const inProgressRecords = records.filter((r) => r.status === 'Em Andamento')
-  const completedToday = records.filter(
+  const dateFilteredRecords = records.filter((r) => {
+    if (!r.created) return true
+    const recDate = r.created.substring(0, 10)
+    if (dateFrom && recDate < dateFrom) return false
+    if (dateTo && recDate > dateTo) return false
+    return true
+  })
+  const hasDateFilter = !!dateFrom || !!dateTo
+
+  const previousPeriodData = useMemo(() => {
+    if (!dateFrom || !dateTo) return null
+    const start = new Date(dateFrom + 'T00:00:00')
+    const end = new Date(dateTo + 'T00:00:00')
+    if (end < start) return null
+    const daysDiff = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const prevEnd = new Date(start)
+    prevEnd.setDate(prevEnd.getDate() - 1)
+    const prevStart = new Date(prevEnd)
+    prevStart.setDate(prevStart.getDate() - (daysDiff - 1))
+    const prevStartStr = prevStart.toISOString().split('T')[0]
+    const prevEndStr = prevEnd.toISOString().split('T')[0]
+    const prevRecords = records.filter((r) => {
+      if (!r.created) return false
+      const recDate = r.created.substring(0, 10)
+      return recDate >= prevStartStr && recDate <= prevEndStr
+    })
+    return {
+      count: prevRecords.length,
+      prevStartStr,
+      prevEndStr,
+    }
+  }, [records, dateFrom, dateTo])
+
+  const hasFullDateRange = !!dateFrom && !!dateTo
+
+  const todayRecords = dateFilteredRecords.filter(
+    (r) => r.created && r.created.startsWith(todayStr),
+  )
+  const inProgressRecords = dateFilteredRecords.filter((r) => r.status === 'Em Andamento')
+  const completedToday = dateFilteredRecords.filter(
     (r) => r.status === 'Concluído' && r.updated && r.updated.startsWith(todayStr),
   )
-  const myRecords = records.filter((r) => r.assigned_user === user?.id)
-  const totalDuration = records.reduce((acc, r) => acc + (r.duration || 0), 0)
-  const avgDuration = records.length > 0 ? Math.round(totalDuration / records.length) : 0
-  const wrongDeptCount = records.filter((r) => r.wrong_department === true).length
-  const recentRecords = records.slice(0, 10)
+  const myRecords = dateFilteredRecords.filter((r) => r.assigned_user === user?.id)
+  const totalDuration = dateFilteredRecords.reduce((acc, r) => acc + (r.duration || 0), 0)
+  const avgDuration =
+    dateFilteredRecords.length > 0 ? Math.round(totalDuration / dateFilteredRecords.length) : 0
+  const wrongDeptCount = dateFilteredRecords.filter((r) => r.wrong_department === true).length
+  const recentRecords = dateFilteredRecords.slice(0, 10)
 
   const handleToggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -127,9 +170,36 @@ export default function Index() {
         </Button>
       </div>
 
+      <DateRangeFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        onClear={() => {
+          setDateFrom('')
+          setDateTo('')
+        }}
+        hasActiveFilter={hasDateFilter}
+      />
+
+      {hasFullDateRange && previousPeriodData && (
+        <PeriodComparison
+          currentCount={dateFilteredRecords.length}
+          previousCount={previousPeriodData.count}
+        />
+      )}
+
+      {hasDateFilter && dateFilteredRecords.length === 0 && (
+        <Card className="border-slate-200 shadow-subtle p-8 text-center">
+          <p className="text-sm text-slate-400">
+            Nenhum registro encontrado para o período selecionado.
+          </p>
+        </Card>
+      )}
+
       <DashboardStats
         todayCount={todayRecords.length}
-        totalCount={records.length}
+        totalCount={dateFilteredRecords.length}
         inProgressCount={inProgressRecords.length}
         completedTodayCount={completedToday.length}
         avgDuration={avgDuration}
@@ -174,7 +244,7 @@ export default function Index() {
       <div className="space-y-3">
         <h3 className="text-base font-bold text-slate-900">Relatório por Empresa</h3>
         <CompanyReport
-          records={records}
+          records={dateFilteredRecords}
           clients={clients}
           agents={agents}
           onCompanyClick={(company) => {
