@@ -1,16 +1,18 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ServiceRecord, ClientRecord, AgentRecord, ServiceStatus } from '@/types/service_record'
 import { Building2, Users, Headset } from 'lucide-react'
-
-interface CompanyReportItem {
-  company: string
-  agentCount: number
-  totalRecords: number
-  statusBreakdown: Record<string, number>
-  agents: { name: string; recordCount: number }[]
-}
+import {
+  CompanyReportItem,
+  reportToCSV,
+  reportToText,
+  downloadCSV,
+  copyToClipboard,
+  printReport,
+} from '@/lib/report-export'
+import { CompanyReportFilters } from '@/components/CompanyReportFilters'
+import { useToast } from '@/hooks/use-toast'
 
 interface CompanyReportProps {
   records: ServiceRecord[]
@@ -73,68 +75,123 @@ function computeReport(
 }
 
 export function CompanyReport({ records, clients, agents, onCompanyClick }: CompanyReportProps) {
-  const report = useMemo(() => computeReport(records, clients, agents), [records, clients, agents])
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [statusFilter, setStatusFilter] = useState('Todos')
+  const { toast } = useToast()
 
-  if (report.length === 0) {
-    return (
-      <Card className="border-slate-200 shadow-subtle p-8 text-center">
-        <p className="text-xs text-slate-400">Nenhuma empresa com atendimentos registrados.</p>
-      </Card>
-    )
+  const filteredRecords = useMemo(() => {
+    return records.filter((r) => {
+      if (dateFrom && r.created && r.created.substring(0, 10) < dateFrom) return false
+      if (dateTo && r.created && r.created.substring(0, 10) > dateTo) return false
+      if (statusFilter !== 'Todos' && r.status !== statusFilter) return false
+      return true
+    })
+  }, [records, dateFrom, dateTo, statusFilter])
+
+  const report = useMemo(
+    () => computeReport(filteredRecords, clients, agents),
+    [filteredRecords, clients, agents],
+  )
+
+  const hasActiveFilters = !!dateFrom || !!dateTo || statusFilter !== 'Todos'
+
+  const clearFilters = () => {
+    setDateFrom('')
+    setDateTo('')
+    setStatusFilter('Todos')
   }
+
+  const handleExportCSV = () => {
+    downloadCSV(reportToCSV(report), 'relatorio-empresas.csv')
+    toast({ title: 'Relatório exportado em CSV' })
+  }
+
+  const handleCopy = async () => {
+    try {
+      await copyToClipboard(reportToText(report))
+      toast({ title: 'Relatório copiado para a área de transferência' })
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro ao copiar relatório' })
+    }
+  }
+
+  const handlePrint = () => printReport(report)
 
   return (
     <div className="space-y-3">
-      {report.map((item) => (
-        <Card
-          key={item.company}
-          className="border-slate-200 shadow-subtle overflow-hidden cursor-pointer hover:border-indigo-300 hover:shadow-elevation transition-all"
-          onClick={() => onCompanyClick(item.company)}
-        >
-          <div className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center">
-                  <Building2 className="h-4 w-4" />
+      <CompanyReportFilters
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        statusFilter={statusFilter}
+        hasActiveFilters={hasActiveFilters}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        onStatusChange={setStatusFilter}
+        onClear={clearFilters}
+        onExportCSV={handleExportCSV}
+        onCopy={handleCopy}
+        onPrint={handlePrint}
+      />
+
+      {report.length === 0 ? (
+        <Card className="border-slate-200 shadow-subtle p-8 text-center">
+          <p className="text-xs text-slate-400">
+            Nenhuma empresa com atendimentos registrados para os filtros selecionados.
+          </p>
+        </Card>
+      ) : (
+        report.map((item) => (
+          <Card
+            key={item.company}
+            className="border-slate-200 shadow-subtle overflow-hidden cursor-pointer hover:border-indigo-300 hover:shadow-elevation transition-all"
+            onClick={() => onCompanyClick(item.company)}
+          >
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center">
+                    <Building2 className="h-4 w-4" />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-900">{item.company}</h4>
                 </div>
-                <h4 className="text-sm font-bold text-slate-900">{item.company}</h4>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Users className="h-3 w-3" /> {item.agentCount}
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    <Headset className="h-3 w-3" /> {item.totalRecords}
+                  </Badge>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs gap-1">
-                  <Users className="h-3 w-3" /> {item.agentCount}
-                </Badge>
-                <Badge variant="secondary" className="text-xs gap-1">
-                  <Headset className="h-3 w-3" /> {item.totalRecords}
-                </Badge>
-              </div>
-            </div>
 
-            <div className="flex flex-wrap gap-1.5">
-              {STATUSES.map((s) => (
-                <span
-                  key={s}
-                  className={`text-[11px] px-2 py-0.5 rounded-md border ${STATUS_COLORS[s]}`}
-                >
-                  {s}: {item.statusBreakdown[s] || 0}
-                </span>
-              ))}
-            </div>
-
-            {item.agents.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1 border-t">
-                {item.agents.map((a, i) => (
+              <div className="flex flex-wrap gap-1.5">
+                {STATUSES.map((s) => (
                   <span
-                    key={i}
-                    className="text-[11px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded"
+                    key={s}
+                    className={`text-[11px] px-2 py-0.5 rounded-md border ${STATUS_COLORS[s]}`}
                   >
-                    {a.name} ({a.recordCount})
+                    {s}: {item.statusBreakdown[s] || 0}
                   </span>
                 ))}
               </div>
-            )}
-          </div>
-        </Card>
-      ))}
+
+              {item.agents.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1 border-t">
+                  {item.agents.map((a, i) => (
+                    <span
+                      key={i}
+                      className="text-[11px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded"
+                    >
+                      {a.name} ({a.recordCount})
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+        ))
+      )}
     </div>
   )
 }
