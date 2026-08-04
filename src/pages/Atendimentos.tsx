@@ -227,7 +227,7 @@ export default function Atendimentos() {
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
-            <Filter className="h-3.5 w-3.5 text-amber-500" /> Departamento errado:
+            <Filter className="h-3.5 w-3.5 text-amber-500" /> Contato Evitável:
           </span>
           <Select
             value={wrongDeptFilter}
@@ -343,13 +343,23 @@ export default function Atendimentos() {
                         onCheckedChange={(checked) => handleSelectRow(r.id, !!checked)}
                       />
                     </TableCell>
-                    <TableCell className="font-semibold text-slate-900 text-xs">
-                      {r.client_name}
+                    <TableCell className="text-xs">
                       {r.client_company && (
-                        <span className="block text-[10px] text-slate-500 font-normal">
+                        <button
+                          className="block font-bold text-slate-900 hover:text-indigo-600 transition-colors text-left"
+                          onClick={() => {
+                            setSelectedRecord(r)
+                            setDetailOpen(true)
+                          }}
+                        >
                           {r.client_company}
-                        </span>
+                        </button>
                       )}
+                      <span
+                        className={`block ${r.client_company ? 'text-[10px] text-slate-500 font-normal' : 'font-semibold text-slate-900'}`}
+                      >
+                        {r.client_name}
+                      </span>
                     </TableCell>
                     <TableCell className="text-xs text-slate-700">{r.contact_reason}</TableCell>
                     <TableCell>

@@ -141,8 +141,10 @@ export function ServiceRecordDetailModal({
 
         <div className="space-y-5 py-3 text-slate-700">
           <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-100 space-y-2">
-            <div className="flex items-center justify-between font-semibold text-indigo-950 text-base">
-              <span>{record.client_name}</span>
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-indigo-950 text-base">
+                {record.client_company || record.client_name}
+              </span>
               <span className="text-xs font-normal text-slate-500">
                 {record.start_time
                   ? format(new Date(record.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
@@ -150,6 +152,10 @@ export function ServiceRecordDetailModal({
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+              <div className="flex items-center gap-1.5 font-medium text-slate-800">
+                <User className="h-3.5 w-3.5 text-slate-400" />
+                {record.client_name}
+              </div>
               {record.client_email && (
                 <div className="flex items-center gap-1.5">
                   <Mail className="h-3.5 w-3.5 text-slate-400" />
@@ -160,12 +166,6 @@ export function ServiceRecordDetailModal({
                 <div className="flex items-center gap-1.5">
                   <Phone className="h-3.5 w-3.5 text-slate-400" />
                   {record.client_phone}
-                </div>
-              )}
-              {record.client_company && (
-                <div className="flex items-center gap-1.5 col-span-2">
-                  <Building className="h-3.5 w-3.5 text-slate-400" />
-                  {record.client_company}
                 </div>
               )}
             </div>

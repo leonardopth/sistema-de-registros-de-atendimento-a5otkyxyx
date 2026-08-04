@@ -135,17 +135,24 @@ export default function Clientes() {
             <Card className="lg:col-span-1 border-slate-200 p-5 space-y-4">
               <div className="flex items-center gap-3 border-b pb-3">
                 <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">
-                  {selectedClient.name.substring(0, 2).toUpperCase()}
+                  {(selectedClient.company || selectedClient.name).substring(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">{selectedClient.name}</h3>
-                  <p className="text-xs text-slate-500">
+                  <h3 className="font-bold text-slate-900 text-base">
                     {selectedClient.company || 'Pessoa Física'}
-                  </p>
+                  </h3>
+                  <p className="text-xs text-slate-500">{selectedClient.name}</p>
                 </div>
               </div>
-
               <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">Empresa</label>
+                  <Input
+                    className="h-9 text-xs"
+                    value={editCompany}
+                    onChange={(e) => setEditCompany(e.target.value)}
+                  />
+                </div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-600">Nome do agente</label>
                   <Input
@@ -168,14 +175,6 @@ export default function Clientes() {
                     className="h-9 text-xs"
                     value={editPhone}
                     onChange={(e) => setEditPhone(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">Empresa</label>
-                  <Input
-                    className="h-9 text-xs"
-                    value={editCompany}
-                    onChange={(e) => setEditCompany(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
@@ -260,11 +259,13 @@ export default function Clientes() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="h-9 w-9 rounded-full bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-xs">
-                      {c.name.substring(0, 2).toUpperCase()}
+                      {(c.company || c.name).substring(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-900 text-sm">{c.name}</h3>
-                      <p className="text-xs text-slate-500">{c.company || 'Pessoa Física'}</p>
+                      <h3 className="font-bold text-slate-900 text-sm">
+                        {c.company || 'Pessoa Física'}
+                      </h3>
+                      <p className="text-xs text-slate-500">{c.name}</p>
                     </div>
                   </div>
                 </div>

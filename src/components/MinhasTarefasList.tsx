@@ -34,6 +34,14 @@ export function MinhasTarefasList({ records, onViewRecord }: MinhasTarefasListPr
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1 flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {r.client_company && (
+                      <button
+                        className="font-bold text-sm text-slate-900 hover:text-indigo-600 transition-colors text-left"
+                        onClick={() => onViewRecord?.(r)}
+                      >
+                        {r.client_company}
+                      </button>
+                    )}
                     <h4 className="font-bold text-sm text-slate-900">{r.client_name}</h4>
                     <StatusBadge status={r.status} />
                     <PriorityBadge priority={r.priority} />

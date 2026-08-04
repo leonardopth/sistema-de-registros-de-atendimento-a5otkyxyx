@@ -94,7 +94,7 @@ export function DashboardStats({
         <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Departamento Errado
+              Contato Evitável
             </p>
             <h3 className="text-2xl font-black text-slate-900 mt-1">{wrongDeptCount}</h3>
             <p className="text-[11px] text-amber-600 font-semibold mt-1">
