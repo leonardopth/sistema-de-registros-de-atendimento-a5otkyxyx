@@ -15,7 +15,9 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { createServiceRecord } from '@/services/service_records'
 import { getClients } from '@/services/clients'
+import { getAgents } from '@/services/agents'
 import {
+  AgentRecord,
   ClientRecord,
   ContactReason,
   ServiceChannel,
@@ -171,22 +173,41 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             </div>
 
             {useExisting ? (
-              <div className="space-y-1">
-                <Label className="text-xs">Selecionar Cliente</Label>
-                <Select value={selectedClientId} onValueChange={handleSelectClient}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Escolha um cliente cadastrado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients
-                      .filter((c) => c.company && c.company.trim())
-                      .map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.company}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Selecionar Empresa</Label>
+                  <Select value={selectedClientId} onValueChange={handleSelectCompany}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Escolha uma empresa cadastrada" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients
+                        .filter((c) => c.company && c.company.trim())
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.company}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedClientId && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Selecionar Agente</Label>
+                    <Select value={selectedAgentId} onValueChange={handleSelectAgent}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Escolha um agente da empresa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {agents.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             ) : null}
 

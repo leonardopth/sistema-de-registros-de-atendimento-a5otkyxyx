@@ -67,3 +67,13 @@ export interface ClientRecord {
   created: string
   updated: string
 }
+
+export interface AgentRecord {
+  id: string
+  name: string
+  email?: string
+  phone?: string
+  client_id: string
+  created: string
+  updated: string
+}

@@ -6,6 +6,7 @@ import { getClients, updateClient } from '@/services/clients'
 import { getServiceRecords } from '@/services/service_records'
 import { ClientRecord, ServiceRecord } from '@/types/service_record'
 import { NewClientModal } from '@/components/NewClientModal'
+import { AgentManager } from '@/components/AgentManager'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -236,6 +237,10 @@ export default function Clientes() {
               </div>
             </Card>
           </div>
+
+          <Card className="border-slate-200 p-5">
+            <AgentManager clientId={selectedClient.id} />
+          </Card>
         </div>
       ) : (
         <div className="space-y-4">
