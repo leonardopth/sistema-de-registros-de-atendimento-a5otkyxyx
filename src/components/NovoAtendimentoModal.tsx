@@ -30,6 +30,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import { getUsers } from '@/services/users'
 import { Headset, Plus, Trash2, Loader2 } from 'lucide-react'
+import { SearchableSelect } from '@/components/SearchableSelect'
 
 interface NovoAtendimentoModalProps {
   open: boolean
@@ -44,6 +45,8 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
   const [useExisting, setUseExisting] = useState(false)
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [selectedClientId, setSelectedClientId] = useState('')
+  const [selectedAgentId, setSelectedAgentId] = useState('')
+  const [agents, setAgents] = useState<AgentRecord[]>([])
 
   const [clientName, setClientName] = useState('')
   const [clientEmail, setClientEmail] = useState('')
@@ -79,14 +82,34 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
     }
   }, [open, user])
 
-  const handleSelectClient = (id: string) => {
+  const handleSelectCompany = (id: string) => {
     setSelectedClientId(id)
+    setSelectedAgentId('')
+    setAgents([])
+    setClientName('')
+    setClientEmail('')
+    setClientPhone('')
     const client = clients.find((c) => c.id === id)
     if (client) {
-      setClientName(client.name)
-      setClientEmail(client.email || '')
-      setClientPhone(client.phone || '')
       setClientCompany(client.company || '')
+      getAgents()
+        .then((allAgents) => {
+          const sameCompanyClientIds = new Set(
+            clients.filter((c) => c.company === client.company).map((c) => c.id),
+          )
+          setAgents(allAgents.filter((a) => sameCompanyClientIds.has(a.client_id)))
+        })
+        .catch(() => setAgents([]))
+    }
+  }
+
+  const handleSelectAgent = (id: string) => {
+    setSelectedAgentId(id)
+    const agent = agents.find((a) => a.id === id)
+    if (agent) {
+      setClientName(agent.name)
+      setClientEmail(agent.email || '')
+      setClientPhone(agent.phone || '')
     }
   }
 
@@ -176,36 +199,33 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
               <div className="space-y-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Selecionar Empresa</Label>
-                  <Select value={selectedClientId} onValueChange={handleSelectCompany}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Escolha uma empresa cadastrada" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients
-                        .filter((c) => c.company && c.company.trim())
-                        .map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.company}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={clients
+                      .filter(
+                        (c, i, arr) =>
+                          c.company &&
+                          c.company.trim() &&
+                          arr.findIndex((c2) => c2.company === c.company) === i,
+                      )
+                      .map((c) => ({ value: c.id, label: c.company! }))}
+                    value={selectedClientId}
+                    onValueChange={handleSelectCompany}
+                    placeholder="Escolha uma empresa cadastrada"
+                    emptyText="Nenhuma empresa encontrada."
+                    className="h-9"
+                  />
                 </div>
                 {selectedClientId && (
                   <div className="space-y-1">
                     <Label className="text-xs">Selecionar Agente</Label>
-                    <Select value={selectedAgentId} onValueChange={handleSelectAgent}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Escolha um agente da empresa" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {agents.map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={agents.map((a) => ({ value: a.id, label: a.name }))}
+                      value={selectedAgentId}
+                      onValueChange={handleSelectAgent}
+                      placeholder="Escolha um agente da empresa"
+                      emptyText="Nenhum agente encontrado."
+                      className="h-9"
+                    />
                   </div>
                 )}
               </div>

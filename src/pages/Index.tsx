@@ -10,11 +10,20 @@ import { MinhasTarefasList } from '@/components/MinhasTarefasList'
 import { DashboardStats } from '@/components/DashboardStats'
 import { RecentActivities } from '@/components/RecentActivities'
 import { getServiceRecords, batchUpdateStatus } from '@/services/service_records'
+import { getClients } from '@/services/clients'
+import { getAgents } from '@/services/agents'
+import { ClientRecord, AgentRecord } from '@/types/service_record'
+import { CompanyReport } from '@/components/CompanyReport'
+import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
 import { Plus } from 'lucide-react'
 
 export default function Index() {
   const [records, setRecords] = useState<ServiceRecord[]>([])
+  const [clients, setClients] = useState<ClientRecord[]>([])
+  const [agents, setAgents] = useState<AgentRecord[]>([])
   const [selectedRecord, setSelectedRecord] = useState<ServiceRecord | null>(null)
+  const [companyModalOpen, setCompanyModalOpen] = useState(false)
+  const [selectedCompany, setSelectedCompany] = useState('')
   const [detailOpen, setDetailOpen] = useState(false)
   const [novoModalOpen, setNovoModalOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -24,10 +33,16 @@ export default function Index() {
 
   const loadData = async () => {
     try {
-      const list = await getServiceRecords('', '-created')
+      const [list, clientList, agentList] = await Promise.all([
+        getServiceRecords('', '-created'),
+        getClients(),
+        getAgents(),
+      ])
       setRecords(list)
+      setClients(clientList)
+      setAgents(agentList)
     } catch (err) {
-      console.error('Failed to load records:', err)
+      console.error('Failed to load data:', err)
     }
   }
 
@@ -36,6 +51,14 @@ export default function Index() {
   }, [])
 
   useRealtime('service_records', () => {
+    loadData()
+  })
+
+  useRealtime('clients', () => {
+    loadData()
+  })
+
+  useRealtime('agents', () => {
     loadData()
   })
 
@@ -148,11 +171,30 @@ export default function Index() {
         <Plus className="h-7 w-7" />
       </Button>
 
+      <div className="space-y-3">
+        <h3 className="text-base font-bold text-slate-900">Relatório por Empresa</h3>
+        <CompanyReport
+          records={records}
+          clients={clients}
+          agents={agents}
+          onCompanyClick={(company) => {
+            setSelectedCompany(company)
+            setCompanyModalOpen(true)
+          }}
+        />
+      </div>
+
       <ServiceRecordDetailModal
         record={selectedRecord}
         open={detailOpen}
         onOpenChange={setDetailOpen}
         onUpdateSuccess={loadData}
+      />
+
+      <CompanyDetailsModal
+        open={companyModalOpen}
+        onOpenChange={setCompanyModalOpen}
+        companyName={selectedCompany}
       />
 
       <NovoAtendimentoModal

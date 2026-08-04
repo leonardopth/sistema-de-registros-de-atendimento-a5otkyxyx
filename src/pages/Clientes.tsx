@@ -7,6 +7,7 @@ import { getServiceRecords } from '@/services/service_records'
 import { ClientRecord, ServiceRecord } from '@/types/service_record'
 import { NewClientModal } from '@/components/NewClientModal'
 import { AgentManager } from '@/components/AgentManager'
+import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -31,6 +32,8 @@ export default function Clientes() {
   const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(null)
   const [clientRecords, setClientRecords] = useState<ServiceRecord[]>([])
   const [newModalOpen, setNewModalOpen] = useState(false)
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false)
+  const [detailsCompany, setDetailsCompany] = useState('')
 
   const [editName, setEditName] = useState('')
   const [editEmail, setEditEmail] = useState('')
@@ -273,6 +276,18 @@ export default function Clientes() {
                       <p className="text-xs text-slate-500">{c.name}</p>
                     </div>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setDetailsCompany(c.company || c.name)
+                      setDetailsModalOpen(true)
+                    }}
+                  >
+                    Detalhes
+                  </Button>
                 </div>
 
                 <div className="space-y-1 text-xs text-slate-600 border-t pt-2">
@@ -302,6 +317,11 @@ export default function Clientes() {
       )}
 
       <NewClientModal open={newModalOpen} onOpenChange={setNewModalOpen} onSuccess={loadClients} />
+      <CompanyDetailsModal
+        open={detailsModalOpen}
+        onOpenChange={setDetailsModalOpen}
+        companyName={detailsCompany}
+      />
     </div>
   )
 }
