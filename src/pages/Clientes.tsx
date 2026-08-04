@@ -294,7 +294,7 @@ export default function Clientes() {
 
             {filteredClients.length === 0 && (
               <div className="col-span-full py-12 text-center text-slate-400 text-xs">
-                Nenhum cliente cadastrado.
+                Nenhum cliente encontrado.
               </div>
             )}
           </div>

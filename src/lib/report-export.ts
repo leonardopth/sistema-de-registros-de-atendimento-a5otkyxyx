@@ -3,6 +3,7 @@ export interface CompanyReportItem {
   agentCount: number
   totalRecords: number
   statusBreakdown: Record<string, number>
+  executives: string[]
   agents: { name: string; recordCount: number }[]
 }
 
@@ -11,6 +12,7 @@ const STATUSES = ['Aberto', 'Em Andamento', 'Concluído', 'Cancelado']
 export function reportToCSV(items: CompanyReportItem[]): string {
   const headers = [
     'Empresa',
+    'Executivo de Contas',
     'Total Atendimentos',
     'Número de Agentes',
     ...STATUSES,
@@ -18,6 +20,7 @@ export function reportToCSV(items: CompanyReportItem[]): string {
   ]
   const rows = items.map((item) => [
     item.company,
+    item.executives.join('; ') || '-',
     String(item.totalRecords),
     String(item.agentCount),
     ...STATUSES.map((s) => String(item.statusBreakdown[s] || 0)),
@@ -35,6 +38,7 @@ export function reportToText(items: CompanyReportItem[]): string {
   lines.push('')
   for (const item of items) {
     lines.push(`Empresa: ${item.company}`)
+    lines.push(`  Executivo de Contas: ${item.executives.join(', ') || '-'}`)
     lines.push(`  Total de Atendimentos: ${item.totalRecords}`)
     lines.push(`  Número de Agentes: ${item.agentCount}`)
     lines.push(
@@ -78,9 +82,10 @@ function generatePrintHTML(items: CompanyReportItem[]): string {
   const rows = items
     .map(
       (item) => `<tr>
-      <td>${item.company}</td>
-      <td style="text-align:center">${item.totalRecords}</td>
-      <td style="text-align:center">${item.agentCount}</td>
+<td>${item.company}</td>
+<td>${item.executives.join(', ') || '-'}</td>
+<td style="text-align:center">${item.totalRecords}</td>
+<td style="text-align:center">${item.agentCount}</td>
       <td style="text-align:center">${item.statusBreakdown['Aberto'] || 0}</td>
       <td style="text-align:center">${item.statusBreakdown['Em Andamento'] || 0}</td>
       <td style="text-align:center">${item.statusBreakdown['Concluído'] || 0}</td>
@@ -94,6 +99,6 @@ function generatePrintHTML(items: CompanyReportItem[]): string {
 <title>Relatório por Empresa</title>
 <style>body{font-family:Arial,sans-serif;padding:24px}h1{font-size:20px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ccc;padding:8px}th{background:#f5f5f5;text-align:left}@media print{body{padding:0}}</style>
 </head><body><h1>Relatório por Empresa</h1>
-<table><thead><tr><th>Empresa</th><th>Total</th><th>Agentes</th><th>Aberto</th><th>Em Andamento</th><th>Concluído</th><th>Cancelado</th><th>Agentes (Atendimentos)</th></tr></thead><tbody>${rows}</tbody></table>
+<table><thead><tr><th>Empresa</th><th>Executivo de Contas</th><th>Total</th><th>Agentes</th><th>Aberto</th><th>Em Andamento</th><th>Concluído</th><th>Cancelado</th><th>Agentes (Atendimentos)</th></tr></thead><tbody>${rows}</tbody></table>
 </body></html>`
 }
