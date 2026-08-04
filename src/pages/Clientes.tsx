@@ -14,12 +14,16 @@ import { getClients, updateClient } from '@/services/clients'
 import { getServiceRecords } from '@/services/service_records'
 import { ClientRecord, ServiceRecord } from '@/types/service_record'
 import { NewClientModal } from '@/components/NewClientModal'
+import { StateCitySelect } from '@/components/StateCitySelect'
+import { SearchableSelect } from '@/components/SearchableSelect'
+import { STATE_OPTIONS, normalizeStateValue } from '@/lib/brazilian-states'
+import { useIbgeCities } from '@/hooks/use-ibge-cities'
 import { AgentManager } from '@/components/AgentManager'
 import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
-import { UserPlus, Search, Headset, ArrowLeft, Loader2, Save, Pencil } from 'lucide-react'
+import { UserPlus, Search, Headset, ArrowLeft, Loader2, Save, Pencil, FilterX } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -38,6 +42,14 @@ export default function Clientes() {
   const [editState, setEditState] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [filterState, setFilterState] = useState('')
+  const [filterCity, setFilterCity] = useState('')
+  const normalizedFilterState = normalizeStateValue(filterState)
+  const {
+    cities: filterCities,
+    loading: filterCitiesLoading,
+    error: filterCitiesError,
+  } = useIbgeCities(normalizedFilterState)
   const { toast } = useToast()
 
   const loadClients = async () => {
@@ -103,11 +115,15 @@ export default function Clientes() {
     setDetailsModalOpen(true)
   }
 
-  const filteredClients = clients.filter(
-    (c) =>
+  const filteredClients = clients.filter((c) => {
+    const matchesSearch =
       (c.company || '').toLowerCase().includes(search.toLowerCase()) ||
-      c.name.toLowerCase().includes(search.toLowerCase()),
-  )
+      c.name.toLowerCase().includes(search.toLowerCase())
+    const matchesState =
+      !filterState || normalizeStateValue(c.state || '') === normalizedFilterState
+    const matchesCity = !filterCity || (c.city || '') === filterCity
+    return matchesSearch && matchesState && matchesCity
+  })
 
   return (
     <div className="space-y-6">
@@ -163,22 +179,13 @@ export default function Clientes() {
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600">Cidade</label>
-                    <Input
-                      className="h-9 text-xs"
-                      value={editCity}
-                      onChange={(e) => setEditCity(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600">Estado</label>
-                    <Input
-                      className="h-9 text-xs"
-                      value={editState}
-                      onChange={(e) => setEditState(e.target.value)}
-                    />
-                  </div>
+                  <StateCitySelect
+                    stateValue={editState}
+                    cityValue={editCity}
+                    onStateChange={setEditState}
+                    onCityChange={setEditCity}
+                    compact
+                  />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-600">Telefone / Celular</label>
@@ -260,14 +267,64 @@ export default function Clientes() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="max-w-md relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Buscar por empresa ou executivo..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-xs"
-            />
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[200px] relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Buscar por empresa ou executivo..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9 text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-600">Estado</label>
+              <SearchableSelect
+                options={STATE_OPTIONS}
+                value={normalizedFilterState}
+                onValueChange={(v) => {
+                  setFilterState(v)
+                  setFilterCity('')
+                }}
+                placeholder="Todos"
+                emptyText="Nenhum estado encontrado."
+                className="h-9 text-xs w-[180px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-600">Cidade</label>
+              <SearchableSelect
+                options={filterCities}
+                value={filterCity}
+                onValueChange={setFilterCity}
+                placeholder={
+                  !normalizedFilterState
+                    ? 'Selecione um estado primeiro'
+                    : filterCitiesLoading
+                      ? 'Carregando cidades...'
+                      : 'Todas'
+                }
+                emptyText="Nenhuma cidade encontrada."
+                className="h-9 text-xs w-[200px]"
+                disabled={!normalizedFilterState || filterCitiesLoading}
+              />
+              {filterCitiesError && (
+                <p className="text-xs text-red-500">Erro ao carregar cidades. Tente novamente.</p>
+              )}
+            </div>
+            {(filterState || filterCity) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-9 text-slate-500"
+                onClick={() => {
+                  setFilterState('')
+                  setFilterCity('')
+                }}
+              >
+                <FilterX className="h-3.5 w-3.5 mr-1" /> Limpar filtros
+              </Button>
+            )}
           </div>
           <Card className="border-slate-200 overflow-hidden">
             <Table>

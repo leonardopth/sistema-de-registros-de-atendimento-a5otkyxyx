@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/services/clients'
 import { createAgent } from '@/services/agents'
+import { StateCitySelect } from '@/components/StateCitySelect'
 import { useToast } from '@/hooks/use-toast'
 import { UserPlus, Loader2, Trash2, Plus, Headset } from 'lucide-react'
 
@@ -144,24 +145,12 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="c-city">Cidade</Label>
-              <Input
-                id="c-city"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="Cidade"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="c-state">Estado</Label>
-              <Input
-                id="c-state"
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                placeholder="Estado"
-              />
-            </div>
+            <StateCitySelect
+              stateValue={state}
+              cityValue={city}
+              onStateChange={setState}
+              onCityChange={setCity}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="c-phone">Telefone / Celular</Label>

@@ -24,6 +24,7 @@ interface SearchableSelectProps {
   placeholder?: string
   emptyText?: string
   className?: string
+  disabled?: boolean
 }
 
 export function SearchableSelect({
@@ -33,18 +34,24 @@ export function SearchableSelect({
   placeholder = 'Selecione...',
   emptyText = 'Nenhum resultado encontrado.',
   className,
+  disabled = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false)
   const selected = options.find((o) => o.value === value)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && !disabled} onOpenChange={(v) => !disabled && setOpen(v)}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn('w-full justify-between font-normal', className)}
+          disabled={disabled}
+          className={cn(
+            'w-full justify-between font-normal',
+            disabled && 'opacity-50 cursor-not-allowed',
+            className,
+          )}
         >
           <span className={cn('truncate', !selected && 'text-muted-foreground')}>
             {selected ? selected.label : placeholder}
