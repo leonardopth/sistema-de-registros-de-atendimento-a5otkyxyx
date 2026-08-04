@@ -284,7 +284,7 @@ export function ServiceRecordDetailModal({
               Contato Evitável
             </label>
           </div>
-          {wrongDepartment && (
+          {avoidableContact && (
             <div className="space-y-1 pl-6">
               <label className="text-xs font-medium text-slate-500 block">Explicação *</label>
               <textarea

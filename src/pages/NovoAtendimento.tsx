@@ -432,7 +432,7 @@ export default function NovoAtendimento() {
                 Contato Evitável
               </Label>
             </div>
-            {wrongDepartment && (
+            {avoidableContact && (
               <div className="space-y-1.5">
                 <Label>Explicação *</Label>
                 <Textarea

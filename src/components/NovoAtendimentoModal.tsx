@@ -461,7 +461,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 Contato Evitável
               </Label>
             </div>
-            {wrongDepartment && (
+            {avoidableContact && (
               <div className="space-y-1 pl-6">
                 <Label className="text-xs">Explicação *</Label>
                 <Textarea
