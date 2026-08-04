@@ -36,7 +36,6 @@ export default function Clientes() {
   const [detailsCompany, setDetailsCompany] = useState('')
 
   const [editName, setEditName] = useState('')
-  const [editEmail, setEditEmail] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editCompany, setEditCompany] = useState('')
   const [editNotes, setEditNotes] = useState('')
@@ -60,7 +59,6 @@ export default function Clientes() {
   const handleSelectClient = async (c: ClientRecord) => {
     setSelectedClient(c)
     setEditName(c.name)
-    setEditEmail(c.email || '')
     setEditPhone(c.phone || '')
     setEditCompany(c.company || '')
     setEditNotes(c.notes || '')
@@ -84,7 +82,6 @@ export default function Clientes() {
     try {
       await updateClient(selectedClient.id, {
         name: editName,
-        email: editEmail,
         phone: editPhone,
         company: editCompany,
         notes: editNotes,
@@ -145,32 +142,20 @@ export default function Clientes() {
                   <h3 className="font-bold text-slate-900 text-base">
                     {selectedClient.company || 'Pessoa Física'}
                   </h3>
-                  <p className="text-xs text-slate-500">{selectedClient.name}</p>
+                  <p className="text-xs text-slate-500">
+                    Executivo de Contas: {selectedClient.name}
+                  </p>
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">Empresa</label>
-                  <Input
-                    className="h-9 text-xs"
-                    value={editCompany}
-                    onChange={(e) => setEditCompany(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">Nome do agente</label>
+                  <label className="text-xs font-semibold text-slate-600">
+                    Nome do Executivo de Contas
+                  </label>
                   <Input
                     className="h-9 text-xs"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">e-mail do agente</label>
-                  <Input
-                    className="h-9 text-xs"
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
