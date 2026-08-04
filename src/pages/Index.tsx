@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ServiceRecord } from '@/types/service_record'
@@ -17,6 +17,7 @@ import { getAgents } from '@/services/agents'
 import { ClientRecord, AgentRecord } from '@/types/service_record'
 import { CompanyReport } from '@/components/CompanyReport'
 import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
+import { PeriodComparison } from '@/components/PeriodComparison'
 import { Plus } from 'lucide-react'
 
 export default function Index() {
@@ -75,6 +76,33 @@ export default function Index() {
     return true
   })
   const hasDateFilter = !!dateFrom || !!dateTo
+
+  const previousPeriodData = useMemo(() => {
+    if (!dateFrom || !dateTo) return null
+    const start = new Date(dateFrom + 'T00:00:00')
+    const end = new Date(dateTo + 'T00:00:00')
+    if (end < start) return null
+    const daysDiff = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const prevEnd = new Date(start)
+    prevEnd.setDate(prevEnd.getDate() - 1)
+    const prevStart = new Date(prevEnd)
+    prevStart.setDate(prevStart.getDate() - (daysDiff - 1))
+    const prevStartStr = prevStart.toISOString().split('T')[0]
+    const prevEndStr = prevEnd.toISOString().split('T')[0]
+    const prevRecords = records.filter((r) => {
+      if (!r.created) return false
+      const recDate = r.created.substring(0, 10)
+      return recDate >= prevStartStr && recDate <= prevEndStr
+    })
+    return {
+      count: prevRecords.length,
+      prevStartStr,
+      prevEndStr,
+    }
+  }, [records, dateFrom, dateTo])
+
+  const hasFullDateRange = !!dateFrom && !!dateTo
+
   const todayRecords = dateFilteredRecords.filter(
     (r) => r.created && r.created.startsWith(todayStr),
   )
@@ -153,6 +181,13 @@ export default function Index() {
         }}
         hasActiveFilter={hasDateFilter}
       />
+
+      {hasFullDateRange && previousPeriodData && (
+        <PeriodComparison
+          currentCount={dateFilteredRecords.length}
+          previousCount={previousPeriodData.count}
+        />
+      )}
 
       {hasDateFilter && dateFilteredRecords.length === 0 && (
         <Card className="border-slate-200 shadow-subtle p-8 text-center">
