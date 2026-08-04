@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-04T19:09:55.999Z",
+  "generatedAt": "2026-08-04T19:19:57.466Z",
   "collections": [
     {
       "name": "users",
@@ -269,6 +269,59 @@
         "CREATE INDEX idx_sr_created ON service_records (created DESC)",
         "CREATE INDEX `idx_sr_assigned_user` ON `service_records` (assigned_user)"
       ]
+    },
+    {
+      "name": "agents",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "client_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_agents_client ON agents (client_id)"]
     }
   ]
 }
