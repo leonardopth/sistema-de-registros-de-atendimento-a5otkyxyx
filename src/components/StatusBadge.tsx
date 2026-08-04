@@ -11,7 +11,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   const getBadgeStyle = () => {
     switch (status) {
       case 'Aberto':
-        return 'bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100'
+        return 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
       case 'Em Andamento':
         return 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 relative'
       case 'Concluído':
