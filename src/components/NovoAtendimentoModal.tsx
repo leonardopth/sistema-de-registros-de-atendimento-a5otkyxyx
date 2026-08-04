@@ -180,7 +180,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                   <SelectContent>
                     {clients.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.company ? `${c.company} – ${c.name}` : c.name}
+                        {c.company || c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -199,7 +199,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 />
               </div>
               <div className="space-y-1 col-span-2">
-                <Label className="text-xs">Nome do Cliente *</Label>
+                <Label className="text-xs">Nome do Agente *</Label>
                 <Input
                   className="h-9 text-xs"
                   required
@@ -209,7 +209,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">E-mail</Label>
+                <Label className="text-xs">E-mail do Agente</Label>
                 <Input
                   className="h-9 text-xs"
                   type="email"
@@ -232,7 +232,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Lista de contatos *</Label>
+              <Label className="text-xs">Motivo do contato *</Label>
               <Select
                 value={contactReason}
                 onValueChange={(v) => setContactReason(v as ContactReason)}

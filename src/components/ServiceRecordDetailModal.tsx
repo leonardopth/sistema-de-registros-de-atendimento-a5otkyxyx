@@ -174,7 +174,7 @@ export function ServiceRecordDetailModal({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-xs font-medium text-slate-500 block mb-1">
-                Motivo do Contato
+                Motivo do contato
               </span>
               <span className="font-semibold text-slate-800 bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md text-xs inline-block">
                 {record.contact_reason}

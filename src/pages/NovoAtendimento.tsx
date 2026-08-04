@@ -180,7 +180,7 @@ export default function NovoAtendimento() {
                   <SelectContent>
                     {clients.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.company ? `${c.company} – ${c.name}` : c.name}
+                        {c.company || c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -198,7 +198,7 @@ export default function NovoAtendimento() {
                 />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
-                <Label>Nome do Cliente *</Label>
+                <Label>Nome do Agente *</Label>
                 <Input
                   required
                   value={clientName}
@@ -207,7 +207,7 @@ export default function NovoAtendimento() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>E-mail do Cliente</Label>
+                <Label>E-mail do Agente</Label>
                 <Input
                   type="email"
                   value={clientEmail}
@@ -234,7 +234,7 @@ export default function NovoAtendimento() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Lista de contatos *</Label>
+                <Label>Motivo do contato *</Label>
                 <Select
                   value={contactReason}
                   onValueChange={(v) => setContactReason(v as ContactReason)}
