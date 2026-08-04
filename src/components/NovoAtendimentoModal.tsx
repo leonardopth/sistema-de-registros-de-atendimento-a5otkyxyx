@@ -178,11 +178,13 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                     <SelectValue placeholder="Escolha um cliente cadastrado" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.company || c.name}
-                      </SelectItem>
-                    ))}
+                    {clients
+                      .filter((c) => c.company && c.company.trim())
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.company}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
