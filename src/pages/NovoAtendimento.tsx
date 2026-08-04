@@ -60,8 +60,8 @@ export default function NovoAtendimento() {
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [loading, setLoading] = useState(false)
-  const [wrongDepartment, setWrongDepartment] = useState(false)
-  const [wrongDepartmentExplanation, setWrongDepartmentExplanation] = useState('')
+  const [avoidableContact, setAvoidableContact] = useState(false)
+  const [avoidableContactExplanation, setAvoidableContactExplanation] = useState('')
   const [users, setUsers] = useState<UserRecord[]>([])
   const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
 
@@ -122,8 +122,8 @@ export default function NovoAtendimento() {
       return
     }
 
-    if (wrongDepartment && !wrongDepartmentExplanation.trim()) {
-      toast({ variant: 'destructive', title: 'Informe a explicação do departamento errado' })
+    if (avoidableContact && !avoidableContactExplanation.trim()) {
+      toast({ variant: 'destructive', title: 'Informe a explicação do contato evitável' })
       return
     }
 
@@ -144,8 +144,8 @@ export default function NovoAtendimento() {
         assigned_agent: assignedAgent,
         assigned_user: assignedUserId,
         tasks,
-        wrong_department: wrongDepartment,
-        wrong_department_explanation: wrongDepartment ? wrongDepartmentExplanation.trim() : '',
+        avoidable_contact: avoidableContact,
+        avoidable_contact_explanation: avoidableContact ? avoidableContactExplanation.trim() : '',
       })
 
       toast({
@@ -417,19 +417,19 @@ export default function NovoAtendimento() {
           {/* Seção 5: Departamento Errado */}
           <div className="space-y-4 pt-2">
             <h3 className="text-sm font-bold text-indigo-950 uppercase tracking-wider border-b pb-2">
-              5. Encaminhamento
+              5. Contato Evitável
             </h3>
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="p-wrong-dept"
-                checked={wrongDepartment}
+                checked={avoidableContact}
                 onCheckedChange={(checked) => {
-                  setWrongDepartment(!!checked)
-                  if (!checked) setWrongDepartmentExplanation('')
+                  setAvoidableContact(!!checked)
+                  if (!checked) setAvoidableContactExplanation('')
                 }}
               />
               <Label htmlFor="p-wrong-dept" className="cursor-pointer font-medium">
-                Atendimento entrou no departamento errado
+                Contato Evitável
               </Label>
             </div>
             {wrongDepartment && (
@@ -437,9 +437,9 @@ export default function NovoAtendimento() {
                 <Label>Explicação *</Label>
                 <Textarea
                   rows={3}
-                  value={wrongDepartmentExplanation}
-                  onChange={(e) => setWrongDepartmentExplanation(e.target.value)}
-                  placeholder="Explique o motivo do encaminhamento incorreto..."
+                  value={avoidableContactExplanation}
+                  onChange={(e) => setAvoidableContactExplanation(e.target.value)}
+                  placeholder="Explique o motivo do contato evitável..."
                 />
               </div>
             )}

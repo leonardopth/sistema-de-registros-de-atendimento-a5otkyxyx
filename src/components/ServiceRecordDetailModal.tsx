@@ -53,8 +53,8 @@ export function ServiceRecordDetailModal({
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [wrongDepartment, setWrongDepartment] = useState(false)
-  const [wrongDepartmentExplanation, setWrongDepartmentExplanation] = useState('')
+  const [avoidableContact, setAvoidableContact] = useState(false)
+  const [avoidableContactExplanation, setAvoidableContactExplanation] = useState('')
   const { toast } = useToast()
 
   useEffect(() => {
@@ -62,8 +62,8 @@ export function ServiceRecordDetailModal({
       setStatus(record.status)
       setChannel(record.channel || '')
       setTasks(Array.isArray(record.tasks) ? record.tasks : [])
-      setWrongDepartment(!!record.wrong_department)
-      setWrongDepartmentExplanation(record.wrong_department_explanation || '')
+      setAvoidableContact(!!record.avoidable_contact)
+      setAvoidableContactExplanation(record.avoidable_contact_explanation || '')
     }
   }, [record])
 
@@ -76,8 +76,8 @@ export function ServiceRecordDetailModal({
   }
 
   const handleSave = async () => {
-    if (wrongDepartment && !wrongDepartmentExplanation.trim()) {
-      toast({ variant: 'destructive', title: 'Informe a explicação do departamento errado' })
+    if (avoidableContact && !avoidableContactExplanation.trim()) {
+      toast({ variant: 'destructive', title: 'Informe a explicação do contato evitável' })
       return
     }
 
@@ -89,8 +89,8 @@ export function ServiceRecordDetailModal({
         channel: channel || undefined,
         tasks,
         end_time: isCompletedNow ? new Date().toISOString() : record.end_time,
-        wrong_department: wrongDepartment,
-        wrong_department_explanation: wrongDepartment ? wrongDepartmentExplanation.trim() : '',
+        avoidable_contact: avoidableContact,
+        avoidable_contact_explanation: avoidableContact ? avoidableContactExplanation.trim() : '',
       })
       toast({
         title: 'Atendimento atualizado',
@@ -208,10 +208,18 @@ export function ServiceRecordDetailModal({
               </Select>
             </div>
             <div>
-              <span className="text-xs font-medium text-slate-500 block mb-1">Canal Atual</span>
-              <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 h-9">
-                {record.channel || 'Não informado'}
-              </div>
+              <label className="text-xs font-medium text-slate-500 block mb-1">Status</label>
+              <Select value={status} onValueChange={(val) => setStatus(val as ServiceStatus)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Aberto">Aberto</SelectItem>
+                  <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                  <SelectItem value="Concluído">Concluído</SelectItem>
+                  <SelectItem value="Cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -263,17 +271,17 @@ export function ServiceRecordDetailModal({
           <div className="flex items-center space-x-2">
             <Checkbox
               id="d-wrong-dept"
-              checked={wrongDepartment}
+              checked={avoidableContact}
               onCheckedChange={(checked) => {
-                setWrongDepartment(!!checked)
-                if (!checked) setWrongDepartmentExplanation('')
+                setAvoidableContact(!!checked)
+                if (!checked) setAvoidableContactExplanation('')
               }}
             />
             <label
               htmlFor="d-wrong-dept"
               className="text-xs font-medium text-slate-500 cursor-pointer"
             >
-              Atendimento entrou no departamento errado
+              Contato Evitável
             </label>
           </div>
           {wrongDepartment && (
@@ -282,9 +290,9 @@ export function ServiceRecordDetailModal({
               <textarea
                 rows={2}
                 className="w-full text-sm p-2 border rounded-md"
-                value={wrongDepartmentExplanation}
-                onChange={(e) => setWrongDepartmentExplanation(e.target.value)}
-                placeholder="Explique o motivo do encaminhamento incorreto..."
+                value={avoidableContactExplanation}
+                onChange={(e) => setAvoidableContactExplanation(e.target.value)}
+                placeholder="Explique o motivo do contato evitável..."
               />
             </div>
           )}

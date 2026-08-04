@@ -89,7 +89,7 @@ export function DashboardStats({
 
       <Card
         className="border-slate-200 shadow-subtle hover:shadow-elevation transition-all bg-gradient-to-br from-white via-amber-50/20 to-yellow-50/30 border-t-4 border-t-amber-500 cursor-pointer"
-        onClick={() => navigate('/atendimentos?wrong_department=sim')}
+        onClick={() => navigate('/atendimentos?avoidable_contact=sim')}
       >
         <CardContent className="p-4 flex items-center justify-between">
           <div>

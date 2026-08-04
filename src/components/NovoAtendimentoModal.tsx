@@ -64,8 +64,8 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [loading, setLoading] = useState(false)
-  const [wrongDepartment, setWrongDepartment] = useState(false)
-  const [wrongDepartmentExplanation, setWrongDepartmentExplanation] = useState('')
+  const [avoidableContact, setAvoidableContact] = useState(false)
+  const [avoidableContactExplanation, setAvoidableContactExplanation] = useState('')
   const [users, setUsers] = useState<UserRecord[]>([])
   const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
 
@@ -130,8 +130,8 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
       return
     }
 
-    if (wrongDepartment && !wrongDepartmentExplanation.trim()) {
-      toast({ variant: 'destructive', title: 'Informe a explicação do departamento errado' })
+    if (avoidableContact && !avoidableContactExplanation.trim()) {
+      toast({ variant: 'destructive', title: 'Informe a explicação do contato evitável' })
       return
     }
 
@@ -152,13 +152,13 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
         assigned_agent: assignedAgent,
         assigned_user: assignedUserId,
         tasks,
-        wrong_department: wrongDepartment,
-        wrong_department_explanation: wrongDepartment ? wrongDepartmentExplanation.trim() : '',
+        avoidable_contact: avoidableContact,
+        avoidable_contact_explanation: avoidableContact ? avoidableContactExplanation.trim() : '',
       })
 
       toast({ title: 'Atendimento criado com sucesso!' })
-      setWrongDepartment(false)
-      setWrongDepartmentExplanation('')
+      setAvoidableContact(false)
+      setAvoidableContactExplanation('')
       onOpenChange(false)
       onSuccess?.()
     } catch (err) {
@@ -451,14 +451,14 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="m-wrong-dept"
-                checked={wrongDepartment}
+                checked={avoidableContact}
                 onCheckedChange={(checked) => {
-                  setWrongDepartment(!!checked)
-                  if (!checked) setWrongDepartmentExplanation('')
+                  setAvoidableContact(!!checked)
+                  if (!checked) setAvoidableContactExplanation('')
                 }}
               />
               <Label htmlFor="m-wrong-dept" className="text-xs cursor-pointer">
-                Atendimento entrou no departamento errado
+                Contato Evitável
               </Label>
             </div>
             {wrongDepartment && (
@@ -466,9 +466,9 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 <Label className="text-xs">Explicação *</Label>
                 <Textarea
                   rows={2}
-                  value={wrongDepartmentExplanation}
-                  onChange={(e) => setWrongDepartmentExplanation(e.target.value)}
-                  placeholder="Explique o motivo do encaminhamento incorreto..."
+                  value={avoidableContactExplanation}
+                  onChange={(e) => setAvoidableContactExplanation(e.target.value)}
+                  placeholder="Explique o motivo do contato evitável..."
                   className="text-xs"
                 />
               </div>

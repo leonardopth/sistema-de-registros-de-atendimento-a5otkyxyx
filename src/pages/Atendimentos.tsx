@@ -64,7 +64,7 @@ export default function Atendimentos() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
-    const wdParam = searchParams.get('wrong_department')
+    const wdParam = searchParams.get('avoidable_contact')
     if (wdParam === 'sim' || wdParam === 'nao') {
       setWrongDeptFilter(wdParam)
     }
@@ -100,8 +100,8 @@ export default function Atendimentos() {
     const matchesReason = reasonFilter === 'todos' || r.contact_reason === reasonFilter
     const matchesWrongDept =
       wrongDeptFilter === 'todos' ||
-      (wrongDeptFilter === 'sim' && r.wrong_department === true) ||
-      (wrongDeptFilter === 'nao' && !r.wrong_department)
+      (wrongDeptFilter === 'sim' && r.avoidable_contact === true) ||
+      (wrongDeptFilter === 'nao' && !r.avoidable_contact)
 
     const recDate = r.created ? r.created.substring(0, 10) : ''
     const matchesDateFrom = !dateFrom || recDate >= dateFrom
@@ -170,8 +170,8 @@ export default function Atendimentos() {
     setWrongDeptFilter('todos')
     setDateFrom('')
     setDateTo('')
-    if (searchParams.get('wrong_department')) {
-      searchParams.delete('wrong_department')
+    if (searchParams.get('avoidable_contact')) {
+      searchParams.delete('avoidable_contact')
       setSearchParams(searchParams)
     }
   }
@@ -250,9 +250,9 @@ export default function Atendimentos() {
             onValueChange={(val) => {
               setWrongDeptFilter(val)
               if (val === 'todos') {
-                searchParams.delete('wrong_department')
+                searchParams.delete('avoidable_contact')
               } else {
-                searchParams.set('wrong_department', val)
+                searchParams.set('avoidable_contact', val)
               }
               setSearchParams(searchParams)
             }}
