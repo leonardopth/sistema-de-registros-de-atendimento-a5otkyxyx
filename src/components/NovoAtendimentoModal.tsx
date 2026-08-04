@@ -180,7 +180,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                   <SelectContent>
                     {clients.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.name} {c.company ? `(${c.company})` : ''}
+                        {c.company ? `${c.company} – ${c.name}` : c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -189,6 +189,15 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             ) : null}
 
             <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1 col-span-2">
+                <Label className="text-xs">Empresa / Razão Social</Label>
+                <Input
+                  className="h-9 text-xs"
+                  value={clientCompany}
+                  onChange={(e) => setClientCompany(e.target.value)}
+                  placeholder="Nome da empresa"
+                />
+              </div>
               <div className="space-y-1 col-span-2">
                 <Label className="text-xs">Nome do Cliente *</Label>
                 <Input

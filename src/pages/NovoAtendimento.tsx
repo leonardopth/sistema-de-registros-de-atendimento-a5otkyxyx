@@ -180,7 +180,7 @@ export default function NovoAtendimento() {
                   <SelectContent>
                     {clients.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.name} {c.company ? `— ${c.company}` : ''}
+                        {c.company ? `${c.company} – ${c.name}` : c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -189,6 +189,14 @@ export default function NovoAtendimento() {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Empresa / Razão Social</Label>
+                <Input
+                  value={clientCompany}
+                  onChange={(e) => setClientCompany(e.target.value)}
+                  placeholder="Nome da empresa"
+                />
+              </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Nome do Cliente *</Label>
                 <Input
@@ -213,14 +221,6 @@ export default function NovoAtendimento() {
                   value={clientPhone}
                   onChange={(e) => setClientPhone(e.target.value)}
                   placeholder="(11) 98765-4321"
-                />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Empresa / Razão Social</Label>
-                <Input
-                  value={clientCompany}
-                  onChange={(e) => setClientCompany(e.target.value)}
-                  placeholder="Nome da empresa"
                 />
               </div>
             </div>

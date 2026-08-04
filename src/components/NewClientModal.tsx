@@ -75,6 +75,15 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-1.5">
+            <Label htmlFor="c-company">Empresa / Organização</Label>
+            <Input
+              id="c-company"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              placeholder="Nome da empresa"
+            />
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="c-name">Nome do agente *</Label>
             <Input
               id="c-name"
@@ -104,15 +113,6 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
                 placeholder="(00) 00000-0000"
               />
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="c-company">Empresa / Organização</Label>
-            <Input
-              id="c-company"
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="Nome da empresa"
-            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="c-notes">Observações</Label>

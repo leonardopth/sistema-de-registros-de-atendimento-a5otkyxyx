@@ -115,12 +115,12 @@ export function RecentActivities({
                   />
                 </TableCell>
                 <TableCell className="font-semibold text-slate-900 text-xs">
-                  {r.client_name}
                   {r.client_company && (
                     <span className="block text-[10px] text-slate-500 font-normal">
                       {r.client_company}
                     </span>
                   )}
+                  {r.client_name}
                 </TableCell>
                 <TableCell className="text-xs text-slate-700">{r.contact_reason}</TableCell>
                 <TableCell>
