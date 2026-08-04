@@ -29,7 +29,7 @@ migrate(
     })
     app.save(agents)
 
-    const existingClients = app.findRecordsByFilter('clients', '', '', 0, 0)
+    const existingClients = app.findRecordsByFilter('clients', "id != ''", '', 0, 0)
     const agentsCol = app.findCollectionByNameOrId('agents')
     for (const c of existingClients) {
       try {
