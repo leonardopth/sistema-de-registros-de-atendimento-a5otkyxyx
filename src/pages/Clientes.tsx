@@ -305,7 +305,12 @@ export default function Clientes() {
                     </div>
                     <p className="text-xs text-slate-700">{r.description}</p>
                     <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t">
-                      <span>Atendente: {r.assigned_agent || '-'}</span>
+                      <div className="flex items-center gap-3">
+                        <span>Agente: {r.expand?.agent?.name || r.assigned_agent || '-'}</span>
+                        {r.expand?.assigned_user?.name && (
+                          <span>Consultor: {r.expand.assigned_user.name}</span>
+                        )}
+                      </div>
                       <span>
                         {r.created
                           ? format(new Date(r.created), 'dd/MM/yyyy HH:mm', { locale: ptBR })

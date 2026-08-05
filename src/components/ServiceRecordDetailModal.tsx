@@ -34,6 +34,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
 import { ServiceRecordHistoryPanel } from './ServiceRecordHistoryPanel'
 import { ReopenAtendimentoDialog } from './ReopenAtendimentoDialog'
+import { ServiceTimer } from './ServiceTimer'
 import {
   User,
   Phone,
@@ -96,6 +97,10 @@ export function ServiceRecordDetailModal({
   const [reopenLoading, setReopenLoading] = useState(false)
   const [users, setUsers] = useState<UserRecord[]>([])
   const [completingTask, setCompletingTask] = useState<number | null>(null)
+  const [timerStart, setTimerStart] = useState<string | null>(null)
+  const [timerRunning, setTimerRunning] = useState(false)
+  const [accumulatedMs, setAccumulatedMs] = useState(0)
+  const [duration, setDuration] = useState(0)
 
   const isEditable = record ? EDITABLE_STATUSES.includes(record.status) : false
   const canReopen = record ? REOPENABLE_STATUSES.includes(record.status) : false
@@ -111,6 +116,10 @@ export function ServiceRecordDetailModal({
       setNewTaskTitle('')
       setNewTaskResponsible('')
       setNewTaskDueDate('')
+      setTimerStart(record.timer_start || null)
+      setTimerRunning(record.timer_running || false)
+      setAccumulatedMs(record.duration ? record.duration * 60000 : 0)
+      setDuration(record.duration || 0)
       setActiveTab('details')
     }
   }, [record])
@@ -199,6 +208,23 @@ export function ServiceRecordDetailModal({
     }
   }
 
+  const handleTimerStart = () => {
+    setTimerStart(new Date().toISOString())
+    setTimerRunning(true)
+  }
+  const handleTimerPause = (totalElapsedMs: number) => {
+    setAccumulatedMs(totalElapsedMs)
+    setTimerRunning(false)
+    setTimerStart(null)
+    setDuration(Math.round((totalElapsedMs / 60000) * 100) / 100)
+  }
+  const handleTimerReset = () => {
+    setTimerRunning(false)
+    setTimerStart(null)
+    setAccumulatedMs(0)
+    setDuration(0)
+  }
+
   const handleSave = async () => {
     if (!isEditable) return
     if (avoidableContact && !avoidableContactReason) {
@@ -216,6 +242,15 @@ export function ServiceRecordDetailModal({
     setLoading(true)
     try {
       const isCompletedNow = status === 'Concluído' && record.status !== 'Concluído'
+      let finalDuration = duration
+      let finalTimerStart = timerStart
+      let finalTimerRunning = timerRunning
+      if (timerRunning && timerStart) {
+        const currentElapsed = accumulatedMs + (Date.now() - new Date(timerStart).getTime())
+        finalDuration = Math.round((currentElapsed / 60000) * 100) / 100
+        finalTimerRunning = false
+        finalTimerStart = null
+      }
       await updateServiceRecordWithHistory(
         record.id,
         {
@@ -223,6 +258,9 @@ export function ServiceRecordDetailModal({
           channel: channel || undefined,
           tasks,
           end_time: isCompletedNow ? new Date().toISOString() : record.end_time,
+          duration: finalDuration || undefined,
+          timer_start: finalTimerStart || undefined,
+          timer_running: finalTimerRunning,
           avoidable_contact: avoidableContact,
           avoidable_contact_reason: avoidableContact
             ? (avoidableContactReason as AvoidableContactReason)
@@ -437,6 +475,21 @@ export function ServiceRecordDetailModal({
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-xs font-medium text-slate-500 block mb-1">
+                Cronômetro de Atendimento
+              </span>
+              <ServiceTimer
+                timerStart={timerStart}
+                timerRunning={timerRunning}
+                accumulatedMs={accumulatedMs}
+                duration={duration}
+                onStart={handleTimerStart}
+                onPause={handleTimerPause}
+                onReset={handleTimerReset}
+              />
             </div>
 
             <div>

@@ -1,5 +1,8 @@
 import pb from '@/lib/pocketbase/client'
 import { UserRecord, ApprovalStatus, UserRole } from '@/types/service_record'
+import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
+
+export { extractFieldErrors, type FieldErrors }
 
 export const getUsers = () => {
   return pb.collection('users').getFullList<UserRecord>({
@@ -14,7 +17,10 @@ export const getUser = (id: string) => {
 export const updateUser = (
   id: string,
   data: Partial<
-    Pick<UserRecord, 'name' | 'role' | 'approval_status' | 'telegram_id' | 'telegram_alerts'>
+    Pick<
+      UserRecord,
+      'name' | 'email' | 'role' | 'approval_status' | 'telegram_id' | 'telegram_alerts'
+    >
   >,
 ) => {
   return pb.collection('users').update<UserRecord>(id, data)

@@ -37,12 +37,16 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { getUsers, updateUser, approveUser, rejectUser, deleteUser } from '@/services/users'
+import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 import { UserRecord, UserRole, ApprovalStatus } from '@/types/service_record'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { UserCheck, Check, X, Pencil, Loader2, Trash2, Clock } from 'lucide-react'
+import { Mail } from 'lucide-react'
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const ROLES: UserRole[] = [
   'Gerentes',
@@ -89,8 +93,10 @@ export default function GestaoUsuarios() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
   const [editRole, setEditRole] = useState<UserRole>('Consultores')
   const [editStatus, setEditStatus] = useState<ApprovalStatus>('Aprovado')
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -124,20 +130,43 @@ export default function GestaoUsuarios() {
   const handleEdit = (u: UserRecord) => {
     setEditingId(u.id)
     setEditName(u.name || '')
+    setEditEmail(u.email || '')
     setEditRole(u.role || 'Consultores')
     setEditStatus(u.approval_status || 'Aprovado')
+    setFieldErrors({})
     setDialogOpen(true)
   }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFieldErrors({})
+
+    const trimmedEmail = editEmail.trim()
+    if (!trimmedEmail) {
+      setFieldErrors({ email: 'E-mail é obrigatório.' })
+      return
+    }
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setFieldErrors({ email: 'Formato de e-mail inválido.' })
+      return
+    }
+
     setSaving(true)
     try {
-      await updateUser(editingId!, { name: editName, role: editRole, approval_status: editStatus })
+      await updateUser(editingId!, {
+        name: editName,
+        email: trimmedEmail,
+        role: editRole,
+        approval_status: editStatus,
+      })
       toast({ title: 'Usuário atualizado com sucesso' })
       setDialogOpen(false)
       loadData()
-    } catch {
+    } catch (err) {
+      const errors = extractFieldErrors(err)
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors)
+      }
       toast({ variant: 'destructive', title: 'Erro ao atualizar usuário' })
     } finally {
       setSaving(false)
@@ -320,6 +349,23 @@ export default function GestaoUsuarios() {
             <div className="space-y-1.5">
               <Label>Nome</Label>
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-slate-400" />
+                E-mail
+              </Label>
+              <Input
+                type="email"
+                value={editEmail}
+                onChange={(e) => {
+                  setEditEmail(e.target.value)
+                  if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }))
+                }}
+                placeholder="usuario@email.com"
+                className={cn(fieldErrors.email && 'border-rose-400 focus-visible:ring-rose-400')}
+              />
+              {fieldErrors.email && <p className="text-xs text-rose-500">{fieldErrors.email}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>Categoria</Label>

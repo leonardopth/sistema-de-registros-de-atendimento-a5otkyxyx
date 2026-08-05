@@ -43,7 +43,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<ServicePriority>('Média')
   const [status, setStatus] = useState<ServiceStatus>('Aberto')
-  const [duration, setDuration] = useState(10)
+  const [duration, setDuration] = useState(0)
   const [allExecutives, setAllExecutives] = useState<AccountExecutiveRecord[]>([])
   const [selectedExecutiveId, setSelectedExecutiveId] = useState('')
   const [executiveError, setExecutiveError] = useState('')
@@ -60,6 +60,9 @@ export function useServiceRecordForm(enabled: boolean = true) {
   const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
   const [timerStart, setTimerStart] = useState<string | null>(null)
   const [timerRunning, setTimerRunning] = useState(false)
+  const [accumulatedMs, setAccumulatedMs] = useState(0)
+  const [newTaskResponsible, setNewTaskResponsible] = useState('')
+  const [newTaskDueDate, setNewTaskDueDate] = useState('')
 
   const loadClients = useCallback(() => {
     getClients()
@@ -146,18 +149,20 @@ export function useServiceRecordForm(enabled: boolean = true) {
     }
   }
 
-  const handleAddTask = (responsible?: string, dueDate?: string) => {
+  const handleAddTask = () => {
     if (!newTaskTitle.trim()) return
     setTasks([
       ...tasks,
       {
         title: newTaskTitle.trim(),
         done: false,
-        responsible: responsible || undefined,
-        due_date: dueDate || undefined,
+        responsible: newTaskResponsible || undefined,
+        due_date: newTaskDueDate || undefined,
       },
     ])
     setNewTaskTitle('')
+    setNewTaskResponsible('')
+    setNewTaskDueDate('')
   }
   const handleRemoveTask = (i: number) => setTasks(tasks.filter((_, idx) => idx !== i))
 
@@ -181,14 +186,16 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setTimerStart(new Date().toISOString())
     setTimerRunning(true)
   }
-  const handleTimerPause = (elapsedMinutes: number) => {
-    setDuration((prev) => prev + elapsedMinutes)
+  const handleTimerPause = (totalElapsedMs: number) => {
+    setAccumulatedMs(totalElapsedMs)
     setTimerRunning(false)
     setTimerStart(null)
+    setDuration(Math.round((totalElapsedMs / 60000) * 100) / 100)
   }
   const handleTimerReset = () => {
     setTimerRunning(false)
     setTimerStart(null)
+    setAccumulatedMs(0)
     setDuration(0)
   }
 
@@ -218,13 +225,16 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setAvoidableContactExplanation('')
     setTimerStart(null)
     setTimerRunning(false)
+    setAccumulatedMs(0)
+    setNewTaskResponsible('')
+    setNewTaskDueDate('')
     setAssignedUserId(user?.id || '')
   }
 
   const handleSubmit = async (e: React.FormEvent): Promise<boolean> => {
     e.preventDefault()
-    if (!clientName.trim() || !description.trim()) {
-      toast({ variant: 'destructive', title: 'Preencha os campos obrigatórios' })
+    if (!clientName.trim()) {
+      toast({ variant: 'destructive', title: 'Preencha o nome do agente' })
       return false
     }
     if (!contactReason) {
@@ -259,6 +269,15 @@ export function useServiceRecordForm(enabled: boolean = true) {
       const selectedClient = clients.find((c) => c.id === selectedClientId)
       const selectedAgent = agents.find((a) => a.id === selectedAgentId)
       const execRecord = allExecutives.find((e) => e.name === assignedAgent)
+      let finalDuration = duration
+      let finalTimerStart = timerStart
+      let finalTimerRunning = timerRunning
+      if (timerRunning && timerStart) {
+        const currentElapsed = accumulatedMs + (Date.now() - new Date(timerStart).getTime())
+        finalDuration = Math.round((currentElapsed / 60000) * 100) / 100
+        finalTimerRunning = false
+        finalTimerStart = null
+      }
       await createServiceRecord({
         client_name: clientName.trim(),
         client_email: clientEmail.trim(),
@@ -270,7 +289,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
         priority,
         status,
         start_time: new Date().toISOString(),
-        duration,
+        duration: finalDuration || undefined,
         assigned_agent: assignedAgent,
         assigned_user: assignedUserId || user?.id,
         tasks,
@@ -285,8 +304,8 @@ export function useServiceRecordForm(enabled: boolean = true) {
         client: selectedClient?.id || undefined,
         agent: selectedAgent?.id || undefined,
         account_executive: execRecord?.id || undefined,
-        timer_start: timerStart || undefined,
-        timer_running: timerRunning,
+        timer_start: finalTimerStart || undefined,
+        timer_running: finalTimerRunning,
       })
       toast({ title: 'Atendimento registrado com sucesso!' })
       return true
@@ -353,8 +372,13 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setAssignedUserId,
     timerStart,
     timerRunning,
+    accumulatedMs,
     handleTimerStart,
     handleTimerPause,
     handleTimerReset,
+    newTaskResponsible,
+    setNewTaskResponsible,
+    newTaskDueDate,
+    setNewTaskDueDate,
   }
 }

@@ -31,7 +31,10 @@ export function AgentStatsList({ clientId }: AgentStatsListProps) {
   const stats = useMemo(() => {
     return agents.map((agent) => {
       const agentRecords = records.filter(
-        (r) => r.agent === agent.id || r.client_name === agent.name,
+        (r) =>
+          r.agent === agent.id ||
+          r.expand?.agent?.id === agent.id ||
+          (r.assigned_agent ?? '').toLowerCase() === agent.name.toLowerCase(),
       )
       const total = agentRecords.length
       const avoidable = agentRecords.filter((r) => r.avoidable_contact).length

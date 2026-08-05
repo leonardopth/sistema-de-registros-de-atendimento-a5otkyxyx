@@ -449,7 +449,7 @@ export default function Atendimentos() {
                   <TableHead className="text-xs font-bold">Status</TableHead>
                   <TableHead className="text-xs font-bold">Prioridade</TableHead>
                   <TableHead className="text-xs font-bold">Duração</TableHead>
-                  <TableHead className="text-xs font-bold">Atendente</TableHead>
+                  <TableHead className="text-xs font-bold">Consultor</TableHead>
                   <TableHead
                     className="text-xs font-bold cursor-pointer select-none flex items-center gap-1 py-3"
                     onClick={() => setSortAsc(!sortAsc)}

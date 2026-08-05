@@ -308,7 +308,6 @@ export default function NovoAtendimento() {
                 </div>
                 <Textarea
                   rows={4}
-                  required
                   value={form.description}
                   onChange={(e) => form.setDescription(e.target.value)}
                   placeholder="Relate detalhadamente o problema, dúvida ou solicitação do cliente..."
@@ -341,12 +340,12 @@ export default function NovoAtendimento() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Duração Estimada (Minutos)</Label>
+                <Label>Duração (Minutos)</Label>
                 <Input
                   type="number"
-                  min={1}
-                  value={form.duration}
-                  onChange={(e) => form.setDuration(Number(e.target.value))}
+                  min={0}
+                  value={form.duration || ''}
+                  onChange={(e) => form.setDuration(e.target.value ? Number(e.target.value) : 0)}
                 />
               </div>
               <div className="space-y-1.5">
@@ -370,6 +369,7 @@ export default function NovoAtendimento() {
               <ServiceTimer
                 timerStart={form.timerStart}
                 timerRunning={form.timerRunning}
+                accumulatedMs={form.accumulatedMs}
                 duration={form.duration}
                 onStart={form.handleTimerStart}
                 onPause={form.handleTimerPause}
@@ -472,16 +472,38 @@ export default function NovoAtendimento() {
             <h3 className="text-sm font-bold text-indigo-950 uppercase tracking-wider border-b pb-2">
               5. Tarefas & Pendências
             </h3>
-            <div className="flex gap-2">
-              <Input
-                value={form.newTaskTitle}
-                onChange={(e) => form.setNewTaskTitle(e.target.value)}
-                placeholder="Ex: Enviar e-mail de confirmação para o cliente..."
-                className="flex-1"
-              />
-              <Button type="button" onClick={form.handleAddTask} variant="secondary">
-                <Plus className="h-4 w-4 mr-1" /> Adicionar
-              </Button>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  value={form.newTaskTitle}
+                  onChange={(e) => form.setNewTaskTitle(e.target.value)}
+                  placeholder="Ex: Enviar e-mail de confirmação para o cliente..."
+                  className="flex-1"
+                />
+                <Button type="button" onClick={form.handleAddTask} variant="secondary">
+                  <Plus className="h-4 w-4 mr-1" /> Adicionar
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={form.newTaskResponsible} onValueChange={form.setNewTaskResponsible}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Responsável (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {form.users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="date"
+                  className="h-9 text-xs"
+                  value={form.newTaskDueDate}
+                  onChange={(e) => form.setNewTaskDueDate(e.target.value)}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               {form.tasks.map((t, idx) => (
