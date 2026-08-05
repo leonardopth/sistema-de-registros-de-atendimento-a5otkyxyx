@@ -12,6 +12,16 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -26,13 +36,13 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table'
-import { getUsers, updateUser, approveUser, rejectUser } from '@/services/users'
+import { getUsers, updateUser, approveUser, rejectUser, deleteUser } from '@/services/users'
 import { UserRecord, UserRole, ApprovalStatus } from '@/types/service_record'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import { UserCheck, Check, X, Pencil, Loader2, Clock } from 'lucide-react'
+import { UserCheck, Check, X, Pencil, Loader2, Trash2, Clock } from 'lucide-react'
 
 const ROLES: UserRole[] = [
   'Gerentes',
@@ -82,6 +92,8 @@ export default function GestaoUsuarios() {
   const [editRole, setEditRole] = useState<UserRole>('Consultores')
   const [editStatus, setEditStatus] = useState<ApprovalStatus>('Aprovado')
   const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const loadData = async () => {
     setLoading(true)
@@ -149,6 +161,21 @@ export default function GestaoUsuarios() {
       loadData()
     } catch {
       toast({ variant: 'destructive', title: 'Erro ao rejeitar usuário' })
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await deleteUser(deleteTarget.id)
+      toast({ title: 'Usuário excluído com sucesso' })
+      setDeleteTarget(null)
+      loadData()
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro ao excluir usuário' })
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -252,6 +279,15 @@ export default function GestaoUsuarios() {
                         >
                           <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-7 text-rose-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                          disabled={u.id === user?.id}
+                          onClick={() => setDeleteTarget(u)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -324,6 +360,30 @@ export default function GestaoUsuarios() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o usuário <strong>{deleteTarget?.name}</strong>
+              {deleteTarget?.email ? ` (${deleteTarget.email})` : ''}? Esta ação é irreversível. Os
+              registros relacionados serão reatribuídos ou removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-rose-600 hover:bg-rose-700"
+            >
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Excluir Usuário
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

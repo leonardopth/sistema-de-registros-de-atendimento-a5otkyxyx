@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T18:36:08.686Z",
+  "generatedAt": "2026-08-05T18:48:41.987Z",
   "collections": [
     {
       "name": "users",
@@ -600,7 +600,7 @@
         {
           "name": "user_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "users"
         },
@@ -638,7 +638,7 @@
         {
           "name": "user_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "users"
         },
@@ -714,7 +714,7 @@
         {
           "name": "user_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "users"
         },

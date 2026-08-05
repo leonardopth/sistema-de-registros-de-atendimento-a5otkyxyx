@@ -27,4 +27,6 @@ export const rejectUser = (id: string) => updateUser(id, { approval_status: 'Rej
 export const updateTelegramSettings = (id: string, telegram_id: string, telegram_alerts: boolean) =>
   pb.collection('users').update<UserRecord>(id, { telegram_id, telegram_alerts })
 
+export const deleteUser = (id: string) => pb.collection('users').delete(id)
+
 export const testTelegram = () => pb.send('/backend/v1/telegram/test', { method: 'POST' })
