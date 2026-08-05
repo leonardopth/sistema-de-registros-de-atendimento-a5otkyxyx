@@ -27,6 +27,7 @@ import {
   UserCog,
   UserCheck,
   TrendingUp,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import logoImg from '../assets/image-b4a05.png'
@@ -46,6 +47,10 @@ export function Layout() {
     { label: 'Clientes', path: '/clientes', icon: Users },
     { label: 'Executivos de Contas', path: '/executivos', icon: UserCog },
   ]
+
+  if (user?.role !== 'Consultores') {
+    navItems.push({ label: 'Relatórios por Grupo', path: '/relatorios-grupo', icon: BarChart3 })
+  }
 
   if (user?.role === 'Master') {
     navItems.push({ label: 'Gestão de Usuários', path: '/gestao-usuarios', icon: UserCheck })
@@ -213,6 +218,7 @@ export function Layout() {
                 {location.pathname === '/executivos' && 'Executivos de Contas'}
                 {location.pathname === '/gestao-usuarios' && 'Gestão de Usuários'}
                 {location.pathname === '/painel-executivo' && 'Painel do Executivo'}
+                {location.pathname === '/relatorios-grupo' && 'Relatórios por Grupo de Atendimento'}
               </h1>
             </div>
           </div>

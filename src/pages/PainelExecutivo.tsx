@@ -7,7 +7,9 @@ import { getAccountExecutives } from '@/services/account_executives'
 import { ClientRecord, ServiceRecord, AccountExecutiveRecord } from '@/types/service_record'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
-import { Building2, Headset, AlertTriangle, ShieldAlert } from 'lucide-react'
+import { Building2, Headset, AlertTriangle, ShieldAlert, FileText } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { exportExecutivePanelCSV } from '@/lib/executive-panel-export'
 
 const AVOIDABLE_RATE_THRESHOLD = 30
 const AVOIDABLE_REASONS = ['Disponível no RF', 'Fora do Escopo', 'Erro RF', 'Outros']
@@ -77,6 +79,10 @@ export default function PainelExecutivo() {
     })
   }, [clients, records])
 
+  const handleExportCSV = () => {
+    exportExecutivePanelCSV(clientStats)
+  }
+
   if (!executive) {
     return (
       <div className="space-y-6">
@@ -94,13 +100,18 @@ export default function PainelExecutivo() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-          Painel do Executivo
-        </h2>
-        <p className="text-xs text-slate-500">
-          Visão geral das agências gerenciadas por {executive.name}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
+            Painel do Executivo
+          </h2>
+          <p className="text-xs text-slate-500">
+            Visão geral das agências gerenciadas por {executive.name}
+          </p>
+        </div>
+        <Button onClick={handleExportCSV} variant="outline" size="sm" className="text-xs">
+          <FileText className="h-3.5 w-3.5 mr-1.5" /> Exportar
+        </Button>
       </div>
       {clientStats.length === 0 ? (
         <Card className="p-8 text-center">

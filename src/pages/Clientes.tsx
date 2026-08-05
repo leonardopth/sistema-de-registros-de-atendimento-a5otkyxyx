@@ -57,6 +57,7 @@ export default function Clientes() {
   const [saving, setSaving] = useState(false)
   const [filterState, setFilterState] = useState('')
   const [filterCity, setFilterCity] = useState('')
+  const [filterServiceGroup, setFilterServiceGroup] = useState('')
   const normalizedFilterState = normalizeStateValue(filterState)
   const {
     cities: filterCities,
@@ -154,7 +155,8 @@ export default function Clientes() {
     const matchesState =
       !filterState || normalizeStateValue(c.state || '') === normalizedFilterState
     const matchesCity = !filterCity || (c.city || '') === filterCity
-    return matchesSearch && matchesState && matchesCity
+    const matchesServiceGroup = !filterServiceGroup || c.service_group === filterServiceGroup
+    return matchesSearch && matchesState && matchesCity && matchesServiceGroup
   })
 
   return (
@@ -374,7 +376,18 @@ export default function Clientes() {
                 <p className="text-xs text-red-500">Erro ao carregar cidades. Tente novamente.</p>
               )}
             </div>
-            {(filterState || filterCity) && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-600">Grupo de Atendimento</label>
+              <SearchableSelect
+                options={SERVICE_GROUP_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                value={filterServiceGroup}
+                onValueChange={setFilterServiceGroup}
+                placeholder="Todos"
+                emptyText="Nenhum grupo encontrado."
+                className="h-9 text-xs w-[180px]"
+              />
+            </div>
+            {(filterState || filterCity || filterServiceGroup) && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -382,6 +395,7 @@ export default function Clientes() {
                 onClick={() => {
                   setFilterState('')
                   setFilterCity('')
+                  setFilterServiceGroup('')
                 }}
               >
                 <FilterX className="h-3.5 w-3.5 mr-1" /> Limpar filtros
