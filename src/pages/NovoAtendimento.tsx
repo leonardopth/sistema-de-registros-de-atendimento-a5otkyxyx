@@ -29,6 +29,7 @@ import type {
   ServicePriority,
   AvoidableContactReason,
 } from '@/types/service_record'
+import { AVOIDABLE_CONTACT_REASONS } from '@/lib/constants'
 
 const contactReasons: ContactReason[] = [
   'Bagagem',
@@ -43,12 +44,7 @@ const contactReasons: ContactReason[] = [
   'outros',
 ]
 const channels: ServiceChannel[] = ['Telefone', 'e-mail', 'whatsapp', 'comercial', 'outros']
-const avoidableReasons: AvoidableContactReason[] = [
-  'Disponível no RF',
-  'Fora do Escopo',
-  'Erro RF',
-  'Outros',
-]
+const avoidableReasons: AvoidableContactReason[] = AVOIDABLE_CONTACT_REASONS
 const statuses: ServiceStatus[] = ['Aberto', 'Em Andamento', 'Concluído', 'Cancelado']
 
 export default function NovoAtendimento() {

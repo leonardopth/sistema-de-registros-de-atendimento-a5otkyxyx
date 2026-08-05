@@ -23,7 +23,9 @@ import {
   ServiceChannel,
   TaskItem,
   UserRecord,
+  AvoidableContactReason,
 } from '@/types/service_record'
+import { AVOIDABLE_CONTACT_REASONS } from '@/lib/constants'
 import { StatusBadge } from './StatusBadge'
 import { PriorityBadge } from './PriorityBadge'
 import { updateServiceRecordWithHistory, deleteServiceRecord } from '@/services/service_records'
@@ -77,6 +79,9 @@ export function ServiceRecordDetailModal({
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [avoidableContact, setAvoidableContact] = useState(false)
+  const [avoidableContactReason, setAvoidableContactReason] = useState<AvoidableContactReason | ''>(
+    '',
+  )
   const [avoidableContactExplanation, setAvoidableContactExplanation] = useState('')
   const [reopenOpen, setReopenOpen] = useState(false)
   const [reopenLoading, setReopenLoading] = useState(false)
@@ -91,6 +96,7 @@ export function ServiceRecordDetailModal({
       setChannel(record.channel || '')
       setTasks(Array.isArray(record.tasks) ? record.tasks : [])
       setAvoidableContact(!!record.avoidable_contact)
+      setAvoidableContactReason((record.avoidable_contact_reason as AvoidableContactReason) || '')
       setAvoidableContactExplanation(record.avoidable_contact_explanation || '')
       setNewTaskTitle('')
       setNewTaskResponsible('')
@@ -139,7 +145,15 @@ export function ServiceRecordDetailModal({
 
   const handleSave = async () => {
     if (!isEditable) return
-    if (avoidableContact && !avoidableContactExplanation.trim()) {
+    if (avoidableContact && !avoidableContactReason) {
+      toast({ variant: 'destructive', title: 'Selecione o motivo do contato evitável' })
+      return
+    }
+    if (
+      avoidableContact &&
+      avoidableContactReason === 'Outros' &&
+      !avoidableContactExplanation.trim()
+    ) {
       toast({ variant: 'destructive', title: 'Informe a explicação do contato evitável' })
       return
     }
@@ -154,7 +168,14 @@ export function ServiceRecordDetailModal({
           tasks,
           end_time: isCompletedNow ? new Date().toISOString() : record.end_time,
           avoidable_contact: avoidableContact,
-          avoidable_contact_explanation: avoidableContact ? avoidableContactExplanation.trim() : '',
+          avoidable_contact_reason: avoidableContact
+            ? (avoidableContactReason as AvoidableContactReason)
+            : undefined,
+          avoidable_contact_explanation:
+            avoidableContact && avoidableContactReason === 'Outros'
+              ? avoidableContactExplanation.trim()
+              : '',
+          assigned_user: user?.id,
         },
         user?.id || '',
       )
@@ -296,12 +317,22 @@ export function ServiceRecordDetailModal({
               </div>
               <div>
                 <span className="text-xs font-medium text-slate-500 block mb-1">
-                  Atendente Responsável
+                  Nome do Agente
                 </span>
                 <div className="flex items-center gap-1.5 font-medium text-slate-800 text-xs">
                   <User className="h-3.5 w-3.5 text-slate-400" />
-                  {record.assigned_agent || 'Não atribuído'}
+                  {record.expand?.agent?.name || record.client_name || 'Não informado'}
                 </div>
+              </div>
+            </div>
+
+            <div className="text-sm">
+              <span className="text-xs font-medium text-slate-500 block mb-1">
+                Consultor Responsável
+              </span>
+              <div className="flex items-center gap-1.5 font-medium text-slate-800 text-xs">
+                <User className="h-3.5 w-3.5 text-slate-400" />
+                {record.expand?.assigned_user?.name || user?.name || 'Não atribuído'}
               </div>
             </div>
 
@@ -482,7 +513,10 @@ export function ServiceRecordDetailModal({
                   disabled={!isEditable}
                   onCheckedChange={(checked) => {
                     setAvoidableContact(!!checked)
-                    if (!checked) setAvoidableContactExplanation('')
+                    if (!checked) {
+                      setAvoidableContactReason('')
+                      setAvoidableContactExplanation('')
+                    }
                   }}
                 />
                 <label
@@ -495,21 +529,51 @@ export function ServiceRecordDetailModal({
                 </label>
               </div>
               {avoidableContact && (
-                <div className="space-y-1 pl-6">
-                  <span className="text-xs font-medium text-slate-500 block">Explicação *</span>
-                  {isEditable ? (
-                    <textarea
-                      rows={2}
-                      className="w-full text-sm p-2 border rounded-md"
-                      value={avoidableContactExplanation}
-                      onChange={(e) => setAvoidableContactExplanation(e.target.value)}
-                      placeholder="Explique o motivo do contato evitável..."
-                    />
-                  ) : (
-                    <div className="w-full text-sm p-2 bg-slate-50 border border-slate-200 rounded-md text-slate-700">
-                      {avoidableContactExplanation || '—'}
-                    </div>
-                  )}
+                <div className="space-y-2 pl-6">
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500 block">Motivo *</span>
+                    {isEditable ? (
+                      <Select
+                        value={avoidableContactReason}
+                        onValueChange={(val) =>
+                          setAvoidableContactReason(val as AvoidableContactReason)
+                        }
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecione o motivo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AVOIDABLE_CONTACT_REASONS.map((r) => (
+                            <SelectItem key={r} value={r}>
+                              {r}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="h-9 flex items-center text-sm text-slate-700 px-3 bg-slate-50 rounded-md border border-slate-200">
+                        {avoidableContactReason || '—'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-slate-500 block">
+                      Explicação {avoidableContactReason === 'Outros' ? '*' : '(opcional)'}
+                    </span>
+                    {isEditable ? (
+                      <textarea
+                        rows={2}
+                        className="w-full text-sm p-2 border rounded-md"
+                        value={avoidableContactExplanation}
+                        onChange={(e) => setAvoidableContactExplanation(e.target.value)}
+                        placeholder="Explique o motivo do contato evitável..."
+                      />
+                    ) : (
+                      <div className="w-full text-sm p-2 bg-slate-50 border border-slate-200 rounded-md text-slate-700">
+                        {avoidableContactExplanation || '—'}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
