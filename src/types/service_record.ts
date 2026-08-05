@@ -24,14 +24,7 @@ export type ServicePriority = 'Baixa' | 'Média' | 'Alta'
 
 export type ServiceStatus = 'Aberto' | 'Em Andamento' | 'Concluído' | 'Cancelado'
 
-export type AvoidableContactReason =
-  | 'Cálculo Reemissão'
-  | 'Emissão'
-  | 'Reserva simples'
-  | 'Reembolso'
-  | 'Financeiro'
-  | 'Help Desk'
-  | 'Outros'
+export type AvoidableContactReason = 'Disponível no RF' | 'Fora do Escopo' | 'Erro RF' | 'Outros'
 
 export type UserRole = 'Gerentes' | 'Supervisores' | 'Líderes' | 'Consultores'
 
@@ -53,7 +46,7 @@ export interface ServiceRecord {
   channel?: ServiceChannel
   tasks?: TaskItem[]
   avoidable_contact?: boolean
-  avoidable_contact_reason?: AvoidableContactReason
+  avoidable_contact_reason?: AvoidableContactReason | string
   avoidable_contact_explanation?: string
   wrong_department?: boolean
   wrong_department_explanation?: string

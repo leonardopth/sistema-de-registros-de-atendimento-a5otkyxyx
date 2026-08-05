@@ -38,12 +38,9 @@ const contactReasons: ContactReason[] = [
 ]
 const channels: ServiceChannel[] = ['Telefone', 'e-mail', 'whatsapp', 'comercial', 'outros']
 const avoidableReasons: AvoidableContactReason[] = [
-  'Cálculo Reemissão',
-  'Emissão',
-  'Reserva simples',
-  'Reembolso',
-  'Financeiro',
-  'Help Desk',
+  'Disponível no RF',
+  'Fora do Escopo',
+  'Erro RF',
   'Outros',
 ]
 const statuses: ServiceStatus[] = ['Aberto', 'Em Andamento', 'Concluído', 'Cancelado']
