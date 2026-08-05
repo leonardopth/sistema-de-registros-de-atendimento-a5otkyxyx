@@ -83,3 +83,97 @@ export function printReport(items: CompanyReportItem[]): void {
   win.document.close()
   win.print()
 }
+
+export interface ServiceRecordExportRow {
+  client_name: string
+  client_email?: string
+  client_phone?: string
+  client_company?: string
+  contact_reason: string
+  channel?: string
+  priority: string
+  status: string
+  assigned_agent?: string
+  start_time?: string
+  end_time?: string
+  duration?: number
+  description: string
+  avoidable_contact?: boolean
+  avoidable_contact_explanation?: string
+  created?: string
+}
+
+const SERVICE_EXPORT_HEADERS = [
+  'Cliente',
+  'E-mail',
+  'Telefone',
+  'Empresa',
+  'Motivo do Contato',
+  'Canal',
+  'Prioridade',
+  'Status',
+  'Atendente Responsável',
+  'Data de Início',
+  'Data de Conclusão',
+  'Duração (min)',
+  'Descrição',
+  'Contato Evitável',
+  'Explicação do Contato Evitável',
+  'Criado em',
+]
+
+function escapeCsvCell(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`
+}
+
+function formatDateTime(dateStr?: string): string {
+  if (!dateStr) return ''
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return ''
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  } catch {
+    return ''
+  }
+}
+
+export function serviceRecordsToCSV(rows: ServiceRecordExportRow[]): string {
+  const dataRows = rows.map((r) =>
+    [
+      r.client_name || '',
+      r.client_email || '',
+      r.client_phone || '',
+      r.client_company || '',
+      r.contact_reason || '',
+      r.channel || '',
+      r.priority || '',
+      r.status || '',
+      r.assigned_agent || '',
+      formatDateTime(r.start_time),
+      formatDateTime(r.end_time),
+      r.duration != null ? String(r.duration) : '',
+      r.description || '',
+      r.avoidable_contact ? 'Sim' : 'Não',
+      r.avoidable_contact ? r.avoidable_contact_explanation || '' : '',
+      formatDateTime(r.created),
+    ]
+      .map(escapeCsvCell)
+      .join(','),
+  )
+  return [SERVICE_EXPORT_HEADERS.map(escapeCsvCell).join(','), ...dataRows].join('\r\n')
+}
+
+export function downloadServiceRecordsCSV(
+  rows: ServiceRecordExportRow[],
+  filename: string = 'relatorio-atendimentos.csv',
+): void {
+  const csv = '\uFEFF' + serviceRecordsToCSV(rows)
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}

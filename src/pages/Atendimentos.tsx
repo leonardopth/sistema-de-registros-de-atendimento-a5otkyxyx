@@ -39,10 +39,12 @@ import {
   Trash2,
   ArrowUpDown,
   ListChecks,
+  Download,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { MinhasTarefasList } from '@/components/MinhasTarefasList'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
+import { downloadServiceRecordsCSV } from '@/lib/report-export'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -163,6 +165,15 @@ export default function Atendimentos() {
     }
   }
 
+  const handleExportReport = () => {
+    const data = view === 'mine' ? myRecords : filteredRecords
+    downloadServiceRecordsCSV(data, 'relatorio-atendimentos.csv')
+    toast({
+      title: 'Relatório exportado',
+      description: `${data.length} atendimento(s) exportado(s) com sucesso.`,
+    })
+  }
+
   const clearFilters = () => {
     setSearch('')
     setStatusFilter('todos')
@@ -238,6 +249,13 @@ export default function Atendimentos() {
             className="h-9 text-xs text-slate-600"
           >
             <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar Filtros
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleExportReport}
+            className="h-9 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            <Download className="h-3.5 w-3.5 mr-1.5" /> Exportar Relatório
           </Button>
         </div>
 
