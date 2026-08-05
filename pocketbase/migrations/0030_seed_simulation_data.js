@@ -5,11 +5,19 @@ migrate(
       if (existingSR.length > 0) return
     } catch (_) {}
 
+    var masterUserId = ''
+    try {
+      var master = app.findAuthRecordByEmail(
+        '_pb_users_auth_',
+        'leonardo.thereziano@rexturadvance.com.br',
+      )
+      masterUserId = master.id
+    } catch (_) {}
+
     var aeCol = app.findCollectionByNameOrId('account_executives')
     var clientsCol = app.findCollectionByNameOrId('clients')
     var agentsCol = app.findCollectionByNameOrId('agents')
     var usersCol = app.findCollectionByNameOrId('_pb_users_auth_')
-    var srCol = app.findCollectionByNameOrId('service_records')
 
     var aeData = [
       {
@@ -156,13 +164,6 @@ migrate(
       { name: 'Marcelo Ribeiro', email: 'marcelo.ribeiro@rextur.com.br', role: 'Gerentes' },
       { name: 'Juliana Freitas', email: 'juliana.freitas@rextur.com.br', role: 'Supervisores' },
       { name: 'Gustavo Pinto', email: 'gustavo.pinto@rextur.com.br', role: 'Líderes' },
-      { name: 'Camila Duarte', email: 'camila.duarte@rextur.com.br', role: 'Consultores' },
-      {
-        name: 'Ana Carolina Pereira',
-        email: 'ana.carolina@rextur.com.br',
-        role: 'Executivo de contas',
-      },
-      { name: 'Felipe Aragão', email: 'felipe.aragao@rextur.com.br', role: 'Líderes' },
     ]
     var userIds = []
     for (var ui = 0; ui < userData.length; ui++) {
@@ -182,6 +183,9 @@ migrate(
       }
       userIds.push(uRec.id)
     }
+
+    var allUserIds = userIds.slice()
+    if (masterUserId) allUserIds.push(masterUserId)
 
     var statuses = ['Aberto', 'Em Andamento', 'Concluído', 'Cancelado']
     var priorities = ['Baixa', 'Média', 'Alta']
@@ -226,27 +230,30 @@ migrate(
       'Cancelamento de passagem por falecimento do passageiro',
       'Consulta sobre penalidade por remarcação em tarifa promocional',
       'Falha no envio do bilhete eletrônico via sistema RF',
-      'Atualização de dados de passageiro frequente em sistema',
       'Solicitação de bagagem extra para equipamentos esportivos',
-      'Troca de assento por preferência de corredor em voo longo',
-      'Cálculo de diferença tarifária para upgrade de classe',
-      'Pedido de reembolso parcial por trecho não voado',
-      'Cotação de passagens para feira internacional em Frankfurt',
-      'Reserva de locação de veículo em Santiago para executivo',
-      'Cancelamento de reserva por conflito de agenda corporativa',
-      'Esclarecimento sobre regras de remarcação em tarifa flexível',
-      'Erro de mapping no RF ao processar reserva com múltiplos trechos',
-      'Solicitação de nota fiscal de serviços turísticos prestados',
     ]
 
     var now = new Date()
-    var totalSR = 30
+    var totalSR = descriptions.length
+
+    var insertSQL =
+      'INSERT INTO service_records ' +
+      '(id, created, updated, client_name, client_email, client_phone, client_company, ' +
+      'contact_reason, description, priority, status, start_time, duration, end_time, ' +
+      'assigned_agent, user_id, assigned_user, channel, client, agent, account_executive, ' +
+      'avoidable_contact, avoidable_contact_reason, avoidable_contact_explanation, ' +
+      'tasks, timer_start, timer_running, reopen_justification) ' +
+      'VALUES ({:id}, {:created}, {:updated}, {:client_name}, {:client_email}, {:client_phone}, {:client_company}, ' +
+      '{:contact_reason}, {:description}, {:priority}, {:status}, {:start_time}, {:duration}, {:end_time}, ' +
+      '{:assigned_agent}, {:user_id}, {:assigned_user}, {:channel}, {:client}, {:agent}, {:account_executive}, ' +
+      '{:avoidable_contact}, {:avoidable_contact_reason}, {:avoidable_contact_explanation}, ' +
+      '{:tasks}, {:timer_start}, {:timer_running}, {:reopen_justification})'
 
     for (var si = 0; si < totalSR; si++) {
       var clientIdx = si % 3
-      var userIdx = si % 6
       var agentIdx = si % 6
       var execIdx = si % 3
+      var userIdx = si % allUserIds.length
       var statusIdx = si % 4
       var priorityIdx = si % 3
       var reasonIdx = si % 10
@@ -259,73 +266,76 @@ migrate(
       var isEmAndamento = statusVal === 'Em Andamento'
       var duration = 5 + ((si * 7) % 115)
       var startTime = new Date(now.getTime() - (totalSR - si) * 14.4 * 3600000).toISOString()
+      var endTime =
+        isConcluido || isCancelado
+          ? new Date(new Date(startTime).getTime() + duration * 60000).toISOString()
+          : null
+      var srId = $security.randomString(15)
+      var createdTs = new Date(now.getTime() - (totalSR - si) * 3600000).toISOString()
 
-      var srRec = new Record(srCol)
-      srRec.set('client_name', clientData[clientIdx].name)
-      srRec.set('client_email', clientData[clientIdx].email)
-      srRec.set('client_phone', clientData[clientIdx].phone)
-      srRec.set('client_company', clientData[clientIdx].company)
-      srRec.set('contact_reason', reasons[reasonIdx])
-      srRec.set('description', descriptions[si])
-      srRec.set('priority', priorities[priorityIdx])
-      srRec.set('status', statusVal)
-      srRec.set('start_time', startTime)
-      srRec.set('duration', duration)
-      srRec.set('assigned_agent', agentData[agentIdx].name)
-      srRec.set('user_id', userIds[userIdx])
-      srRec.set('assigned_user', userIds[userIdx])
-      srRec.set('channel', channels[channelIdx])
-      srRec.set('client', clientIds[clientIdx])
-      srRec.set('agent', agentIds[agentIdx])
-      srRec.set('account_executive', aeIds[execIdx])
-      srRec.set('avoidable_contact', false)
-
-      if (isConcluido || isCancelado) {
-        var endTime = new Date(new Date(startTime).getTime() + duration * 60000).toISOString()
-        srRec.set('end_time', endTime)
-      }
-
-      if (isAvoidable) {
-        srRec.set('avoidable_contact', true)
-        srRec.set('avoidable_contact_reason', avoidReasons[si % 4])
-        srRec.set('avoidable_contact_explanation', avoidExplanations[si % 4])
-      }
-
+      var tasksVal = null
       if (hasTasks) {
-        srRec.set(
-          'tasks',
-          JSON.stringify([
-            {
-              id: 'task-' + si + '-1',
-              title: 'Verificar disponibilidade no sistema',
-              done: isConcluido,
-              due_date: startTime,
-              responsible: userData[userIdx].name,
-            },
-            {
-              id: 'task-' + si + '-2',
-              title: 'Confirmar dados do passageiro',
-              done: isConcluido || isEmAndamento,
-              due_date: startTime,
-              responsible: agentData[agentIdx].name,
-            },
-          ]),
-        )
+        tasksVal = JSON.stringify([
+          {
+            id: 'task-' + si + '-1',
+            title: 'Verificar disponibilidade no sistema',
+            done: isConcluido,
+            due_date: startTime,
+            responsible: agentData[agentIdx].name,
+          },
+          {
+            id: 'task-' + si + '-2',
+            title: 'Confirmar dados do passageiro',
+            done: isConcluido || isEmAndamento,
+            due_date: startTime,
+            responsible: agentData[agentIdx].name,
+          },
+        ])
       }
 
-      if (isEmAndamento) {
-        srRec.set('timer_start', startTime)
-        srRec.set('timer_running', true)
-      }
+      var reopenVal =
+        isConcluido && (si === 6 || si === 14)
+          ? 'Reabertura solicitada pelo cliente para complementar atendimento.'
+          : null
 
-      if (isConcluido && (si === 6 || si === 18)) {
-        srRec.set(
-          'reopen_justification',
-          'Reabertura solicitada pelo cliente para complementar atendimento.',
-        )
+      try {
+        app
+          .db()
+          .newQuery(insertSQL)
+          .bind({
+            id: srId,
+            created: createdTs,
+            updated: createdTs,
+            client_name: clientData[clientIdx].name,
+            client_email: clientData[clientIdx].email,
+            client_phone: clientData[clientIdx].phone,
+            client_company: clientData[clientIdx].company,
+            contact_reason: reasons[reasonIdx],
+            description: descriptions[si],
+            priority: priorities[priorityIdx],
+            status: statusVal,
+            start_time: startTime,
+            duration: duration,
+            end_time: endTime,
+            assigned_agent: agentData[agentIdx].name,
+            user_id: allUserIds[userIdx],
+            assigned_user: allUserIds[userIdx],
+            channel: channels[channelIdx],
+            client: clientIds[clientIdx],
+            agent: agentIds[agentIdx],
+            account_executive: aeIds[execIdx],
+            avoidable_contact: isAvoidable ? 1 : 0,
+            avoidable_contact_reason: isAvoidable ? avoidReasons[si % 4] : null,
+            avoidable_contact_explanation: isAvoidable ? avoidExplanations[si % 4] : null,
+            tasks: tasksVal,
+            timer_start: isEmAndamento ? startTime : null,
+            timer_running: isEmAndamento ? 1 : 0,
+            reopen_justification: reopenVal,
+          })
+          .execute()
+      } catch (err) {
+        console.log('Failed to insert service record ' + si + ': ' + err.message)
       }
-
-      app.save(srRec)
     }
   },
   (app) => {},

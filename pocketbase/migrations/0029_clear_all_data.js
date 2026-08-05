@@ -32,10 +32,13 @@ migrate(
     } catch (_) {}
 
     try {
-      var master = app.findAuthRecordByEmail('_pb_users_auth_', masterEmail)
-      master.set('role', 'Master')
-      master.set('approval_status', 'Aprovado')
-      app.save(master)
+      app
+        .db()
+        .newQuery(
+          'UPDATE users SET role = {:role}, approval_status = {:status} WHERE email = {:email}',
+        )
+        .bind({ role: 'Master', status: 'Aprovado', email: masterEmail })
+        .execute()
     } catch (_) {}
   },
   (app) => {},
