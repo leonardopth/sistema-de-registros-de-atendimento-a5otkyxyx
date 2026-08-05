@@ -30,6 +30,8 @@ import {
 import { ShieldAlert, BarChart3, Users2 } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ComparativeView } from '@/components/ComparativeView'
+import { PeriodComparisonView } from '@/components/PeriodComparisonView'
+import { ThresholdSuggestionPanel } from '@/components/ThresholdSuggestionPanel'
 
 const PRIVILEGED_ROLES = ['Master', 'Gerentes', 'Supervisores', 'Líderes']
 
@@ -167,6 +169,9 @@ export default function DashboardGeral() {
           <TabsTrigger value="comparative" className="text-xs">
             Comparativo
           </TabsTrigger>
+          <TabsTrigger value="period" className="text-xs">
+            Comparativo de Períodos
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-6">
           {filters.dateFrom && filters.dateTo && (
@@ -239,12 +244,17 @@ export default function DashboardGeral() {
             </Card>
           </div>
 
+          <ThresholdSuggestionPanel records={records} clients={clients} />
           <ConsolidatedReportPanel records={filtered} />
           <FeedbackReviewPanel />
         </TabsContent>
 
         <TabsContent value="comparative" className="space-y-4">
           <ComparativeView records={filtered} clients={clients} executives={executives} />
+        </TabsContent>
+
+        <TabsContent value="period" className="space-y-4">
+          <PeriodComparisonView records={records} clients={clients} executives={executives} />
         </TabsContent>
       </Tabs>
     </div>

@@ -13,7 +13,9 @@ export const getUser = (id: string) => {
 
 export const updateUser = (
   id: string,
-  data: Partial<Pick<UserRecord, 'name' | 'role' | 'approval_status'>>,
+  data: Partial<
+    Pick<UserRecord, 'name' | 'role' | 'approval_status' | 'telegram_id' | 'telegram_alerts'>
+  >,
 ) => {
   return pb.collection('users').update<UserRecord>(id, data)
 }
@@ -21,3 +23,8 @@ export const updateUser = (
 export const approveUser = (id: string) => updateUser(id, { approval_status: 'Aprovado' })
 
 export const rejectUser = (id: string) => updateUser(id, { approval_status: 'Rejeitado' })
+
+export const updateTelegramSettings = (id: string, telegram_id: string, telegram_alerts: boolean) =>
+  pb.collection('users').update<UserRecord>(id, { telegram_id, telegram_alerts })
+
+export const testTelegram = () => pb.send('/backend/v1/telegram/test', { method: 'POST' })

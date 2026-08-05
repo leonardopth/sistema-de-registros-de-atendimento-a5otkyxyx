@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T16:53:32.334Z",
+  "generatedAt": "2026-08-05T17:05:05.707Z",
   "collections": [
     {
       "name": "users",
@@ -74,6 +74,18 @@
         {
           "name": "approved_at",
           "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "telegram_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "telegram_alerts",
+          "type": "bool",
           "required": false,
           "system": false
         }
@@ -668,6 +680,12 @@
           "required": true,
           "system": false,
           "selectValues": ["info", "success", "warning", "error", "approval", "report", "alert"]
+        },
+        {
+          "name": "resolved",
+          "type": "bool",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
