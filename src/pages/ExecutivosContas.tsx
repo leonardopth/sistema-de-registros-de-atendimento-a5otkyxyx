@@ -18,10 +18,13 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table'
-import { getAgents, createAgent, updateAgent, deleteAgent } from '@/services/agents'
-import { getClients } from '@/services/clients'
-import { AgentRecord, ClientRecord } from '@/types/service_record'
-import { SearchableSelect } from '@/components/SearchableSelect'
+import {
+  getAccountExecutives,
+  createAccountExecutive,
+  updateAccountExecutive,
+  deleteAccountExecutive,
+} from '@/services/account_executives'
+import { AccountExecutiveRecord } from '@/types/service_record'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
@@ -31,8 +34,7 @@ import { UserCog, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 export default function ExecutivosContas() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const [agents, setAgents] = useState<AgentRecord[]>([])
-  const [clients, setClients] = useState<ClientRecord[]>([])
+  const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -40,7 +42,6 @@ export default function ExecutivosContas() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [clientId, setClientId] = useState('')
   const [saving, setSaving] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const canManage = user?.role && user.role !== 'Consultores'
@@ -48,9 +49,8 @@ export default function ExecutivosContas() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [a, c] = await Promise.all([getAgents(), getClients()])
-      setAgents(a)
-      setClients(c)
+      const data = await getAccountExecutives()
+      setExecutives(data)
     } catch (e) {
       console.error(e)
     } finally {
@@ -61,51 +61,47 @@ export default function ExecutivosContas() {
   useEffect(() => {
     loadData()
   }, [])
-  useRealtime('agents', () => {
+  useRealtime('account_executives', () => {
     loadData()
   })
 
-  const getClientName = (agent: AgentRecord) => {
-    const c = clients.find((cl) => cl.id === agent.client_id)
-    return c?.company || c?.name || '—'
-  }
-
-  const filtered = agents.filter(
+  const filtered = executives.filter(
     (a) =>
       a.name.toLowerCase().includes(search.toLowerCase()) ||
       (a.email || '').toLowerCase().includes(search.toLowerCase()) ||
-      getClientName(a).toLowerCase().includes(search.toLowerCase()),
+      (a.phone || '').toLowerCase().includes(search.toLowerCase()),
   )
 
   const resetForm = () => {
     setName('')
     setEmail('')
     setPhone('')
-    setClientId('')
     setEditingId(null)
     setFieldErrors({})
   }
 
-  const handleEdit = (a: AgentRecord) => {
+  const handleEdit = (a: AccountExecutiveRecord) => {
     setEditingId(a.id)
     setName(a.name)
     setEmail(a.email || '')
     setPhone(a.phone || '')
-    setClientId(a.client_id)
     setFieldErrors({})
     setDialogOpen(true)
   }
 
+  const validateForm = () => {
+    const errors: FieldErrors = {}
+    if (!name.trim()) errors.name = 'Nome é obrigatório'
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errors.email = 'E-mail inválido'
+    }
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) {
-      setFieldErrors({ name: 'Nome é obrigatório' })
-      return
-    }
-    if (!clientId) {
-      setFieldErrors({ client_id: 'Selecione uma empresa' })
-      return
-    }
+    if (!validateForm()) return
     setSaving(true)
     setFieldErrors({})
     try {
@@ -113,13 +109,12 @@ export default function ExecutivosContas() {
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
-        client_id: clientId,
       }
       if (editingId) {
-        await updateAgent(editingId, data)
+        await updateAccountExecutive(editingId, data)
         toast({ title: 'Executivo atualizado com sucesso' })
       } else {
-        await createAgent(data)
+        await createAccountExecutive(data)
         toast({ title: 'Executivo criado com sucesso' })
       }
       setDialogOpen(false)
@@ -136,7 +131,7 @@ export default function ExecutivosContas() {
   const handleDelete = async (id: string) => {
     if (!confirm('Deseja realmente excluir este executivo de contas?')) return
     try {
-      await deleteAgent(id)
+      await deleteAccountExecutive(id)
       toast({ title: 'Executivo excluído' })
       loadData()
     } catch {
@@ -152,7 +147,7 @@ export default function ExecutivosContas() {
             Executivos de Contas
           </h2>
           <p className="text-xs text-slate-500">
-            Gerencie os executivos de contas cadastrados no sistema
+            Gerencie os executivos de contas internos da equipe
           </p>
         </div>
         {canManage && (
@@ -170,7 +165,7 @@ export default function ExecutivosContas() {
 
       <Card className="p-4 border-slate-200 shadow-subtle">
         <Input
-          placeholder="Buscar por nome, e-mail ou empresa..."
+          placeholder="Buscar por nome, e-mail ou telefone..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-9 text-xs mb-4"
@@ -187,7 +182,6 @@ export default function ExecutivosContas() {
                   <TableHead className="text-xs font-bold">Nome</TableHead>
                   <TableHead className="text-xs font-bold">E-mail</TableHead>
                   <TableHead className="text-xs font-bold">Telefone</TableHead>
-                  <TableHead className="text-xs font-bold">Empresa</TableHead>
                   {canManage && (
                     <TableHead className="text-xs font-bold text-right">Ações</TableHead>
                   )}
@@ -199,7 +193,6 @@ export default function ExecutivosContas() {
                     <TableCell className="text-xs font-semibold text-slate-900">{a.name}</TableCell>
                     <TableCell className="text-xs text-slate-600">{a.email || '—'}</TableCell>
                     <TableCell className="text-xs text-slate-600">{a.phone || '—'}</TableCell>
-                    <TableCell className="text-xs text-slate-600">{getClientName(a)}</TableCell>
                     {canManage && (
                       <TableCell className="text-right">
                         <Button
@@ -226,7 +219,7 @@ export default function ExecutivosContas() {
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={canManage ? 5 : 4}
+                      colSpan={canManage ? 4 : 3}
                       className="text-center text-xs text-slate-400 py-8"
                     >
                       Nenhum executivo de contas encontrado.
@@ -281,19 +274,6 @@ export default function ExecutivosContas() {
                 placeholder="(00) 00000-0000"
               />
               {fieldErrors.phone && <p className="text-xs text-red-500">{fieldErrors.phone}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label>Empresa / Cliente *</Label>
-              <SearchableSelect
-                options={clients.map((c) => ({ value: c.id, label: c.company || c.name }))}
-                value={clientId}
-                onValueChange={setClientId}
-                placeholder="Selecione uma empresa"
-                emptyText="Nenhuma empresa encontrada."
-              />
-              {fieldErrors.client_id && (
-                <p className="text-xs text-red-500">{fieldErrors.client_id}</p>
-              )}
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>

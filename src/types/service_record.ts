@@ -70,6 +70,15 @@ export interface ClientRecord {
   updated: string
 }
 
+export interface AccountExecutiveRecord {
+  id: string
+  name: string
+  email?: string
+  phone?: string
+  created: string
+  updated: string
+}
+
 export interface AgentRecord {
   id: string
   name: string

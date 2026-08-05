@@ -17,6 +17,7 @@ import { createServiceRecord } from '@/services/service_records'
 import { getClients } from '@/services/clients'
 import { getAgents } from '@/services/agents'
 import {
+  AccountExecutiveRecord,
   AgentRecord,
   ClientRecord,
   ContactReason,
@@ -58,7 +59,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
   const [priority, setPriority] = useState<ServicePriority>('Média')
   const [status, setStatus] = useState<ServiceStatus>('Aberto')
   const [duration, setDuration] = useState<number>(15)
-  const [allAgents, setAllAgents] = useState<AgentRecord[]>([])
+  const [allExecutives, setAllExecutives] = useState<AccountExecutiveRecord[]>([])
   const [agentError, setAgentError] = useState('')
 
   const [tasks, setTasks] = useState<TaskItem[]>([])
@@ -72,8 +73,8 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
       getClients()
         .then(setClients)
         .catch(() => {})
-      getAgents()
-        .then(setAllAgents)
+      getAccountExecutives()
+        .then(setAllExecutives)
         .catch(() => {})
     }
   }, [open])
@@ -111,7 +112,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
 
   const handleAddTask = () => {
     if (!newTaskTitle.trim()) return
-    const agentName = allAgents.find((a) => a.id === selectedAgentId)?.name || ''
+    const agentName = allExecutives.find((a) => a.id === selectedAgentId)?.name || ''
     setTasks([...tasks, { title: newTaskTitle.trim(), done: false, responsible: agentName }])
     setNewTaskTitle('')
   }
@@ -127,7 +128,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
       return
     }
 
-    if (!selectedAgentId) {
+    if (!selectedAgentId || !allExecutives.some((e) => e.id === selectedAgentId)) {
       setAgentError('Selecione um executivo de contas válido')
       toast({ variant: 'destructive', title: 'Selecione um executivo de contas' })
       return
@@ -153,7 +154,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
         status,
         start_time: new Date().toISOString(),
         duration,
-        assigned_agent: allAgents.find((a) => a.id === selectedAgentId)?.name || '',
+        assigned_agent: allExecutives.find((a) => a.id === selectedAgentId)?.name || '',
         assigned_user: user?.id,
         tasks,
         avoidable_contact: avoidableContact,
@@ -395,7 +396,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 <SelectValue placeholder="Selecione um executivo de contas" />
               </SelectTrigger>
               <SelectContent>
-                {allAgents.map((a) => (
+                {allExecutives.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.name}
                   </SelectItem>
