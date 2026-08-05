@@ -16,14 +16,19 @@ migrate(
 
     for (var i = 0; i < collections.length; i++) {
       try {
-        app.truncateCollection(app.findCollectionByNameOrId(collections[i]))
+        app
+          .db()
+          .newQuery('DELETE FROM ' + collections[i])
+          .execute()
       } catch (_) {}
     }
 
-    var allUsers = app.findRecordsByFilter('users', "id != ''", '', 0, 0)
+    var allUsers = app.findRecordsByFilter('users', "id != ''", '', 500, 0)
     for (var j = 0; j < allUsers.length; j++) {
       if (allUsers[j].getString('email') !== masterEmail) {
-        app.delete(allUsers[j])
+        try {
+          app.delete(allUsers[j])
+        } catch (_) {}
       }
     }
 

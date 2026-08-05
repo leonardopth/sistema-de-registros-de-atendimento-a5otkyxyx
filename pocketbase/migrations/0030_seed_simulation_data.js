@@ -1,8 +1,8 @@
 migrate(
   (app) => {
     try {
-      app.findAuthRecordByEmail('_pb_users_auth_', 'marcelo.ribeiro@rextur.com.br')
-      return
+      var existingSR = app.findRecordsByFilter('service_records', "id != ''", '', 1, 0)
+      if (existingSR.length > 0) return
     } catch (_) {}
 
     var aeCol = app.findCollectionByNameOrId('account_executives')
@@ -28,11 +28,16 @@ migrate(
     ]
     var aeIds = []
     for (var i = 0; i < aeData.length; i++) {
-      var aeRec = new Record(aeCol)
-      aeRec.set('name', aeData[i].name)
-      aeRec.set('email', aeData[i].email)
-      aeRec.set('phone', aeData[i].phone)
-      app.save(aeRec)
+      var aeRec
+      try {
+        aeRec = app.findFirstRecordByData('account_executives', 'email', aeData[i].email)
+      } catch (_) {
+        aeRec = new Record(aeCol)
+        aeRec.set('name', aeData[i].name)
+        aeRec.set('email', aeData[i].email)
+        aeRec.set('phone', aeData[i].phone)
+        app.save(aeRec)
+      }
       aeIds.push(aeRec.id)
     }
 
@@ -77,19 +82,24 @@ migrate(
     var clientIds = []
     for (var ci = 0; ci < clientData.length; ci++) {
       var cd = clientData[ci]
-      var clRec = new Record(clientsCol)
-      clRec.set('name', cd.name)
-      clRec.set('email', cd.email)
-      clRec.set('phone', cd.phone)
-      clRec.set('company', cd.company)
-      clRec.set('city', cd.city)
-      clRec.set('state', cd.state)
-      clRec.set('notes', cd.notes)
-      clRec.set('service_group', cd.service_group)
-      clRec.set('account_executive', aeData[cd.aeIdx].name)
-      clRec.set('account_executive_rel', aeIds[cd.aeIdx])
-      clRec.set('avoidable_contact_threshold', cd.threshold)
-      app.save(clRec)
+      var clRec
+      try {
+        clRec = app.findFirstRecordByData('clients', 'email', cd.email)
+      } catch (_) {
+        clRec = new Record(clientsCol)
+        clRec.set('name', cd.name)
+        clRec.set('email', cd.email)
+        clRec.set('phone', cd.phone)
+        clRec.set('company', cd.company)
+        clRec.set('city', cd.city)
+        clRec.set('state', cd.state)
+        clRec.set('notes', cd.notes)
+        clRec.set('service_group', cd.service_group)
+        clRec.set('account_executive', aeData[cd.aeIdx].name)
+        clRec.set('account_executive_rel', aeIds[cd.aeIdx])
+        clRec.set('avoidable_contact_threshold', cd.threshold)
+        app.save(clRec)
+      }
       clientIds.push(clRec.id)
     }
 
@@ -134,12 +144,17 @@ migrate(
     var agentIds = []
     for (var ai = 0; ai < agentData.length; ai++) {
       var ad = agentData[ai]
-      var agRec = new Record(agentsCol)
-      agRec.set('name', ad.name)
-      agRec.set('email', ad.email)
-      agRec.set('phone', ad.phone)
-      agRec.set('client_id', clientIds[ad.clientIdx])
-      app.save(agRec)
+      var agRec
+      try {
+        agRec = app.findFirstRecordByData('agents', 'email', ad.email)
+      } catch (_) {
+        agRec = new Record(agentsCol)
+        agRec.set('name', ad.name)
+        agRec.set('email', ad.email)
+        agRec.set('phone', ad.phone)
+        agRec.set('client_id', clientIds[ad.clientIdx])
+        app.save(agRec)
+      }
       agentIds.push(agRec.id)
     }
 
@@ -175,14 +190,19 @@ migrate(
     var userIds = []
     for (var ui = 0; ui < userData.length; ui++) {
       var ud = userData[ui]
-      var uRec = new Record(usersCol)
-      uRec.setEmail(ud.email)
-      uRec.setPassword('Skip@Pass')
-      uRec.setVerified(true)
-      uRec.set('name', ud.name)
-      uRec.set('role', ud.role)
-      uRec.set('approval_status', 'Aprovado')
-      app.save(uRec)
+      var uRec
+      try {
+        uRec = app.findAuthRecordByEmail('_pb_users_auth_', ud.email)
+      } catch (_) {
+        uRec = new Record(usersCol)
+        uRec.setEmail(ud.email)
+        uRec.setPassword('Skip@Pass')
+        uRec.setVerified(true)
+        uRec.set('name', ud.name)
+        uRec.set('role', ud.role)
+        uRec.set('approval_status', 'Aprovado')
+        app.save(uRec)
+      }
       userIds.push(uRec.id)
     }
 
