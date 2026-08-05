@@ -17,6 +17,9 @@ import GestaoUsuarios from '@/pages/GestaoUsuarios'
 import PainelExecutivo from '@/pages/PainelExecutivo'
 import RelatoriosGrupo from '@/pages/RelatoriosGrupo'
 import DashboardGeral from '@/pages/DashboardGeral'
+import PainelTreinamento from '@/pages/PainelTreinamento'
+import EvolucaoPosTreinamento from '@/pages/EvolucaoPosTreinamento'
+import RelatorioConsultor from '@/pages/RelatorioConsultor'
 import Login from '@/pages/Login'
 import NotFound from '@/pages/NotFound'
 
@@ -41,6 +44,9 @@ const App = () => (
               <Route path="/atendimentos" element={<Atendimentos />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/relatorios-grupo" element={<RelatoriosGrupo />} />
+              <Route path="/painel-treinamento" element={<PainelTreinamento />} />
+              <Route path="/evolucao-treinamento" element={<EvolucaoPosTreinamento />} />
+              <Route path="/relatorio-consultor" element={<RelatorioConsultor />} />
               <Route path="/dashboard-geral" element={<DashboardGeral />} />
               <Route path="/executivos" element={<ExecutivosContas />} />
               <Route

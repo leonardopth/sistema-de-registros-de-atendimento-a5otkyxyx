@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T12:16:49.750Z",
+  "generatedAt": "2026-08-05T12:46:23.201Z",
   "collections": [
     {
       "name": "users",
@@ -479,6 +479,126 @@
         }
       ],
       "indexes": ["CREATE INDEX idx_account_executives_name ON account_executives (name)"]
+    },
+    {
+      "name": "trainings",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != \"\"",
+        "view": "@request.auth.id != \"\"",
+        "create": "@request.auth.id != \"\"",
+        "update": "@request.auth.id != \"\" && (@request.auth.role = \"Gerentes\" || @request.auth.role = \"Supervisores\" || @request.auth.role = \"Líderes\" || @request.auth.role = \"Master\")",
+        "delete": "@request.auth.id != \"\" && (@request.auth.role = \"Gerentes\" || @request.auth.role = \"Supervisores\" || @request.auth.role = \"Líderes\" || @request.auth.role = \"Master\")"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "client",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "plan_content",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "training_date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_trainings_client ON trainings (client)",
+        "CREATE INDEX idx_trainings_date ON trainings (training_date)"
+      ]
+    },
+    {
+      "name": "feedback",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != \"\"",
+        "view": "@request.auth.id != \"\"",
+        "create": "@request.auth.id != \"\"",
+        "update": "@request.auth.id != \"\" && user_id = @request.auth.id",
+        "delete": "@request.auth.id != \"\" && @request.auth.role = \"Master\""
+      },
+      "fields": [
+        {
+          "name": "message",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "category",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Sugestão", "Bug", "Elogio", "Reclamação"]
+        },
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_feedback_user ON feedback (user_id)",
+        "CREATE INDEX idx_feedback_category ON feedback (category)"
+      ]
     }
   ]
 }

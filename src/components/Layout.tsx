@@ -29,12 +29,15 @@ import {
   TrendingUp,
   BarChart3,
   PieChart,
+  GraduationCap,
+  ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/components/NotificationBell'
 import logoImg from '../assets/image-b4a05.png'
 import { QuickLog } from '@/components/QuickLog'
 import { ConsultantAIWidget } from '@/components/ConsultantAIWidget'
+import { FeedbackButton } from '@/components/FeedbackButton'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 
 export function Layout() {
@@ -58,7 +61,19 @@ export function Layout() {
 
   if (user?.role !== 'Consultores') {
     navItems.push({ label: 'Relatórios por Grupo', path: '/relatorios-grupo', icon: BarChart3 })
+    navItems.push({
+      label: 'Painel de Treinamento',
+      path: '/painel-treinamento',
+      icon: GraduationCap,
+    })
+    navItems.push({
+      label: 'Evolução Pós-Treinamento',
+      path: '/evolucao-treinamento',
+      icon: TrendingUp,
+    })
   }
+
+  navItems.push({ label: 'Meu Relatório', path: '/relatorio-consultor', icon: ClipboardList })
 
   if (['Master', 'Gerentes', 'Supervisores', 'Líderes'].includes(user?.role)) {
     navItems.push({ label: 'Dashboard Geral', path: '/dashboard-geral', icon: PieChart })
@@ -306,6 +321,7 @@ export function Layout() {
       </div>
       <QuickLog open={quickLogOpen} onOpenChange={setQuickLogOpen} />
       <ConsultantAIWidget />
+      <FeedbackButton />
     </div>
   )
 }

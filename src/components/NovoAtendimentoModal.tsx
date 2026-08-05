@@ -19,6 +19,7 @@ import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
 import { Headset, Plus, Trash2, Loader2, Sparkles } from 'lucide-react'
+import { VoiceInputButton } from '@/components/VoiceInputButton'
 import { SERVICE_TEMPLATES } from '@/lib/service-templates'
 import { suggestArticles } from '@/lib/knowledge-base'
 import type {
@@ -102,6 +103,27 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
       toast({ title: 'Análise concluída', description: 'Campos sugeridos preenchidos.' })
     } catch {
       toast({ variant: 'destructive', title: 'Erro na análise com IA' })
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  const handleVoiceTranscript = async (text: string) => {
+    form.setDescription(text)
+    if (!text.trim()) return
+    setAnalyzing(true)
+    try {
+      const result = await analyzeDescription(text)
+      form.setContactReason(result.contact_reason as ContactReason)
+      if (result.avoidable_contact) {
+        form.handleAvoidableChange(true)
+        if (result.avoidable_contact_reason) {
+          form.setAvoidableContactReason(result.avoidable_contact_reason as AvoidableContactReason)
+        }
+      }
+      toast({ title: 'Voz + IA', description: 'Transcrição e análise concluídas.' })
+    } catch {
+      toast({ variant: 'destructive', title: 'Transcrição ok, erro na análise IA' })
     } finally {
       setAnalyzing(false)
     }
@@ -346,28 +368,35 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <Label className="text-xs">Descrição / Observações *</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-xs text-indigo-600 h-7"
-                onClick={handleAIAnalysis}
-                disabled={analyzing}
-              >
-                {analyzing ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3 w-3 mr-1" />
-                )}
-                Analisar com IA
-              </Button>
+              <div className="flex items-center gap-1.5">
+                <VoiceInputButton
+                  onTranscript={handleVoiceTranscript}
+                  disabled={analyzing}
+                  className="h-7"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-indigo-600 h-7"
+                  onClick={handleAIAnalysis}
+                  disabled={analyzing}
+                >
+                  {analyzing ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3 w-3 mr-1" />
+                  )}
+                  IA
+                </Button>
+              </div>
             </div>
             <Textarea
               rows={3}
               required
               value={form.description}
               onChange={(e) => form.setDescription(e.target.value)}
-              placeholder="Detalhes do atendimento prestado..."
+              placeholder="Detalhes do atendimento prestado... (ou use o microfone 🎤)"
             />
           </div>
 
