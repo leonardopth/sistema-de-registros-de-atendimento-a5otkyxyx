@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T16:46:54.647Z",
+  "generatedAt": "2026-08-05T16:53:32.334Z",
   "collections": [
     {
       "name": "users",
@@ -171,6 +171,12 @@
           "required": true,
           "system": false,
           "selectValues": ["Concierge", "Exclusivo", "LOT", "BR1", "BR2", "SAO", "SPI", "SUL"]
+        },
+        {
+          "name": "avoidable_contact_threshold",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -631,13 +637,6 @@
           "system": false
         },
         {
-          "name": "type",
-          "type": "select",
-          "required": true,
-          "system": false,
-          "selectValues": ["info", "success", "warning", "error", "approval", "report"]
-        },
-        {
           "name": "read",
           "type": "bool",
           "required": false,
@@ -662,6 +661,13 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["info", "success", "warning", "error", "approval", "report", "alert"]
         }
       ],
       "indexes": [

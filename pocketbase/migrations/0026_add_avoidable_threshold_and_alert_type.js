@@ -14,10 +14,9 @@ migrate(
     app.save(clientsCol)
 
     var notifCol = app.findCollectionByNameOrId('notifications')
-    var typeField = notifCol.fields.getByName('type')
-    if (typeField) {
-      notifCol.fields.remove(typeField)
-    }
+    try {
+      notifCol.fields.removeByName('type')
+    } catch (_) {}
     notifCol.fields.add(
       new SelectField({
         name: 'type',
@@ -47,10 +46,9 @@ migrate(
     app.save(clientsCol)
 
     var notifCol = app.findCollectionByNameOrId('notifications')
-    var typeField = notifCol.fields.getByName('type')
-    if (typeField) {
-      notifCol.fields.remove(typeField)
-    }
+    try {
+      notifCol.fields.removeByName('type')
+    } catch (_) {}
     notifCol.fields.add(
       new SelectField({
         name: 'type',
