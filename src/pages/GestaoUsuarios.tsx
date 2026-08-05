@@ -236,7 +236,10 @@ export default function GestaoUsuarios() {
                         <span className="ml-1 text-[10px] text-indigo-500">(você)</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-slate-600 truncate max-w-[200px]">
+                    <TableCell
+                      className="text-xs text-slate-600 truncate max-w-[260px]"
+                      title={u.email || ''}
+                    >
                       {u.email || '—'}
                     </TableCell>
                     <TableCell className="text-xs text-slate-600">{u.role}</TableCell>
