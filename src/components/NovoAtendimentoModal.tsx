@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { createServiceRecord } from '@/services/service_records'
 import { getClients } from '@/services/clients'
 import { getAgents } from '@/services/agents'
+import { getAccountExecutives } from '@/services/account_executives'
 import {
   AccountExecutiveRecord,
   AgentRecord,
@@ -128,7 +129,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
       return
     }
 
-    if (!selectedAgentId || !allExecutives.some((e) => e.id === selectedAgentId)) {
+    if (!selectedAgentId || !allExecutives.some((exec) => exec.id === selectedAgentId)) {
       setAgentError('Selecione um executivo de contas válido')
       toast({ variant: 'destructive', title: 'Selecione um executivo de contas' })
       return
