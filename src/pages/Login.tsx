@@ -254,18 +254,6 @@ export default function Login() {
                   </span>
                 )}
               </Button>
-
-              <div className="mt-4 p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-center space-y-1">
-                <p className="text-xs text-cyan-400 font-semibold">Conta Demo RexturAdvance</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  <strong>leonardopth@gmail.com</strong> / <strong>Skip@Pass</strong>
-                </p>
-                <p className="text-[11px] text-purple-400 font-semibold mt-1">Conta Master</p>
-                <p className="text-[11px] text-slate-400">
-                  <strong>leonardo.thereziano@rexturadvance.com.br</strong> /{' '}
-                  <strong>Skip@Pass</strong>
-                </p>
-              </div>
             </form>
           ) : (
             <form onSubmit={handleSignup} className="space-y-4 pt-2">
