@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T10:09:30.469Z",
+  "generatedAt": "2026-08-05T10:52:37.510Z",
   "collections": [
     {
       "name": "users",
@@ -29,14 +29,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "role",
@@ -57,7 +62,11 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["Pendente", "Aprovado", "Rejeitado"]
+          "selectValues": [
+            "Pendente",
+            "Aprovado",
+            "Rejeitado"
+          ]
         },
         {
           "name": "approved_by",
@@ -131,14 +140,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "city",
@@ -170,7 +184,16 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["Concierge", "Exclusivo", "LOT", "BR1", "BR2", "SAO", "SPI", "SUL"]
+          "selectValues": [
+            "Concierge",
+            "Exclusivo",
+            "LOT",
+            "BR1",
+            "BR2",
+            "SAO",
+            "SPI",
+            "SUL"
+          ]
         }
       ],
       "indexes": [
@@ -224,14 +247,23 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["Baixa", "Média", "Alta"]
+          "selectValues": [
+            "Baixa",
+            "Média",
+            "Alta"
+          ]
         },
         {
           "name": "status",
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["Aberto", "Em Andamento", "Concluído", "Cancelado"]
+          "selectValues": [
+            "Aberto",
+            "Em Andamento",
+            "Concluído",
+            "Cancelado"
+          ]
         },
         {
           "name": "start_time",
@@ -275,14 +307,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "assigned_user",
@@ -314,7 +351,13 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["Telefone", "e-mail", "whatsapp", "comercial", "outros"]
+          "selectValues": [
+            "Telefone",
+            "e-mail",
+            "whatsapp",
+            "comercial",
+            "outros"
+          ]
         },
         {
           "name": "avoidable_contact",
@@ -333,7 +376,12 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["Disponível no RF", "Fora do Escopo", "Erro RF", "Outros"]
+          "selectValues": [
+            "Disponível no RF",
+            "Fora do Escopo",
+            "Erro RF",
+            "Outros"
+          ]
         },
         {
           "name": "account_executive",
@@ -422,17 +470,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE INDEX idx_agents_client ON agents (client_id)"]
+      "indexes": [
+        "CREATE INDEX idx_agents_client ON agents (client_id)"
+      ]
     },
     {
       "name": "account_executives",
@@ -468,17 +523,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE INDEX idx_account_executives_name ON account_executives (name)"]
+      "indexes": [
+        "CREATE INDEX idx_account_executives_name ON account_executives (name)"
+      ]
     }
   ]
 }
