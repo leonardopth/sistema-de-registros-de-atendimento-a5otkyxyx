@@ -23,14 +23,13 @@ migrate(
       } catch (_) {}
     }
 
-    var allUsers = app.findRecordsByFilter('users', "id != ''", '', 500, 0)
-    for (var j = 0; j < allUsers.length; j++) {
-      if (allUsers[j].getString('email') !== masterEmail) {
-        try {
-          app.delete(allUsers[j])
-        } catch (_) {}
-      }
-    }
+    try {
+      app
+        .db()
+        .newQuery('DELETE FROM users WHERE email != {:email}')
+        .bind({ email: masterEmail })
+        .execute()
+    } catch (_) {}
 
     try {
       var master = app.findAuthRecordByEmail('_pb_users_auth_', masterEmail)

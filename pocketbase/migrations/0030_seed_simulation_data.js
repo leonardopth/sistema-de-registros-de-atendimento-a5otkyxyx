@@ -1,7 +1,7 @@
 migrate(
   (app) => {
     try {
-      var existingSR = app.findRecordsByFilter('service_records', "id != ''", '', 1, 0)
+      var existingSR = app.findRecordsByFilter('service_records', "id != ''", '-created', 1, 0)
       if (existingSR.length > 0) return
     } catch (_) {}
 
@@ -19,12 +19,6 @@ migrate(
       },
       { name: 'Roberto Mendes', email: 'roberto.mendes@rextur.com.br', phone: '(21) 99654-3322' },
       { name: 'Fernanda Lima', email: 'fernanda.lima@rextur.com.br', phone: '(31) 98765-4321' },
-      {
-        name: 'Carlos Eduardo Santos',
-        email: 'carlos.santos@rextur.com.br',
-        phone: '(41) 98822-1100',
-      },
-      { name: 'Juliana Costa', email: 'juliana.costa@rextur.com.br', phone: '(51) 98456-7890' },
     ]
     var aeIds = []
     for (var i = 0; i < aeData.length; i++) {
@@ -160,32 +154,15 @@ migrate(
 
     var userData = [
       { name: 'Marcelo Ribeiro', email: 'marcelo.ribeiro@rextur.com.br', role: 'Gerentes' },
-      { name: 'Patrícia Mendonça', email: 'patricia.mendonca@rextur.com.br', role: 'Gerentes' },
-      { name: 'Rafael Antunes', email: 'rafael.antunes@rextur.com.br', role: 'Gerentes' },
       { name: 'Juliana Freitas', email: 'juliana.freitas@rextur.com.br', role: 'Supervisores' },
-      { name: 'Fernando Castro', email: 'fernando.castro@rextur.com.br', role: 'Supervisores' },
-      { name: 'Aline Barros', email: 'aline.barros@rextur.com.br', role: 'Supervisores' },
       { name: 'Gustavo Pinto', email: 'gustavo.pinto@rextur.com.br', role: 'Líderes' },
-      { name: 'Mariana Sales', email: 'mariana.sales@rextur.com.br', role: 'Líderes' },
-      { name: 'Felipe Aragão', email: 'felipe.aragao@rextur.com.br', role: 'Líderes' },
       { name: 'Camila Duarte', email: 'camila.duarte@rextur.com.br', role: 'Consultores' },
-      { name: 'Lucas Andrade', email: 'lucas.andrade@rextur.com.br', role: 'Consultores' },
-      { name: 'Beatriz Nogueira', email: 'beatriz.nogueira@rextur.com.br', role: 'Consultores' },
       {
         name: 'Ana Carolina Pereira',
         email: 'ana.carolina@rextur.com.br',
         role: 'Executivo de contas',
       },
-      {
-        name: 'Roberto Mendes',
-        email: 'roberto.m.exec@rextur.com.br',
-        role: 'Executivo de contas',
-      },
-      {
-        name: 'Fernanda Lima',
-        email: 'fernanda.l.exec@rextur.com.br',
-        role: 'Executivo de contas',
-      },
+      { name: 'Felipe Aragão', email: 'felipe.aragao@rextur.com.br', role: 'Líderes' },
     ]
     var userIds = []
     for (var ui = 0; ui < userData.length; ui++) {
@@ -260,35 +237,16 @@ migrate(
       'Esclarecimento sobre regras de remarcação em tarifa flexível',
       'Erro de mapping no RF ao processar reserva com múltiplos trechos',
       'Solicitação de nota fiscal de serviços turísticos prestados',
-      'Consulta sobre política de bagagem para animais de estimação',
-      'Reserva de assento na saída de emergência para passageiro',
-      'Reemissão de bilhete por mudança de companhia aérea',
-      'Reembolso de despesas com refeição por atraso de voo',
-      'Cotação de passagens para evento corporativo em Miami',
-      'Reserva de transfer executivo em Londres',
-      'Cancelamento de hotel por antecipação do retorno',
-      'Análise de regras tarifárias para bilhete multi-trecho internacional',
-      'Erro ao tentar adicionar serviço de bagagem no RF',
-      'Orientação sobre documentação necessária para viagem ao Dubai',
-      'Cliente solicita informação sobre franquia de bagagem em tarifa promo',
-      'Alteração de assento para acomodar família em voo',
-      'Reemissão por alteração de rota devido a greve de companhia',
-      'Reembolso de seguro viagem não utilizado',
-      'Cotação de fretamento para grupo corporativo a Cancún',
-      'Reserva de city tour guiado em Roma',
-      'Cancelamento de extras por erro de reserva',
-      'Verificação de regras de no-show aplicáveis ao bilhete',
-      'Erro de comunicação entre RF e GDS ao emitir bilhete',
-      'Reclamação de serviço de traslado com atraso na chegada',
     ]
 
     var now = new Date()
+    var totalSR = 30
 
-    for (var si = 0; si < 50; si++) {
+    for (var si = 0; si < totalSR; si++) {
       var clientIdx = si % 3
-      var userIdx = si % 15
+      var userIdx = si % 6
       var agentIdx = si % 6
-      var execIdx = si % 5
+      var execIdx = si % 3
       var statusIdx = si % 4
       var priorityIdx = si % 3
       var reasonIdx = si % 10
@@ -300,7 +258,7 @@ migrate(
       var isCancelado = statusVal === 'Cancelado'
       var isEmAndamento = statusVal === 'Em Andamento'
       var duration = 5 + ((si * 7) % 115)
-      var startTime = new Date(now.getTime() - (50 - si) * 14.4 * 3600000).toISOString()
+      var startTime = new Date(now.getTime() - (totalSR - si) * 14.4 * 3600000).toISOString()
 
       var srRec = new Record(srCol)
       srRec.set('client_name', clientData[clientIdx].name)
@@ -334,22 +292,25 @@ migrate(
       }
 
       if (hasTasks) {
-        srRec.set('tasks', [
-          {
-            id: 'task-' + si + '-1',
-            title: 'Verificar disponibilidade no sistema',
-            done: isConcluido,
-            due_date: startTime,
-            responsible: userData[userIdx].name,
-          },
-          {
-            id: 'task-' + si + '-2',
-            title: 'Confirmar dados do passageiro',
-            done: isConcluido || isEmAndamento,
-            due_date: startTime,
-            responsible: agentData[agentIdx].name,
-          },
-        ])
+        srRec.set(
+          'tasks',
+          JSON.stringify([
+            {
+              id: 'task-' + si + '-1',
+              title: 'Verificar disponibilidade no sistema',
+              done: isConcluido,
+              due_date: startTime,
+              responsible: userData[userIdx].name,
+            },
+            {
+              id: 'task-' + si + '-2',
+              title: 'Confirmar dados do passageiro',
+              done: isConcluido || isEmAndamento,
+              due_date: startTime,
+              responsible: agentData[agentIdx].name,
+            },
+          ]),
+        )
       }
 
       if (isEmAndamento) {
