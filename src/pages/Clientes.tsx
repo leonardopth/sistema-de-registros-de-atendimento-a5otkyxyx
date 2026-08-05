@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/table'
 import { getClients, updateClient } from '@/services/clients'
 import { getServiceRecords } from '@/services/service_records'
-import { ClientRecord, ServiceRecord } from '@/types/service_record'
+import { getAccountExecutives } from '@/services/account_executives'
+import { AccountExecutiveRecord, ClientRecord, ServiceRecord } from '@/types/service_record'
 import { NewClientModal } from '@/components/NewClientModal'
 import { StateCitySelect } from '@/components/StateCitySelect'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -36,6 +37,9 @@ export default function Clientes() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [detailsCompany, setDetailsCompany] = useState('')
   const [editName, setEditName] = useState('')
+  const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
+  const [editExecutiveId, setEditExecutiveId] = useState('')
+  const [executiveError, setExecutiveError] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editCompany, setEditCompany] = useState('')
   const [editCity, setEditCity] = useState('')
@@ -58,6 +62,11 @@ export default function Clientes() {
     } catch (err) {
       console.error(err)
     }
+    try {
+      setExecutives(await getAccountExecutives())
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   useEffect(() => {
@@ -70,6 +79,8 @@ export default function Clientes() {
   const handleSelectClient = async (c: ClientRecord) => {
     setSelectedClient(c)
     setEditName(c.name)
+    setEditExecutiveId(executives.find((ex) => ex.name === c.name)?.id || '')
+    setExecutiveError('')
     setEditPhone(c.phone || '')
     setEditCompany(c.company || '')
     setEditCity(c.city || '')
@@ -91,10 +102,16 @@ export default function Clientes() {
 
   const handleSaveClient = async () => {
     if (!selectedClient) return
+    const selectedExec = executives.find((ex) => ex.id === editExecutiveId)
+    if (!selectedExec) {
+      setExecutiveError('Selecione um executivo de contas válido')
+      return
+    }
+    setExecutiveError('')
     setSaving(true)
     try {
       await updateClient(selectedClient.id, {
-        name: editName,
+        name: selectedExec.name,
         phone: editPhone,
         company: editCompany,
         city: editCity,
@@ -197,13 +214,20 @@ export default function Clientes() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-600">
-                    Executivo de Contas RA
+                    Executivo de Contas RA *
                   </label>
-                  <Input
+                  <SearchableSelect
+                    options={executives.map((ex) => ({ value: ex.id, label: ex.name }))}
+                    value={editExecutiveId}
+                    onValueChange={(v) => {
+                      setEditExecutiveId(v)
+                      setExecutiveError('')
+                    }}
+                    placeholder="Selecione um executivo de contas"
+                    emptyText="Nenhum executivo encontrado."
                     className="h-9 text-xs"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
                   />
+                  {executiveError && <p className="text-xs text-red-500">{executiveError}</p>}
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-600">Anotações Internas</label>

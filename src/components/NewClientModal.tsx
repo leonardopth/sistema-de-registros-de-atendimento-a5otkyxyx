@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,10 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/services/clients'
 import { createAgent } from '@/services/agents'
+import { getAccountExecutives } from '@/services/account_executives'
 import { StateCitySelect } from '@/components/StateCitySelect'
+import { SearchableSelect } from '@/components/SearchableSelect'
+import { AccountExecutiveRecord } from '@/types/service_record'
 import { useToast } from '@/hooks/use-toast'
 import { UserPlus, Loader2, Trash2, Plus, Headset } from 'lucide-react'
 
@@ -29,7 +32,6 @@ interface NewClientModalProps {
 }
 
 export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModalProps) {
-  const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [company, setCompany] = useState('')
   const [city, setCity] = useState('')
@@ -40,10 +42,20 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
     {},
   )
   const [loading, setLoading] = useState(false)
+  const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
+  const [selectedExecutiveId, setSelectedExecutiveId] = useState('')
+  const [executiveError, setExecutiveError] = useState('')
   const { toast } = useToast()
 
+  useEffect(() => {
+    if (open) {
+      getAccountExecutives()
+        .then(setExecutives)
+        .catch(() => {})
+    }
+  }, [open])
+
   const resetForm = () => {
-    setName('')
     setPhone('')
     setCompany('')
     setCity('')
@@ -51,6 +63,8 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
     setNotes('')
     setAgents([])
     setAgentErrors({})
+    setSelectedExecutiveId('')
+    setExecutiveError('')
   }
 
   const addAgent = () => setAgents([...agents, { name: '', email: '', phone: '' }])
@@ -83,12 +97,17 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return
+    const selectedExec = executives.find((ex) => ex.id === selectedExecutiveId)
+    if (!selectedExec) {
+      setExecutiveError('Selecione um executivo de contas válido')
+      return
+    }
+    setExecutiveError('')
     if (!validateAgents()) return
     setLoading(true)
     try {
       const client = await createClient({
-        name: name.trim(),
+        name: selectedExec.name,
         phone: phone.trim(),
         company: company.trim(),
         city: city.trim(),
@@ -162,14 +181,19 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="c-name">Executivo de Contas RA *</Label>
-            <Input
-              id="c-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Ana Maria Silva"
+            <Label>Executivo de Contas RA *</Label>
+            <SearchableSelect
+              options={executives.map((ex) => ({ value: ex.id, label: ex.name }))}
+              value={selectedExecutiveId}
+              onValueChange={(v) => {
+                setSelectedExecutiveId(v)
+                setExecutiveError('')
+              }}
+              placeholder="Selecione um executivo de contas"
+              emptyText="Nenhum executivo encontrado."
+              className="h-9"
             />
+            {executiveError && <p className="text-xs text-red-500">{executiveError}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="c-notes">Observações</Label>
