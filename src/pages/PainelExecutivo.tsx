@@ -27,16 +27,21 @@ export default function PainelExecutivo() {
         getClients(),
         getServiceRecords(),
       ])
-      const exec = execs.find((e) => e.email === user?.email || e.name === user?.name) || null
-      setExecutive(exec)
-      if (exec) {
-        setClients(
-          allClients.filter(
-            (c) => c.account_executive_rel === exec.id || c.account_executive === exec.name,
-          ),
-        )
+      if (user?.role === 'Master') {
+        setExecutive(null)
+        setClients(allClients)
       } else {
-        setClients([])
+        const exec = execs.find((e) => e.email === user?.email || e.name === user?.name) || null
+        setExecutive(exec)
+        if (exec) {
+          setClients(
+            allClients.filter(
+              (c) => c.account_executive_rel === exec.id || c.account_executive === exec.name,
+            ),
+          )
+        } else {
+          setClients([])
+        }
       }
       setRecords(allRecords)
     } catch (err) {
@@ -83,7 +88,7 @@ export default function PainelExecutivo() {
     exportExecutivePanelCSV(clientStats)
   }
 
-  if (!executive) {
+  if (!executive && user?.role !== 'Master') {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
@@ -106,7 +111,9 @@ export default function PainelExecutivo() {
             Painel do Executivo
           </h2>
           <p className="text-xs text-slate-500">
-            Visão geral das agências gerenciadas por {executive.name}
+            {executive
+              ? `Visão geral das agências gerenciadas por ${executive.name}`
+              : 'Visão geral de todas as agências'}
           </p>
         </div>
         <Button onClick={handleExportCSV} variant="outline" size="sm" className="text-xs">
