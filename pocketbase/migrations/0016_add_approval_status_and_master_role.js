@@ -2,9 +2,8 @@ migrate(
   (app) => {
     var usersCol = app.findCollectionByNameOrId('_pb_users_auth_')
 
-    var oldRoleField = usersCol.fields.getByName('role')
-    if (oldRoleField) {
-      usersCol.fields.remove(oldRoleField)
+    if (usersCol.fields.getByName('role')) {
+      usersCol.fields.removeByName('role')
     }
     usersCol.fields.add(
       new SelectField({
@@ -65,9 +64,8 @@ migrate(
   (app) => {
     var usersCol = app.findCollectionByNameOrId('_pb_users_auth_')
 
-    var roleField = usersCol.fields.getByName('role')
-    if (roleField) {
-      usersCol.fields.remove(roleField)
+    if (usersCol.fields.getByName('role')) {
+      usersCol.fields.removeByName('role')
     }
     usersCol.fields.add(
       new SelectField({
@@ -78,9 +76,8 @@ migrate(
       }),
     )
 
-    var approvalField = usersCol.fields.getByName('approval_status')
-    if (approvalField) {
-      usersCol.fields.remove(approvalField)
+    if (usersCol.fields.getByName('approval_status')) {
+      usersCol.fields.removeByName('approval_status')
     }
 
     usersCol.updateRule = 'id = @request.auth.id'

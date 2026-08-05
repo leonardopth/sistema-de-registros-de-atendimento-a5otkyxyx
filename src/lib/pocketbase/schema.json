@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T04:02:02.277Z",
+  "generatedAt": "2026-08-05T04:09:11.637Z",
   "collections": [
     {
       "name": "users",
@@ -8,8 +8,8 @@
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
         "create": "",
-        "update": "id = @request.auth.id",
-        "delete": "id = @request.auth.id"
+        "update": "id = @request.auth.id || @request.auth.role = 'Master'",
+        "delete": "id = @request.auth.id || @request.auth.role = 'Master'"
       },
       "fields": [
         {
@@ -43,13 +43,28 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["Gerentes", "Supervisores", "Líderes", "Consultores"]
+          "selectValues": [
+            "Gerentes",
+            "Supervisores",
+            "Líderes",
+            "Consultores",
+            "Executivo de contas",
+            "Master"
+          ]
+        },
+        {
+          "name": "approval_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Pendente", "Aprovado", "Rejeitado"]
         }
       ],
       "indexes": [
         "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
         "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''",
-        "CREATE INDEX `idx_users_role` ON `users` (role)"
+        "CREATE INDEX `idx_users_role` ON `users` (role)",
+        "CREATE INDEX `idx_users_approval_status` ON `users` (approval_status)"
       ]
     },
     {

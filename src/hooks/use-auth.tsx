@@ -55,16 +55,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string, name: string, role: UserRole) => {
     try {
-      await pb
-        .collection('users')
-        .create({
-          email,
-          password,
-          passwordConfirm: password,
-          name,
-          role,
-          approval_status: 'Pendente',
-        })
+      await pb.collection('users').create({
+        email,
+        password,
+        passwordConfirm: password,
+        name,
+        role,
+        approval_status: 'Pendente',
+      })
       return { error: null }
     } catch (error) {
       return { error }
