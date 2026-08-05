@@ -24,7 +24,12 @@ import {
   batchUpdateStatus,
   batchDeleteServiceRecords,
 } from '@/services/service_records'
-import { ServiceRecord, ServiceStatus, ContactReason } from '@/types/service_record'
+import {
+  ServiceRecord,
+  ServiceStatus,
+  ContactReason,
+  AccountExecutiveRecord,
+} from '@/types/service_record'
 import { StatusBadge } from '@/components/StatusBadge'
 import { PriorityBadge } from '@/components/PriorityBadge'
 import { ServiceRecordDetailModal } from '@/components/ServiceRecordDetailModal'
@@ -43,6 +48,8 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import { MinhasTarefasList } from '@/components/MinhasTarefasList'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
+import { getAccountExecutives } from '@/services/account_executives'
+import { exportServiceRecordsByExecutiveCSV } from '@/lib/executive-export'
 import { downloadServiceRecordsCSV } from '@/lib/report-export'
 import {
   downloadServiceRecordsExcel,
@@ -70,6 +77,9 @@ export default function Atendimentos() {
   const [sortAsc, setSortAsc] = useState(false)
   const [view, setView] = useState<'all' | 'mine'>('all')
   const [wrongDeptFilter, setWrongDeptFilter] = useState<string>('todos')
+  const [executiveFilter, setExecutiveFilter] = useState<string>('todos')
+  const [filterByUser, setFilterByUser] = useState(true)
+  const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
@@ -87,8 +97,12 @@ export default function Atendimentos() {
 
   const loadData = async () => {
     try {
-      const data = await getServiceRecords('', sortAsc ? 'created' : '-created')
+      const [data, execs] = await Promise.all([
+        getServiceRecords('', sortAsc ? 'created' : '-created'),
+        getAccountExecutives(),
+      ])
       setRecords(data)
+      setExecutives(execs)
     } catch (err) {
       console.error(err)
     }
@@ -115,6 +129,13 @@ export default function Atendimentos() {
       (wrongDeptFilter === 'sim' && r.avoidable_contact === true) ||
       (wrongDeptFilter === 'nao' && !r.avoidable_contact)
 
+    const matchesExecutive =
+      executiveFilter === 'todos' ||
+      r.expand?.account_executive?.id === executiveFilter ||
+      r.assigned_agent === executives.find((e) => e.id === executiveFilter)?.name
+
+    const matchesUser = !filterByUser || r.assigned_user === user?.id
+
     const recDate = r.created ? r.created.substring(0, 10) : ''
     const matchesDateFrom = !dateFrom || recDate >= dateFrom
     const matchesDateTo = !dateTo || recDate <= dateTo
@@ -125,7 +146,9 @@ export default function Atendimentos() {
       matchesReason &&
       matchesWrongDept &&
       matchesDateFrom &&
-      matchesDateTo
+      matchesDateTo &&
+      matchesExecutive &&
+      matchesUser
     )
   })
 
@@ -210,12 +233,21 @@ export default function Atendimentos() {
     downloadConsolidatedPDF(generateConsolidatedReport(exportData))
     toast({ title: 'Relatório consolidado exportado em PDF.' })
   }
+  const handleExportByExecutiveCSV = () => {
+    exportServiceRecordsByExecutiveCSV(exportData)
+    toast({
+      title: 'Relatório exportado',
+      description: `${exportData.length} atendimento(s) em CSV.`,
+    })
+  }
 
   const clearFilters = () => {
     setSearch('')
     setStatusFilter('todos')
     setReasonFilter('todos')
     setWrongDeptFilter('todos')
+    setExecutiveFilter('todos')
+    setFilterByUser(false)
     setDateFrom('')
     setDateTo('')
     if (searchParams.get('avoidable_contact')) {

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getClients } from '@/services/clients'
 import { getAgents } from '@/services/agents'
 import { getAccountExecutives } from '@/services/account_executives'
+import { getUsers } from '@/services/users'
 import { createServiceRecord } from '@/services/service_records'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
@@ -16,7 +17,12 @@ import type {
   ServiceStatus,
   TaskItem,
   AvoidableContactReason,
+  UserRecord,
 } from '@/types/service_record'
+
+const AVOIDABLE_REASON_MAP: Partial<Record<string, AvoidableContactReason>> = {
+  'erro RF': 'Erro RF',
+}
 
 export function useServiceRecordForm(enabled: boolean = true) {
   const { user } = useAuth()
@@ -50,6 +56,10 @@ export function useServiceRecordForm(enabled: boolean = true) {
   )
   const [avoidableContactExplanation, setAvoidableContactExplanation] = useState('')
   const [loading, setLoading] = useState(false)
+  const [users, setUsers] = useState<UserRecord[]>([])
+  const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
+  const [timerStart, setTimerStart] = useState<string | null>(null)
+  const [timerRunning, setTimerRunning] = useState(false)
 
   const loadClients = useCallback(() => {
     getClients()
@@ -61,13 +71,23 @@ export function useServiceRecordForm(enabled: boolean = true) {
       .then(setAllExecutives)
       .catch(() => {})
   }, [])
+  const loadUsers = useCallback(() => {
+    getUsers()
+      .then(setUsers)
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (enabled) {
       loadClients()
       loadExecutives()
+      loadUsers()
     }
-  }, [enabled, loadClients, loadExecutives])
+  }, [enabled, loadClients, loadExecutives, loadUsers])
+
+  useEffect(() => {
+    if (user?.id) setAssignedUserId(user.id)
+  }, [user?.id])
 
   useRealtime('clients', () => loadClients(), enabled)
   useRealtime('account_executives', () => loadExecutives(), enabled)
@@ -98,7 +118,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
     const client = clients.find((c) => c.id === id)
     if (client) {
       setClientCompany(client.company || '')
-      setAutoExecutive(client.account_executive || '')
+      setAutoExecutive(client.account_executive || client.expand?.account_executive_rel?.name || '')
       getAgents()
         .then((all) => {
           const ids = new Set(clients.filter((c) => c.company === client.company).map((c) => c.id))
@@ -141,6 +161,29 @@ export function useServiceRecordForm(enabled: boolean = true) {
     }
   }
 
+  const handleContactReasonChange = (reason: ContactReason | '') => {
+    setContactReason(reason)
+    if (reason && AVOIDABLE_REASON_MAP[reason]) {
+      setAvoidableContact(true)
+      setAvoidableContactReason(AVOIDABLE_REASON_MAP[reason]!)
+    }
+  }
+
+  const handleTimerStart = () => {
+    setTimerStart(new Date().toISOString())
+    setTimerRunning(true)
+  }
+  const handleTimerPause = (elapsedMinutes: number) => {
+    setDuration((prev) => prev + elapsedMinutes)
+    setTimerRunning(false)
+    setTimerStart(null)
+  }
+  const handleTimerReset = () => {
+    setTimerRunning(false)
+    setTimerStart(null)
+    setDuration(0)
+  }
+
   const resetForm = () => {
     setUseExisting(true)
     setSelectedClientId('')
@@ -165,6 +208,9 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setAvoidableContact(false)
     setAvoidableContactReason('')
     setAvoidableContactExplanation('')
+    setTimerStart(null)
+    setTimerRunning(false)
+    setAssignedUserId(user?.id || '')
   }
 
   const handleSubmit = async (e: React.FormEvent): Promise<boolean> => {
@@ -202,6 +248,9 @@ export function useServiceRecordForm(enabled: boolean = true) {
     }
     setLoading(true)
     try {
+      const selectedClient = clients.find((c) => c.id === selectedClientId)
+      const selectedAgent = agents.find((a) => a.id === selectedAgentId)
+      const execRecord = allExecutives.find((e) => e.name === assignedAgent)
       await createServiceRecord({
         client_name: clientName.trim(),
         client_email: clientEmail.trim(),
@@ -215,7 +264,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
         start_time: new Date().toISOString(),
         duration,
         assigned_agent: assignedAgent,
-        assigned_user: user?.id,
+        assigned_user: assignedUserId || user?.id,
         tasks,
         avoidable_contact: avoidableContact,
         avoidable_contact_reason: avoidableContact
@@ -225,6 +274,11 @@ export function useServiceRecordForm(enabled: boolean = true) {
           avoidableContact && avoidableContactReason === 'Outros'
             ? avoidableContactExplanation.trim()
             : '',
+        client: selectedClient?.id || undefined,
+        agent: selectedAgent?.id || undefined,
+        account_executive: execRecord?.id || undefined,
+        timer_start: timerStart || undefined,
+        timer_running: timerRunning,
       })
       toast({ title: 'Atendimento registrado com sucesso!' })
       return true
@@ -255,7 +309,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
     clientCompany,
     setClientCompany,
     contactReason,
-    setContactReason,
+    setContactReason: handleContactReasonChange,
     channel,
     setChannel,
     description,
@@ -285,5 +339,13 @@ export function useServiceRecordForm(enabled: boolean = true) {
     loading,
     handleSubmit,
     resetForm,
+    users,
+    assignedUserId,
+    setAssignedUserId,
+    timerStart,
+    timerRunning,
+    handleTimerStart,
+    handleTimerPause,
+    handleTimerReset,
   }
 }

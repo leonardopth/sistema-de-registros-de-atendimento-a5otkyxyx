@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,8 +14,11 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { ServiceTimer } from '@/components/ServiceTimer'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
-import { Headset, Plus, Trash2, Loader2 } from 'lucide-react'
+import { analyzeDescription } from '@/services/ai-analysis'
+import { useToast } from '@/hooks/use-toast'
+import { Headset, Plus, Trash2, Loader2, Sparkles } from 'lucide-react'
 import type {
   ContactReason,
   ServiceChannel,
@@ -52,6 +55,8 @@ interface NovoAtendimentoModalProps {
 
 export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAtendimentoModalProps) {
   const form = useServiceRecordForm(open)
+  const { toast } = useToast()
+  const [analyzing, setAnalyzing] = useState(false)
 
   useEffect(() => {
     if (open) form.resetForm()
@@ -62,6 +67,29 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
       form.resetForm()
       onOpenChange(false)
       onSuccess?.()
+    }
+  }
+
+  const handleAIAnalysis = async () => {
+    if (!form.description.trim()) {
+      toast({ variant: 'destructive', title: 'Digite uma descrição primeiro' })
+      return
+    }
+    setAnalyzing(true)
+    try {
+      const result = await analyzeDescription(form.description)
+      form.setContactReason(result.contact_reason as ContactReason)
+      if (result.avoidable_contact) {
+        form.handleAvoidableChange(true)
+        if (result.avoidable_contact_reason) {
+          form.setAvoidableContactReason(result.avoidable_contact_reason as AvoidableContactReason)
+        }
+      }
+      toast({ title: 'Análise concluída', description: 'Campos sugeridos preenchidos.' })
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro na análise com IA' })
+    } finally {
+      setAnalyzing(false)
     }
   }
 
@@ -237,6 +265,34 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             </div>
           </div>
 
+          <div className="space-y-1">
+            <Label className="text-xs">Consultor Responsável</Label>
+            <Select value={form.assignedUserId} onValueChange={form.setAssignedUserId}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {form.users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name} ({u.role})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Cronômetro</Label>
+            <ServiceTimer
+              timerStart={form.timerStart}
+              timerRunning={form.timerRunning}
+              duration={form.duration}
+              onStart={form.handleTimerStart}
+              onPause={form.handleTimerPause}
+              onReset={form.handleTimerReset}
+            />
+          </div>
+
           {form.showExecutiveSelect && (
             <div className="space-y-1">
               <Label className="text-xs">Executivo de Contas *</Label>
@@ -257,7 +313,24 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
           )}
 
           <div className="space-y-1">
-            <Label className="text-xs">Descrição / Observações *</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Descrição / Observações *</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs text-indigo-600 h-7"
+                onClick={handleAIAnalysis}
+                disabled={analyzing}
+              >
+                {analyzing ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3 mr-1" />
+                )}
+                Analisar com IA
+              </Button>
+            </div>
             <Textarea
               rows={3}
               required

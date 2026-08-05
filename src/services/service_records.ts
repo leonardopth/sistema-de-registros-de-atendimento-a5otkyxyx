@@ -2,7 +2,10 @@ import pb from '@/lib/pocketbase/client'
 import { ServiceRecord } from '@/types/service_record'
 
 export const getServiceRecords = (filter?: string, sort: string = '-created') => {
-  const params: { sort: string; filter?: string } = { sort }
+  const params: { sort: string; filter?: string; expand: string } = {
+    sort,
+    expand: 'account_executive,client,agent,assigned_user',
+  }
   if (filter) params.filter = filter
   return pb.collection('service_records').getFullList<ServiceRecord>(params)
 }

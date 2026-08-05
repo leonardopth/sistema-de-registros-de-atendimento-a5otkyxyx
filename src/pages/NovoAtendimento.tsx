@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,8 +15,11 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { ServiceTimer } from '@/components/ServiceTimer'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
-import { ArrowLeft, Plus, Trash2, Save, Loader2 } from 'lucide-react'
+import { analyzeDescription } from '@/services/ai-analysis'
+import { useToast } from '@/hooks/use-toast'
+import { ArrowLeft, Plus, Trash2, Save, Loader2, Sparkles } from 'lucide-react'
 import type {
   ContactReason,
   ServiceChannel,
@@ -48,9 +52,34 @@ const statuses: ServiceStatus[] = ['Aberto', 'Em Andamento', 'Concluído', 'Canc
 export default function NovoAtendimento() {
   const navigate = useNavigate()
   const form = useServiceRecordForm()
+  const { toast } = useToast()
+  const [analyzing, setAnalyzing] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     if (await form.handleSubmit(e)) navigate('/atendimentos')
+  }
+
+  const handleAIAnalysis = async () => {
+    if (!form.description.trim()) {
+      toast({ variant: 'destructive', title: 'Digite uma descrição primeiro' })
+      return
+    }
+    setAnalyzing(true)
+    try {
+      const result = await analyzeDescription(form.description)
+      form.setContactReason(result.contact_reason as ContactReason)
+      if (result.avoidable_contact) {
+        form.handleAvoidableChange(true)
+        if (result.avoidable_contact_reason) {
+          form.setAvoidableContactReason(result.avoidable_contact_reason as AvoidableContactReason)
+        }
+      }
+      toast({ title: 'Análise concluída', description: 'Campos sugeridos preenchidos.' })
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro na análise com IA' })
+    } finally {
+      setAnalyzing(false)
+    }
   }
 
   return (
@@ -232,7 +261,24 @@ export default function NovoAtendimento() {
                 </RadioGroup>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
-                <Label>Descrição Detalhada do Atendimento *</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Descrição Detalhada do Atendimento *</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs text-indigo-600"
+                    onClick={handleAIAnalysis}
+                    disabled={analyzing}
+                  >
+                    {analyzing ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    Analisar com IA
+                  </Button>
+                </div>
                 <Textarea
                   rows={4}
                   required
@@ -276,30 +322,56 @@ export default function NovoAtendimento() {
                   onChange={(e) => form.setDuration(Number(e.target.value))}
                 />
               </div>
-              {form.showExecutiveSelect && (
-                <div className="space-y-1.5">
-                  <Label>Executivo de Contas *</Label>
-                  <Select
-                    value={form.selectedExecutiveId}
-                    onValueChange={form.setSelectedExecutiveId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um executivo de contas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {form.allExecutives.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {form.executiveError && (
-                    <p className="text-xs text-red-500">{form.executiveError}</p>
-                  )}
-                </div>
-              )}
+              <div className="space-y-1.5">
+                <Label>Consultor Responsável</Label>
+                <Select value={form.assignedUserId} onValueChange={form.setAssignedUserId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {form.users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name} ({u.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+            <div className="space-y-1.5">
+              <Label>Cronômetro de Atendimento</Label>
+              <ServiceTimer
+                timerStart={form.timerStart}
+                timerRunning={form.timerRunning}
+                duration={form.duration}
+                onStart={form.handleTimerStart}
+                onPause={form.handleTimerPause}
+                onReset={form.handleTimerReset}
+              />
+            </div>
+            {form.showExecutiveSelect && (
+              <div className="space-y-1.5">
+                <Label>Executivo de Contas *</Label>
+                <Select
+                  value={form.selectedExecutiveId}
+                  onValueChange={form.setSelectedExecutiveId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um executivo de contas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {form.allExecutives.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.executiveError && (
+                  <p className="text-xs text-red-500">{form.executiveError}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 pt-2">

@@ -53,6 +53,18 @@ export interface ServiceRecord {
   user_id: string
   created: string
   updated: string
+  account_executive?: string
+  client?: string
+  agent?: string
+  timer_start?: string
+  timer_running?: boolean
+  expand?: {
+    account_executive?: AccountExecutiveRecord
+    client?: ClientRecord
+    agent?: AgentRecord
+    assigned_user?: UserRecord
+    user_id?: UserRecord
+  }
 }
 
 export interface UserRecord {
@@ -68,10 +80,16 @@ export interface ClientRecord {
   email?: string
   phone?: string
   account_executive?: string
+  account_executive_rel?: string
   company?: string
   notes?: string
+  city?: string
+  state?: string
   created: string
   updated: string
+  expand?: {
+    account_executive_rel?: AccountExecutiveRecord
+  }
 }
 
 export interface AccountExecutiveRecord {

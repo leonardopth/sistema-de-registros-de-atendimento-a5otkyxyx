@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T03:36:53.663Z",
+  "generatedAt": "2026-08-05T03:56:12.646Z",
   "collections": [
     {
       "name": "users",
@@ -124,9 +124,19 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "account_executive_rel",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "account_executives"
         }
       ],
-      "indexes": ["CREATE INDEX idx_clients_name ON clients (name)"]
+      "indexes": [
+        "CREATE INDEX idx_clients_name ON clients (name)",
+        "CREATE INDEX `idx_clients_exec_rel` ON `clients` (account_executive_rel)"
+      ]
     },
     {
       "name": "service_records",
@@ -284,6 +294,39 @@
           "required": false,
           "system": false,
           "selectValues": ["Disponível no RF", "Fora do Escopo", "Erro RF", "Outros"]
+        },
+        {
+          "name": "account_executive",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "account_executives"
+        },
+        {
+          "name": "client",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "agent",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "agents"
+        },
+        {
+          "name": "timer_start",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "timer_running",
+          "type": "bool",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -292,7 +335,10 @@
         "CREATE INDEX idx_sr_priority ON service_records (priority)",
         "CREATE INDEX idx_sr_user ON service_records (user_id)",
         "CREATE INDEX idx_sr_created ON service_records (created DESC)",
-        "CREATE INDEX `idx_sr_assigned_user` ON `service_records` (assigned_user)"
+        "CREATE INDEX `idx_sr_assigned_user` ON `service_records` (assigned_user)",
+        "CREATE INDEX `idx_sr_exec` ON `service_records` (account_executive)",
+        "CREATE INDEX `idx_sr_client` ON `service_records` (client)",
+        "CREATE INDEX `idx_sr_agent` ON `service_records` (agent)"
       ]
     },
     {

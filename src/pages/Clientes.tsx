@@ -20,6 +20,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { STATE_OPTIONS, normalizeStateValue } from '@/lib/brazilian-states'
 import { useIbgeCities } from '@/hooks/use-ibge-cities'
 import { AgentManager } from '@/components/AgentManager'
+import { AgentStatsList } from '@/components/AgentStatsList'
 import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useRealtime } from '@/hooks/use-realtime'
@@ -287,6 +288,9 @@ export default function Clientes() {
           </div>
           <Card className="border-slate-200 p-5">
             <AgentManager clientId={selectedClient.id} />
+          </Card>
+          <Card className="border-slate-200 p-5">
+            <AgentStatsList clientId={selectedClient.id} />
           </Card>
         </div>
       ) : (
