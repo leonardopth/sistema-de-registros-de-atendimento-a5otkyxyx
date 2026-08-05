@@ -81,6 +81,9 @@ export interface UserRecord {
   email: string
   role: UserRole
   approval_status?: ApprovalStatus
+  approved_by?: string
+  approved_by_id?: string
+  approved_at?: string
 }
 
 export interface ClientRecord {

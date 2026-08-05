@@ -28,8 +28,10 @@ import {
   UserCheck,
   TrendingUp,
   BarChart3,
+  PieChart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { NotificationBell } from '@/components/NotificationBell'
 import logoImg from '../assets/image-b4a05.png'
 
 export function Layout() {
@@ -50,6 +52,10 @@ export function Layout() {
 
   if (user?.role !== 'Consultores') {
     navItems.push({ label: 'Relatórios por Grupo', path: '/relatorios-grupo', icon: BarChart3 })
+  }
+
+  if (['Master', 'Gerentes', 'Supervisores', 'Líderes'].includes(user?.role)) {
+    navItems.push({ label: 'Dashboard Geral', path: '/dashboard-geral', icon: PieChart })
   }
 
   if (user?.role === 'Master') {
@@ -219,6 +225,7 @@ export function Layout() {
                 {location.pathname === '/gestao-usuarios' && 'Gestão de Usuários'}
                 {location.pathname === '/painel-executivo' && 'Painel do Executivo'}
                 {location.pathname === '/relatorios-grupo' && 'Relatórios por Grupo de Atendimento'}
+                {location.pathname === '/dashboard-geral' && 'Dashboard Geral'}
               </h1>
             </div>
           </div>
@@ -234,6 +241,8 @@ export function Layout() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </form>
+
+            <NotificationBell />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

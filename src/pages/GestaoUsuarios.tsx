@@ -54,6 +54,22 @@ function StatusBadge({ status }: { status?: string }) {
   return <Badge variant="secondary">—</Badge>
 }
 
+function formatApprovalDate(dateStr?: string): string {
+  if (!dateStr) return ''
+  try {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return ''
+  }
+}
+
 export default function GestaoUsuarios() {
   const { user } = useAuth()
   const { toast } = useToast()
@@ -199,6 +215,12 @@ export default function GestaoUsuarios() {
                     <TableCell className="text-xs text-slate-600">{u.role}</TableCell>
                     <TableCell>
                       <StatusBadge status={u.approval_status} />
+                      {u.approved_by && (
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          por {u.approved_by}
+                          {u.approved_at ? ` em ${formatApprovalDate(u.approved_at)}` : ''}
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">

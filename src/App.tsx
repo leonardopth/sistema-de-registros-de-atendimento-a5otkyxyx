@@ -16,6 +16,7 @@ import ExecutivosContas from '@/pages/ExecutivosContas'
 import GestaoUsuarios from '@/pages/GestaoUsuarios'
 import PainelExecutivo from '@/pages/PainelExecutivo'
 import RelatoriosGrupo from '@/pages/RelatoriosGrupo'
+import DashboardGeral from '@/pages/DashboardGeral'
 import Login from '@/pages/Login'
 import NotFound from '@/pages/NotFound'
 
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/atendimentos" element={<Atendimentos />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/relatorios-grupo" element={<RelatoriosGrupo />} />
+              <Route path="/dashboard-geral" element={<DashboardGeral />} />
               <Route path="/executivos" element={<ExecutivosContas />} />
               <Route
                 path="/painel-executivo"

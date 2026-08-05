@@ -20,8 +20,8 @@ import logoImg from '../assets/image-b4a05.png'
 
 export default function Login() {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
-  const [email, setEmail] = useState('leonardopth@gmail.com')
-  const [password, setPassword] = useState('Skip@Pass')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [role, setRole] = useState<UserRole | ''>('')
   const [loading, setLoading] = useState(false)
@@ -108,8 +108,8 @@ export default function Login() {
       setEmail('')
       setPassword('')
     } else {
-      setEmail('leonardopth@gmail.com')
-      setPassword('Skip@Pass')
+      setEmail('')
+      setPassword('')
     }
   }
 

@@ -16,6 +16,12 @@ import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { ShieldAlert } from 'lucide-react'
+import { ExportMenu } from '@/components/ExportMenu'
+import {
+  downloadGroupReportCSV,
+  downloadGroupReportExcel,
+  downloadGroupReportPDF,
+} from '@/lib/group-report-export'
 
 const AVOIDABLE_REASONS = ['Disponível no RF', 'Fora do Escopo', 'Erro RF', 'Outros']
 
@@ -117,13 +123,21 @@ export default function RelatoriosGrupo() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-          Relatórios por Grupo de Atendimento
-        </h2>
-        <p className="text-xs text-slate-500">
-          Indicadores de atendimento segmentados por grupo de atendimento
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
+            Relatórios por Grupo de Atendimento
+          </h2>
+          <p className="text-xs text-slate-500">
+            Indicadores de atendimento segmentados por grupo de atendimento
+          </p>
+        </div>
+        <ExportMenu
+          label="Exportar Relatório"
+          onCSV={() => downloadGroupReportCSV(groupStats)}
+          onExcel={() => downloadGroupReportExcel(groupStats)}
+          onPDF={() => downloadGroupReportPDF(groupStats)}
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
