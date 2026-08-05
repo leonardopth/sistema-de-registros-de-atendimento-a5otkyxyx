@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   UserCog,
   UserCheck,
+  TrendingUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import logoImg from '../assets/image-b4a05.png'
@@ -48,6 +49,10 @@ export function Layout() {
 
   if (user?.role === 'Master') {
     navItems.push({ label: 'Gestão de Usuários', path: '/gestao-usuarios', icon: UserCheck })
+  }
+
+  if (user?.role === 'Executivo de contas') {
+    navItems.push({ label: 'Painel Executivo', path: '/painel-executivo', icon: TrendingUp })
   }
 
   const handleSearch = (e: React.FormEvent) => {
@@ -207,6 +212,7 @@ export function Layout() {
                 {location.pathname === '/clientes' && 'Gestão de Clientes'}
                 {location.pathname === '/executivos' && 'Executivos de Contas'}
                 {location.pathname === '/gestao-usuarios' && 'Gestão de Usuários'}
+                {location.pathname === '/painel-executivo' && 'Painel do Executivo'}
               </h1>
             </div>
           </div>

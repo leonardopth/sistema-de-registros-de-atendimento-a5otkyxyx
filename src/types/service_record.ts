@@ -94,6 +94,7 @@ export interface ClientRecord {
   notes?: string
   city?: string
   state?: string
+  service_group?: string
   created: string
   updated: string
   expand?: {

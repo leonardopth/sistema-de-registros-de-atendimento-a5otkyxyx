@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { MasterRoute } from '@/components/MasterRoute'
+import { ExecutivoRoute } from '@/components/ExecutivoRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
@@ -13,6 +14,7 @@ import Atendimentos from '@/pages/Atendimentos'
 import Clientes from '@/pages/Clientes'
 import ExecutivosContas from '@/pages/ExecutivosContas'
 import GestaoUsuarios from '@/pages/GestaoUsuarios'
+import PainelExecutivo from '@/pages/PainelExecutivo'
 import Login from '@/pages/Login'
 import NotFound from '@/pages/NotFound'
 
@@ -37,6 +39,14 @@ const App = () => (
               <Route path="/atendimentos" element={<Atendimentos />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/executivos" element={<ExecutivosContas />} />
+              <Route
+                path="/painel-executivo"
+                element={
+                  <ExecutivoRoute>
+                    <PainelExecutivo />
+                  </ExecutivoRoute>
+                }
+              />
               <Route
                 path="/gestao-usuarios"
                 element={

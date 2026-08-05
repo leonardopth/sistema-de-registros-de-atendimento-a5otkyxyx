@@ -193,7 +193,9 @@ export default function GestaoUsuarios() {
                         <span className="ml-1 text-[10px] text-indigo-500">(você)</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-slate-600">{u.email}</TableCell>
+                    <TableCell className="text-xs text-slate-600 truncate max-w-[200px]">
+                      {u.email || '—'}
+                    </TableCell>
                     <TableCell className="text-xs text-slate-600">{u.role}</TableCell>
                     <TableCell>
                       <StatusBadge status={u.approval_status} />
