@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T03:09:20.579Z",
+  "generatedAt": "2026-08-05T03:25:05.216Z",
   "collections": [
     {
       "name": "users",
@@ -115,6 +115,12 @@
         },
         {
           "name": "state",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "account_executive",
           "type": "text",
           "required": false,
           "system": false
@@ -271,6 +277,21 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "avoidable_contact_reason",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Cálculo Reemissão",
+            "Emissão",
+            "Reserva simples",
+            "Reembolso",
+            "Financeiro",
+            "Help Desk",
+            "Outros"
+          ]
         }
       ],
       "indexes": [
