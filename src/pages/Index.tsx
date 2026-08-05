@@ -19,6 +19,13 @@ import { CompanyReport } from '@/components/CompanyReport'
 import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
 import { PeriodComparison } from '@/components/PeriodComparison'
 import { Plus } from 'lucide-react'
+import { downloadServiceRecordsCSV } from '@/lib/report-export'
+import {
+  downloadServiceRecordsExcel,
+  downloadServiceRecordsPDF,
+} from '@/lib/service-records-export'
+import { ExportMenu } from '@/components/ExportMenu'
+import { ConsolidatedReportPanel } from '@/components/ConsolidatedReportPanel'
 
 export default function Index() {
   const [records, setRecords] = useState<ServiceRecord[]>([])
@@ -150,6 +157,28 @@ export default function Index() {
     }
   }
 
+  const handleExportCSV = () => {
+    downloadServiceRecordsCSV(dateFilteredRecords, 'relatorio-atendimentos.csv')
+    toast({
+      title: 'Relatório exportado',
+      description: `${dateFilteredRecords.length} atendimento(s) em CSV.`,
+    })
+  }
+  const handleExportExcel = () => {
+    downloadServiceRecordsExcel(dateFilteredRecords)
+    toast({
+      title: 'Relatório exportado',
+      description: `${dateFilteredRecords.length} atendimento(s) em Excel.`,
+    })
+  }
+  const handleExportPDF = () => {
+    downloadServiceRecordsPDF(dateFilteredRecords)
+    toast({
+      title: 'Relatório exportado',
+      description: `${dateFilteredRecords.length} atendimento(s) em PDF.`,
+    })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -161,13 +190,21 @@ export default function Index() {
             Acompanhamento em tempo real das interações com clientes
           </p>
         </div>
-        <Button
-          onClick={() => setNovoModalOpen(true)}
-          className="bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold shadow-md transition-all"
-        >
-          <Plus className="h-4 w-4 mr-1.5" />
-          Novo Atendimento
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportMenu
+            label="Exportar"
+            onCSV={handleExportCSV}
+            onExcel={handleExportExcel}
+            onPDF={handleExportPDF}
+          />
+          <Button
+            onClick={() => setNovoModalOpen(true)}
+            className="bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold shadow-md transition-all"
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            Novo Atendimento
+          </Button>
+        </div>
       </div>
 
       <DateRangeFilter
@@ -253,6 +290,8 @@ export default function Index() {
           }}
         />
       </div>
+
+      <ConsolidatedReportPanel records={dateFilteredRecords} />
 
       <ServiceRecordDetailModal
         record={selectedRecord}

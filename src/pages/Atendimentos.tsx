@@ -39,12 +39,22 @@ import {
   Trash2,
   ArrowUpDown,
   ListChecks,
-  Download,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { MinhasTarefasList } from '@/components/MinhasTarefasList'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
 import { downloadServiceRecordsCSV } from '@/lib/report-export'
+import {
+  downloadServiceRecordsExcel,
+  downloadServiceRecordsPDF,
+} from '@/lib/service-records-export'
+import { ExportMenu } from '@/components/ExportMenu'
+import {
+  generateConsolidatedReport,
+  downloadConsolidatedCSV,
+  downloadConsolidatedExcel,
+  downloadConsolidatedPDF,
+} from '@/lib/consolidated-report'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -165,13 +175,40 @@ export default function Atendimentos() {
     }
   }
 
-  const handleExportReport = () => {
-    const data = view === 'mine' ? myRecords : filteredRecords
-    downloadServiceRecordsCSV(data, 'relatorio-atendimentos.csv')
+  const exportData = view === 'mine' ? myRecords : filteredRecords
+
+  const handleExportCSV = () => {
+    downloadServiceRecordsCSV(exportData, 'relatorio-atendimentos.csv')
     toast({
       title: 'Relatório exportado',
-      description: `${data.length} atendimento(s) exportado(s) com sucesso.`,
+      description: `${exportData.length} atendimento(s) em CSV.`,
     })
+  }
+  const handleExportExcel = () => {
+    downloadServiceRecordsExcel(exportData)
+    toast({
+      title: 'Relatório exportado',
+      description: `${exportData.length} atendimento(s) em Excel.`,
+    })
+  }
+  const handleExportPDF = () => {
+    downloadServiceRecordsPDF(exportData)
+    toast({
+      title: 'Relatório exportado',
+      description: `${exportData.length} atendimento(s) em PDF.`,
+    })
+  }
+  const handleExportConsolidatedCSV = () => {
+    downloadConsolidatedCSV(generateConsolidatedReport(exportData))
+    toast({ title: 'Relatório consolidado exportado em CSV.' })
+  }
+  const handleExportConsolidatedExcel = () => {
+    downloadConsolidatedExcel(generateConsolidatedReport(exportData))
+    toast({ title: 'Relatório consolidado exportado em Excel.' })
+  }
+  const handleExportConsolidatedPDF = () => {
+    downloadConsolidatedPDF(generateConsolidatedReport(exportData))
+    toast({ title: 'Relatório consolidado exportado em PDF.' })
   }
 
   const clearFilters = () => {
@@ -250,13 +287,22 @@ export default function Atendimentos() {
           >
             <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar Filtros
           </Button>
-          <Button
-            size="sm"
-            onClick={handleExportReport}
-            className="h-9 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white"
-          >
-            <Download className="h-3.5 w-3.5 mr-1.5" /> Exportar Relatório
-          </Button>
+          <div className="flex gap-2 col-span-1 sm:col-span-2 md:col-span-1">
+            <ExportMenu
+              label="Exportar Relatório"
+              variant="default"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              onCSV={handleExportCSV}
+              onExcel={handleExportExcel}
+              onPDF={handleExportPDF}
+            />
+            <ExportMenu
+              label="Consolidado"
+              onCSV={handleExportConsolidatedCSV}
+              onExcel={handleExportConsolidatedExcel}
+              onPDF={handleExportConsolidatedPDF}
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
