@@ -8,6 +8,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -31,6 +32,8 @@ import {
   Trash2,
   Save,
   Loader2,
+  Plus,
+  Lock,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -42,6 +45,8 @@ interface ServiceRecordDetailModalProps {
   onUpdateSuccess?: () => void
 }
 
+const EDITABLE_STATUSES: ServiceStatus[] = ['Aberto', 'Em Andamento']
+
 export function ServiceRecordDetailModal({
   record,
   open,
@@ -51,11 +56,14 @@ export function ServiceRecordDetailModal({
   const [status, setStatus] = useState<ServiceStatus>('Aberto')
   const [channel, setChannel] = useState<ServiceChannel | ''>('')
   const [tasks, setTasks] = useState<TaskItem[]>([])
+  const [newTaskTitle, setNewTaskTitle] = useState('')
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [avoidableContact, setAvoidableContact] = useState(false)
   const [avoidableContactExplanation, setAvoidableContactExplanation] = useState('')
   const { toast } = useToast()
+
+  const isEditable = record ? EDITABLE_STATUSES.includes(record.status) : false
 
   useEffect(() => {
     if (record) {
@@ -64,18 +72,32 @@ export function ServiceRecordDetailModal({
       setTasks(Array.isArray(record.tasks) ? record.tasks : [])
       setAvoidableContact(!!record.avoidable_contact)
       setAvoidableContactExplanation(record.avoidable_contact_explanation || '')
+      setNewTaskTitle('')
     }
   }, [record])
 
   if (!record) return null
 
   const handleTaskToggle = (index: number) => {
+    if (!isEditable) return
     const updated = [...tasks]
     updated[index].done = !updated[index].done
     setTasks(updated)
   }
 
+  const handleAddTask = () => {
+    if (!isEditable || !newTaskTitle.trim()) return
+    setTasks([...tasks, { title: newTaskTitle.trim(), done: false }])
+    setNewTaskTitle('')
+  }
+
+  const handleRemoveTask = (index: number) => {
+    if (!isEditable) return
+    setTasks(tasks.filter((_, idx) => idx !== index))
+  }
+
   const handleSave = async () => {
+    if (!isEditable) return
     if (avoidableContact && !avoidableContactExplanation.trim()) {
       toast({ variant: 'destructive', title: 'Informe a explicação do contato evitável' })
       return
@@ -129,8 +151,13 @@ export function ServiceRecordDetailModal({
       <DialogContent className="sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
         <DialogHeader className="border-b pb-3">
           <div className="flex items-center justify-between pr-6">
-            <DialogTitle className="text-xl font-bold text-slate-900">
+            <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
               Detalhes do Atendimento
+              {!isEditable && (
+                <span className="inline-flex items-center gap-1 text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                  <Lock className="h-3 w-3" /> Somente leitura
+                </span>
+              )}
             </DialogTitle>
             <div className="flex items-center gap-2">
               <StatusBadge status={status} />
@@ -194,32 +221,44 @@ export function ServiceRecordDetailModal({
           <div className="grid grid-cols-2 gap-4 items-center">
             <div>
               <label className="text-xs font-medium text-slate-500 block mb-1">Canal</label>
-              <Select value={channel} onValueChange={(val) => setChannel(val as ServiceChannel)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Selecione um canal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Telefone">Telefone</SelectItem>
-                  <SelectItem value="e-mail">e-mail</SelectItem>
-                  <SelectItem value="whatsapp">whatsapp</SelectItem>
-                  <SelectItem value="comercial">comercial</SelectItem>
-                  <SelectItem value="outros">outros</SelectItem>
-                </SelectContent>
-              </Select>
+              {isEditable ? (
+                <Select value={channel} onValueChange={(val) => setChannel(val as ServiceChannel)}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Selecione um canal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Telefone">Telefone</SelectItem>
+                    <SelectItem value="e-mail">e-mail</SelectItem>
+                    <SelectItem value="whatsapp">whatsapp</SelectItem>
+                    <SelectItem value="comercial">comercial</SelectItem>
+                    <SelectItem value="outros">outros</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="h-9 flex items-center text-sm text-slate-700 px-3 bg-slate-50 rounded-md border border-slate-200">
+                  {channel || '—'}
+                </div>
+              )}
             </div>
             <div>
               <label className="text-xs font-medium text-slate-500 block mb-1">Status</label>
-              <Select value={status} onValueChange={(val) => setStatus(val as ServiceStatus)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Aberto">Aberto</SelectItem>
-                  <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                  <SelectItem value="Concluído">Concluído</SelectItem>
-                  <SelectItem value="Cancelado">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
+              {isEditable ? (
+                <Select value={status} onValueChange={(val) => setStatus(val as ServiceStatus)}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Aberto">Aberto</SelectItem>
+                    <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                    <SelectItem value="Concluído">Concluído</SelectItem>
+                    <SelectItem value="Cancelado">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="h-9 flex items-center text-sm text-slate-700 px-3 bg-slate-50 rounded-md border border-slate-200">
+                  {status}
+                </div>
+              )}
             </div>
           </div>
 
@@ -247,21 +286,57 @@ export function ServiceRecordDetailModal({
                 {tasks.map((task, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2.5 p-2 bg-slate-50 rounded border border-slate-100"
+                    className="flex items-center gap-2.5 p-2 bg-slate-50 rounded border border-slate-100 group"
                   >
                     <Checkbox
                       id={`task-${idx}`}
                       checked={task.done}
                       onCheckedChange={() => handleTaskToggle(idx)}
+                      disabled={!isEditable}
                     />
                     <label
                       htmlFor={`task-${idx}`}
-                      className={`text-xs flex-1 cursor-pointer ${task.done ? 'line-through text-slate-400' : 'text-slate-800 font-medium'}`}
+                      className={`text-xs flex-1 cursor-pointer ${task.done ? 'line-through text-slate-400' : 'text-slate-800 font-medium'} ${!isEditable ? 'cursor-default' : ''}`}
                     >
                       {task.title}
                     </label>
+                    {isEditable && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
+                        onClick={() => handleRemoveTask(idx)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 ))}
+              </div>
+            )}
+            {isEditable && (
+              <div className="flex gap-2 mt-2">
+                <Input
+                  placeholder="Nova tarefa..."
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAddTask()
+                    }
+                  }}
+                  className="h-8 text-xs"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAddTask}
+                  disabled={!newTaskTitle.trim()}
+                  className="h-8 text-xs shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
+                </Button>
               </div>
             )}
           </div>
@@ -272,6 +347,7 @@ export function ServiceRecordDetailModal({
             <Checkbox
               id="d-wrong-dept"
               checked={avoidableContact}
+              disabled={!isEditable}
               onCheckedChange={(checked) => {
                 setAvoidableContact(!!checked)
                 if (!checked) setAvoidableContactExplanation('')
@@ -279,7 +355,7 @@ export function ServiceRecordDetailModal({
             />
             <label
               htmlFor="d-wrong-dept"
-              className="text-xs font-medium text-slate-500 cursor-pointer"
+              className={`text-xs font-medium text-slate-500 ${isEditable ? 'cursor-pointer' : 'cursor-default'}`}
             >
               Contato Evitável
             </label>
@@ -287,13 +363,19 @@ export function ServiceRecordDetailModal({
           {avoidableContact && (
             <div className="space-y-1 pl-6">
               <label className="text-xs font-medium text-slate-500 block">Explicação *</label>
-              <textarea
-                rows={2}
-                className="w-full text-sm p-2 border rounded-md"
-                value={avoidableContactExplanation}
-                onChange={(e) => setAvoidableContactExplanation(e.target.value)}
-                placeholder="Explique o motivo do contato evitável..."
-              />
+              {isEditable ? (
+                <textarea
+                  rows={2}
+                  className="w-full text-sm p-2 border rounded-md"
+                  value={avoidableContactExplanation}
+                  onChange={(e) => setAvoidableContactExplanation(e.target.value)}
+                  placeholder="Explique o motivo do contato evitável..."
+                />
+              ) : (
+                <div className="w-full text-sm p-2 bg-slate-50 border border-slate-200 rounded-md text-slate-700">
+                  {avoidableContactExplanation || '—'}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -317,19 +399,21 @@ export function ServiceRecordDetailModal({
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Fechar
             </Button>
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-700"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-              ) : (
-                <Save className="h-4 w-4 mr-1.5" />
-              )}
-              Salvar Alterações
-            </Button>
+            {isEditable && (
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={loading}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                ) : (
+                  <Save className="h-4 w-4 mr-1.5" />
+                )}
+                Salvar Alterações
+              </Button>
+            )}
           </div>
         </DialogFooter>
       </DialogContent>
