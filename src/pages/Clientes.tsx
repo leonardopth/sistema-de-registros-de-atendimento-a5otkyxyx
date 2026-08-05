@@ -13,10 +13,16 @@ import {
 import { getClients, updateClient } from '@/services/clients'
 import { getServiceRecords } from '@/services/service_records'
 import { getAccountExecutives } from '@/services/account_executives'
-import { AccountExecutiveRecord, ClientRecord, ServiceRecord } from '@/types/service_record'
+import {
+  AccountExecutiveRecord,
+  ClientRecord,
+  ServiceRecord,
+  ServiceGroup,
+} from '@/types/service_record'
 import { NewClientModal } from '@/components/NewClientModal'
 import { StateCitySelect } from '@/components/StateCitySelect'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { SERVICE_GROUP_OPTIONS, getServiceGroupLabel } from '@/lib/service-groups'
 import { STATE_OPTIONS, normalizeStateValue } from '@/lib/brazilian-states'
 import { useIbgeCities } from '@/hooks/use-ibge-cities'
 import { AgentManager } from '@/components/AgentManager'
@@ -46,6 +52,8 @@ export default function Clientes() {
   const [editCity, setEditCity] = useState('')
   const [editState, setEditState] = useState('')
   const [editNotes, setEditNotes] = useState('')
+  const [editServiceGroup, setEditServiceGroup] = useState('')
+  const [serviceGroupError, setServiceGroupError] = useState('')
   const [saving, setSaving] = useState(false)
   const [filterState, setFilterState] = useState('')
   const [filterCity, setFilterCity] = useState('')
@@ -86,7 +94,8 @@ export default function Clientes() {
     setEditCompany(c.company || '')
     setEditCity(c.city || '')
     setEditState(c.state || '')
-    setEditNotes(c.notes || '')
+    setEditServiceGroup(c.service_group || '')
+    setServiceGroupError('')
     try {
       const records = await getServiceRecords('', '-created')
       setClientRecords(
@@ -108,7 +117,11 @@ export default function Clientes() {
       setExecutiveError('Selecione um executivo de contas válido')
       return
     }
-    setExecutiveError('')
+    if (!editServiceGroup) {
+      setServiceGroupError('Selecione um grupo de atendimento')
+      return
+    }
+    setServiceGroupError('')
     setSaving(true)
     try {
       await updateClient(selectedClient.id, {
@@ -118,6 +131,7 @@ export default function Clientes() {
         city: editCity,
         state: editState,
         notes: editNotes,
+        service_group: editServiceGroup as ServiceGroup,
       })
       toast({ title: 'Cliente atualizado com sucesso' })
       loadClients()
@@ -229,6 +243,26 @@ export default function Clientes() {
                     className="h-9 text-xs"
                   />
                   {executiveError && <p className="text-xs text-red-500">{executiveError}</p>}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">
+                    Grupo de Atendimento *
+                  </label>
+                  <SearchableSelect
+                    options={SERVICE_GROUP_OPTIONS.map((o) => ({
+                      value: o.value,
+                      label: o.description ? `${o.label} — ${o.description}` : o.label,
+                    }))}
+                    value={editServiceGroup}
+                    onValueChange={(v) => {
+                      setEditServiceGroup(v)
+                      setServiceGroupError('')
+                    }}
+                    placeholder="Selecione um grupo de atendimento"
+                    emptyText="Nenhum grupo encontrado."
+                    className="h-9 text-xs"
+                  />
+                  {serviceGroupError && <p className="text-xs text-red-500">{serviceGroupError}</p>}
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-600">Anotações Internas</label>
@@ -361,6 +395,7 @@ export default function Clientes() {
                   <TableHead className="text-xs font-bold text-slate-600">
                     Nome da Empresa
                   </TableHead>
+                  <TableHead className="text-xs font-bold text-slate-600">Grupo</TableHead>
                   <TableHead className="text-xs font-bold text-slate-600">Cidade</TableHead>
                   <TableHead className="text-xs font-bold text-slate-600">Estado</TableHead>
                   <TableHead className="text-xs font-bold text-slate-600">
@@ -380,6 +415,15 @@ export default function Clientes() {
                   >
                     <TableCell className="text-xs font-semibold text-slate-900">
                       {c.company || 'Pessoa Física'}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {c.service_group ? (
+                        <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                          {getServiceGroupLabel(c.service_group)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs text-slate-600">{c.city || '—'}</TableCell>
                     <TableCell className="text-xs text-slate-600">{c.state || '—'}</TableCell>
@@ -401,7 +445,7 @@ export default function Clientes() {
                 ))}
                 {filteredClients.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-xs text-slate-400 py-8">
+                    <TableCell colSpan={6} className="text-center text-xs text-slate-400 py-8">
                       Nenhum cliente encontrado.
                     </TableCell>
                   </TableRow>

@@ -15,9 +15,10 @@ import { createAgent } from '@/services/agents'
 import { getAccountExecutives } from '@/services/account_executives'
 import { StateCitySelect } from '@/components/StateCitySelect'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import { AccountExecutiveRecord } from '@/types/service_record'
+import { AccountExecutiveRecord, ServiceGroup } from '@/types/service_record'
 import { useToast } from '@/hooks/use-toast'
-import { UserPlus, Loader2, Trash2, Plus, Headset } from 'lucide-react'
+import { UserPlus, Loader2, Trash2, Plus, Headset, Info } from 'lucide-react'
+import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 
 interface AgentFormEntry {
   name: string
@@ -45,6 +46,8 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
   const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
   const [selectedExecutiveId, setSelectedExecutiveId] = useState('')
   const [executiveError, setExecutiveError] = useState('')
+  const [serviceGroup, setServiceGroup] = useState('')
+  const [serviceGroupError, setServiceGroupError] = useState('')
   const { toast } = useToast()
 
   useEffect(() => {
@@ -65,6 +68,8 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
     setAgentErrors({})
     setSelectedExecutiveId('')
     setExecutiveError('')
+    setServiceGroup('')
+    setServiceGroupError('')
   }
 
   const addAgent = () => setAgents([...agents, { name: '', email: '', phone: '' }])
@@ -103,6 +108,11 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
       return
     }
     setExecutiveError('')
+    if (!serviceGroup) {
+      setServiceGroupError('Selecione um grupo de atendimento')
+      return
+    }
+    setServiceGroupError('')
     if (!validateAgents()) return
     setLoading(true)
     try {
@@ -114,6 +124,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
         state: state.trim(),
         notes: notes.trim(),
         account_executive: selectedExec.name,
+        service_group: serviceGroup as ServiceGroup,
       })
       const validAgents = agents.filter((a) => a.name.trim() || a.email.trim() || a.phone.trim())
       for (const agent of validAgents) {
@@ -180,6 +191,29 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
               onChange={(e) => setPhone(e.target.value)}
               placeholder="(00) 00000-0000"
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5">
+              Grupo de Atendimento *
+              <span title="Concierge: prioridade máxima (core clients). Exclusivo: alta prioridade. LOT: clientes digital (API). BR1, BR2, SAO, SPI, SUL: mesmo nível de importância.">
+                <Info className="h-3.5 w-3.5 text-slate-400" />
+              </span>
+            </Label>
+            <SearchableSelect
+              options={SERVICE_GROUP_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.description ? `${o.label} — ${o.description}` : o.label,
+              }))}
+              value={serviceGroup}
+              onValueChange={(v) => {
+                setServiceGroup(v)
+                setServiceGroupError('')
+              }}
+              placeholder="Selecione um grupo de atendimento"
+              emptyText="Nenhum grupo encontrado."
+              className="h-9"
+            />
+            {serviceGroupError && <p className="text-xs text-red-500">{serviceGroupError}</p>}
           </div>
           <div className="space-y-1.5">
             <Label>Executivo de Contas RA *</Label>
