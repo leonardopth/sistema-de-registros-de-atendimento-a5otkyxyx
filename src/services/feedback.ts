@@ -1,15 +1,13 @@
 import pb from '@/lib/pocketbase/client'
-import type { FeedbackRecord, FeedbackCategory } from '@/types/training'
+import { FeedbackRecord } from '@/types/service_record'
 
-export const createFeedback = (message: string, category: FeedbackCategory) =>
-  pb.collection('feedback').create<FeedbackRecord>({
-    message,
-    category,
-    user_id: pb.authStore.record?.id,
-  })
-
-export const getFeedbacks = () =>
+export const getFeedback = () =>
   pb.collection('feedback').getFullList<FeedbackRecord>({
     sort: '-created',
     expand: 'user_id',
   })
+
+export const createFeedback = (data: { message: string; category: string; user_id: string }) =>
+  pb.collection('feedback').create(data)
+
+export const deleteFeedback = (id: string) => pb.collection('feedback').delete(id)

@@ -126,3 +126,50 @@ export interface AgentRecord {
     client_id?: ClientRecord
   }
 }
+
+export type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'approval' | 'report'
+
+export interface NotificationRecord {
+  id: string
+  user_id: string
+  title: string
+  message: string
+  type: NotificationType
+  read: boolean
+  link?: string
+  created: string
+  updated: string
+  expand?: {
+    user_id?: UserRecord
+  }
+}
+
+export type ScheduledFrequency = 'daily' | 'weekly' | 'monthly'
+export type ReportFormat = 'csv' | 'excel' | 'pdf'
+
+export interface ScheduledReportRecord {
+  id: string
+  user_id: string
+  frequency: ScheduledFrequency
+  email: string
+  format: ReportFormat
+  active: boolean
+  last_sent?: string
+  filters?: Record<string, unknown>
+  created: string
+  updated: string
+}
+
+export type FeedbackCategory = 'Sugestão' | 'Bug' | 'Elogio' | 'Reclamação'
+
+export interface FeedbackRecord {
+  id: string
+  message: string
+  category: FeedbackCategory
+  user_id: string
+  created: string
+  updated: string
+  expand?: {
+    user_id?: UserRecord
+  }
+}

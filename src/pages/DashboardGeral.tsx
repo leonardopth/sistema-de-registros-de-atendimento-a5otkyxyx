@@ -16,10 +16,19 @@ import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { DashboardStats } from '@/components/DashboardStats'
 import { ConsolidatedReportPanel } from '@/components/ConsolidatedReportPanel'
+import { PeriodComparison } from '@/components/PeriodComparison'
+import { DashboardAdvancedFilters } from '@/components/DashboardAdvancedFilters'
+import { FeedbackReviewPanel } from '@/components/FeedbackReviewPanel'
+import { ScheduledExportDialog } from '@/components/ScheduledExportDialog'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
+import {
+  DashboardFilters,
+  DEFAULT_FILTERS,
+  filterRecords,
+  getPreviousPeriodCount,
+} from '@/lib/dashboard-filters'
 import { ShieldAlert, BarChart3, Users2 } from 'lucide-react'
 
-const AVOIDABLE_REASONS = ['Disponível no RF', 'Fora do Escopo', 'Erro RF', 'Outros']
 const PRIVILEGED_ROLES = ['Master', 'Gerentes', 'Supervisores', 'Líderes']
 
 export default function DashboardGeral() {
@@ -27,6 +36,7 @@ export default function DashboardGeral() {
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
+  const [filters, setFilters] = useState<DashboardFilters>(DEFAULT_FILTERS)
 
   const loadData = async () => {
     try {
@@ -49,73 +59,75 @@ export default function DashboardGeral() {
   useRealtime('service_records', () => loadData())
   useRealtime('clients', () => loadData())
 
+  const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients])
+  const filtered = useMemo(
+    () => filterRecords(records, filters, clientMap),
+    [records, filters, clientMap],
+  )
+  const prevCount = useMemo(
+    () => getPreviousPeriodCount(records, filters.dateFrom, filters.dateTo),
+    [records, filters],
+  )
+
   const stats = useMemo(() => {
     const todayStr = new Date().toISOString().substring(0, 10)
-    const todayRecords = records.filter((r) => r.created?.startsWith(todayStr))
-    const totalDuration = records.reduce((a, r) => a + (r.duration || 0), 0)
+    const todayR = filtered.filter((r) => r.created?.startsWith(todayStr))
+    const totalDur = filtered.reduce((a, r) => a + (r.duration || 0), 0)
     return {
-      todayCount: todayRecords.length,
-      totalCount: records.length,
-      inProgressCount: records.filter((r) => r.status === 'Em Andamento').length,
-      completedTodayCount: todayRecords.filter((r) => r.status === 'Concluído').length,
-      avgDuration: records.length > 0 ? Math.round(totalDuration / records.length) : 0,
-      wrongDeptCount: records.filter((r) => r.avoidable_contact).length,
+      todayCount: todayR.length,
+      totalCount: filtered.length,
+      inProgressCount: filtered.filter((r) => r.status === 'Em Andamento').length,
+      completedTodayCount: todayR.filter((r) => r.status === 'Concluído').length,
+      avgDuration: filtered.length > 0 ? Math.round(totalDur / filtered.length) : 0,
+      wrongDeptCount: filtered.filter((r) => r.avoidable_contact).length,
     }
-  }, [records])
+  }, [filtered])
 
   const groupStats = useMemo(() => {
-    const clientById = new Map(clients.map((c) => [c.id, c]))
-    const companyToGroup = new Map<string, string>()
+    const coMap = new Map<string, string>()
     for (const c of clients) {
-      if (c.company) companyToGroup.set(c.company, c.service_group || '')
+      if (c.company) coMap.set(c.company, c.service_group || '')
     }
     return SERVICE_GROUP_OPTIONS.map((group) => {
-      const groupRecords = records.filter((r) => {
-        const clientId = r.client || r.expand?.client?.id
-        if (clientId) {
-          const clientObj = clientById.get(clientId)
-          if (clientObj && clientObj.service_group === group.value) return true
+      const gr = filtered.filter((r) => {
+        const cid = r.client || r.expand?.client?.id
+        if (cid) {
+          const cl = clientMap.get(cid)
+          if (cl?.service_group === group.value) return true
         }
-        if (r.client_company && companyToGroup.get(r.client_company) === group.value) return true
+        if (r.client_company && coMap.get(r.client_company) === group.value) return true
         return false
       })
-      const total = groupRecords.length
-      const avoidable = groupRecords.filter((r) => r.avoidable_contact).length
-      const reasonBreakdown: Record<string, number> = {}
-      AVOIDABLE_REASONS.forEach((r) => (reasonBreakdown[r] = 0))
-      groupRecords.forEach((r) => {
-        if (r.avoidable_contact && r.avoidable_contact_reason) {
-          const reason = r.avoidable_contact_reason as string
-          if (reasonBreakdown[reason] !== undefined) reasonBreakdown[reason]++
-        }
-      })
+      const total = gr.length
+      const avoidable = gr.filter((r) => r.avoidable_contact).length
       return {
         label: group.label,
         total,
         avoidable,
         rate: total > 0 ? Math.round((avoidable / total) * 100) : 0,
-        reasonBreakdown,
       }
     })
-  }, [clients, records])
+  }, [clients, filtered, clientMap])
 
-  const execStats = useMemo(() => {
-    return executives
-      .map((exec) => {
-        const execRecords = records.filter(
-          (r) => r.expand?.account_executive?.id === exec.id || r.account_executive === exec.id,
-        )
-        const total = execRecords.length
-        const avoidable = execRecords.filter((r) => r.avoidable_contact).length
-        return {
-          name: exec.name,
-          total,
-          avoidable,
-          rate: total > 0 ? Math.round((avoidable / total) * 100) : 0,
-        }
-      })
-      .filter((s) => s.total > 0)
-  }, [records, executives])
+  const execStats = useMemo(
+    () =>
+      executives
+        .map((exec) => {
+          const er = filtered.filter(
+            (r) => r.expand?.account_executive?.id === exec.id || r.account_executive === exec.id,
+          )
+          const total = er.length
+          const avoidable = er.filter((r) => r.avoidable_contact).length
+          return {
+            name: exec.name,
+            total,
+            avoidable,
+            rate: total > 0 ? Math.round((avoidable / total) * 100) : 0,
+          }
+        })
+        .filter((s) => s.total > 0),
+    [filtered, executives],
+  )
 
   if (!PRIVILEGED_ROLES.includes(user?.role || '')) {
     return (
@@ -131,15 +143,23 @@ export default function DashboardGeral() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-indigo-600" />
-          Dashboard Geral
-        </h2>
-        <p className="text-xs text-slate-500">
-          Indicadores consolidados de todos os grupos e executivos
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
+            <BarChart3 className="h-6 w-6 text-indigo-600" /> Dashboard Geral
+          </h2>
+          <p className="text-xs text-slate-500">
+            Indicadores consolidados de todos os grupos e executivos
+          </p>
+        </div>
+        <ScheduledExportDialog />
       </div>
+
+      <DashboardAdvancedFilters filters={filters} onChange={setFilters} />
+
+      {filters.dateFrom && filters.dateTo && (
+        <PeriodComparison currentCount={filtered.length} previousCount={prevCount} />
+      )}
 
       <DashboardStats {...stats} />
 
@@ -147,7 +167,7 @@ export default function DashboardGeral() {
         <Card className="border-slate-200 shadow-subtle">
           <CardContent className="p-4">
             <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-indigo-600" /> Por Grupo de Atendimento
+              <BarChart3 className="h-4 w-4 text-indigo-600" /> Por Grupo
             </h3>
             <Table>
               <TableHeader className="bg-slate-50">
@@ -171,11 +191,10 @@ export default function DashboardGeral() {
             </Table>
           </CardContent>
         </Card>
-
         <Card className="border-slate-200 shadow-subtle">
           <CardContent className="p-4">
             <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-              <Users2 className="h-4 w-4 text-indigo-600" /> Por Executivo de Contas
+              <Users2 className="h-4 w-4 text-indigo-600" /> Por Executivo
             </h3>
             <Table>
               <TableHeader className="bg-slate-50">
@@ -198,7 +217,7 @@ export default function DashboardGeral() {
                 {execStats.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-xs text-slate-400 py-4">
-                      Nenhum dado disponível
+                      Nenhum dado
                     </TableCell>
                   </TableRow>
                 )}
@@ -208,7 +227,8 @@ export default function DashboardGeral() {
         </Card>
       </div>
 
-      <ConsolidatedReportPanel records={records} />
+      <ConsolidatedReportPanel records={filtered} />
+      <FeedbackReviewPanel />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T12:46:23.201Z",
+  "generatedAt": "2026-08-05T14:11:51.156Z",
   "collections": [
     {
       "name": "users",
@@ -598,6 +598,152 @@
       "indexes": [
         "CREATE INDEX idx_feedback_user ON feedback (user_id)",
         "CREATE INDEX idx_feedback_category ON feedback (category)"
+      ]
+    },
+    {
+      "name": "notifications",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && user_id = @request.auth.id",
+        "view": "@request.auth.id != '' && user_id = @request.auth.id",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != '' && user_id = @request.auth.id",
+        "delete": "@request.auth.id != '' && user_id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["info", "success", "warning", "error", "approval", "report"]
+        },
+        {
+          "name": "read",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_notifications_user ON notifications (user_id)",
+        "CREATE INDEX idx_notifications_read ON notifications (read)",
+        "CREATE INDEX idx_notifications_created ON notifications (created DESC)"
+      ]
+    },
+    {
+      "name": "scheduled_reports",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && user_id = @request.auth.id",
+        "view": "@request.auth.id != '' && user_id = @request.auth.id",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != '' && user_id = @request.auth.id",
+        "delete": "@request.auth.id != '' && user_id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "frequency",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["daily", "weekly", "monthly"]
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "format",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["csv", "excel", "pdf"]
+        },
+        {
+          "name": "active",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "last_sent",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "filters",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_scheduled_reports_user ON scheduled_reports (user_id)",
+        "CREATE INDEX idx_scheduled_reports_active ON scheduled_reports (active)"
       ]
     }
   ]
