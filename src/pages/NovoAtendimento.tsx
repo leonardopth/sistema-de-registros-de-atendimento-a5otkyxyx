@@ -24,11 +24,10 @@ import {
   ServicePriority,
   ServiceStatus,
   TaskItem,
-  UserRecord,
 } from '@/types/service_record'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
-import { getUsers } from '@/services/users'
+
 import { Checkbox } from '@/components/ui/checkbox'
 import { Headset, Plus, Trash2, Save, ArrowLeft, Loader2 } from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -55,22 +54,22 @@ export default function NovoAtendimento() {
   const [priority, setPriority] = useState<ServicePriority>('Média')
   const [status, setStatus] = useState<ServiceStatus>('Aberto')
   const [duration, setDuration] = useState<number>(20)
-  const [assignedAgent, setAssignedAgent] = useState(user?.name || 'Leonardo Silva')
+  const [allAgents, setAllAgents] = useState<AgentRecord[]>([])
+  const [selectedAgentId, setSelectedAgentId] = useState('')
+  const [agentError, setAgentError] = useState('')
 
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [loading, setLoading] = useState(false)
   const [avoidableContact, setAvoidableContact] = useState(false)
   const [avoidableContactExplanation, setAvoidableContactExplanation] = useState('')
-  const [users, setUsers] = useState<UserRecord[]>([])
-  const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
 
   useEffect(() => {
     getClients()
       .then(setClients)
       .catch(() => {})
-    getUsers()
-      .then(setUsers)
+    getAgents()
+      .then(setAllAgents)
       .catch(() => {})
   }, [])
 
@@ -107,7 +106,8 @@ export default function NovoAtendimento() {
 
   const handleAddTask = () => {
     if (!newTaskTitle.trim()) return
-    setTasks([...tasks, { title: newTaskTitle.trim(), done: false, responsible: assignedAgent }])
+    const agentName = allAgents.find((a) => a.id === selectedAgentId)?.name || ''
+    setTasks([...tasks, { title: newTaskTitle.trim(), done: false, responsible: agentName }])
     setNewTaskTitle('')
   }
 
@@ -117,10 +117,17 @@ export default function NovoAtendimento() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!clientName.trim() || !description.trim() || !assignedUserId) {
+    if (!clientName.trim() || !description.trim()) {
       toast({ variant: 'destructive', title: 'Preencha os campos obrigatórios' })
       return
     }
+
+    if (!selectedAgentId) {
+      setAgentError('Selecione um executivo de contas válido')
+      toast({ variant: 'destructive', title: 'Selecione um executivo de contas' })
+      return
+    }
+    setAgentError('')
 
     if (avoidableContact && !avoidableContactExplanation.trim()) {
       toast({ variant: 'destructive', title: 'Informe a explicação do contato evitável' })
@@ -141,8 +148,8 @@ export default function NovoAtendimento() {
         status,
         start_time: new Date().toISOString(),
         duration,
-        assigned_agent: assignedAgent,
-        assigned_user: assignedUserId,
+        assigned_agent: allAgents.find((a) => a.id === selectedAgentId)?.name || '',
+        assigned_user: user?.id,
         tasks,
         avoidable_contact: avoidableContact,
         avoidable_contact_explanation: avoidableContact ? avoidableContactExplanation.trim() : '',
@@ -390,26 +397,20 @@ export default function NovoAtendimento() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Responsável *</Label>
-                <Select
-                  value={assignedUserId}
-                  onValueChange={(id) => {
-                    setAssignedUserId(id)
-                    const u = users.find((u) => u.id === id)
-                    if (u) setAssignedAgent(u.name)
-                  }}
-                >
+                <Label>Executivo de Contas *</Label>
+                <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o responsável" />
+                    <SelectValue placeholder="Selecione um executivo de contas" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.name} ({u.role})
+                    {allAgents.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {agentError && <p className="text-xs text-red-500">{agentError}</p>}
               </div>
             </div>
           </div>

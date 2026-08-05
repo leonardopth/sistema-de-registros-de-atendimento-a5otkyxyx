@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  UserCog,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import logoImg from '../assets/image-b4a05.png'
@@ -41,6 +42,7 @@ export function Layout() {
     { label: 'Novo Atendimento', path: '/novo-atendimento', icon: PlusCircle },
     { label: 'Atendimentos', path: '/atendimentos', icon: Headset },
     { label: 'Clientes', path: '/clientes', icon: Users },
+    { label: 'Executivos de Contas', path: '/executivos', icon: UserCog },
   ]
 
   const handleSearch = (e: React.FormEvent) => {
@@ -198,6 +200,7 @@ export function Layout() {
                 {location.pathname === '/novo-atendimento' && 'Novo Registros de Atendimento'}
                 {location.pathname === '/atendimentos' && 'Histórico de Atendimentos'}
                 {location.pathname === '/clientes' && 'Gestão de Clientes'}
+                {location.pathname === '/executivos' && 'Executivos de Contas'}
               </h1>
             </div>
           </div>

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T02:21:15.120Z",
+  "generatedAt": "2026-08-05T02:39:32.702Z",
   "collections": [
     {
       "name": "users",
@@ -126,11 +126,11 @@
       "name": "service_records",
       "type": "base",
       "apiRules": {
-        "list": "assigned_user = @request.auth.id || user_id = @request.auth.id",
-        "view": "assigned_user = @request.auth.id || user_id = @request.auth.id",
+        "list": "@request.auth.id != '' && (@request.auth.role != 'Consultores' || assigned_user = @request.auth.id || user_id = @request.auth.id)",
+        "view": "@request.auth.id != '' && (@request.auth.role != 'Consultores' || assigned_user = @request.auth.id || user_id = @request.auth.id)",
         "create": "@request.auth.id != ''",
-        "update": "assigned_user = @request.auth.id || user_id = @request.auth.id",
-        "delete": "assigned_user = @request.auth.id || user_id = @request.auth.id"
+        "update": "@request.auth.id != '' && (@request.auth.role != 'Consultores' || assigned_user = @request.auth.id || user_id = @request.auth.id)",
+        "delete": "@request.auth.id != '' && (@request.auth.role != 'Consultores' || assigned_user = @request.auth.id || user_id = @request.auth.id)"
       },
       "fields": [
         {
@@ -288,9 +288,9 @@
       "apiRules": {
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "create": "@request.auth.id != '' && @request.auth.role != 'Consultores'",
+        "update": "@request.auth.id != '' && @request.auth.role != 'Consultores'",
+        "delete": "@request.auth.id != '' && @request.auth.role != 'Consultores'"
       },
       "fields": [
         {

@@ -78,4 +78,7 @@ export interface AgentRecord {
   client_id: string
   created: string
   updated: string
+  expand?: {
+    client_id?: ClientRecord
+  }
 }
