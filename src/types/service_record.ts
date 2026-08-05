@@ -26,7 +26,15 @@ export type ServiceStatus = 'Aberto' | 'Em Andamento' | 'Concluído' | 'Cancelad
 
 export type AvoidableContactReason = 'Disponível no RF' | 'Fora do Escopo' | 'Erro RF' | 'Outros'
 
-export type UserRole = 'Gerentes' | 'Supervisores' | 'Líderes' | 'Consultores'
+export type UserRole =
+  | 'Gerentes'
+  | 'Supervisores'
+  | 'Líderes'
+  | 'Consultores'
+  | 'Executivo de contas'
+  | 'Master'
+
+export type ApprovalStatus = 'Pendente' | 'Aprovado' | 'Rejeitado'
 
 export interface ServiceRecord {
   id: string
@@ -72,6 +80,7 @@ export interface UserRecord {
   name: string
   email: string
   role: UserRole
+  approval_status?: ApprovalStatus
 }
 
 export interface ClientRecord {

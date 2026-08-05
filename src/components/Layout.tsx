@@ -25,6 +25,7 @@ import {
   ChevronRight,
   ShieldCheck,
   UserCog,
+  UserCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import logoImg from '../assets/image-b4a05.png'
@@ -44,6 +45,10 @@ export function Layout() {
     { label: 'Clientes', path: '/clientes', icon: Users },
     { label: 'Executivos de Contas', path: '/executivos', icon: UserCog },
   ]
+
+  if (user?.role === 'Master') {
+    navItems.push({ label: 'Gestão de Usuários', path: '/gestao-usuarios', icon: UserCheck })
+  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -201,6 +206,7 @@ export function Layout() {
                 {location.pathname === '/atendimentos' && 'Histórico de Atendimentos'}
                 {location.pathname === '/clientes' && 'Gestão de Clientes'}
                 {location.pathname === '/executivos' && 'Executivos de Contas'}
+                {location.pathname === '/gestao-usuarios' && 'Gestão de Usuários'}
               </h1>
             </div>
           </div>

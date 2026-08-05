@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Lock, Mail, Loader2, ArrowRight, User } from 'lucide-react'
+import { Lock, Mail, Loader2, ArrowRight, User, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 import { UserRole } from '@/types/service_record'
@@ -26,22 +26,40 @@ export default function Login() {
   const [role, setRole] = useState<UserRole | ''>('')
   const [loading, setLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [signupSuccess, setSignupSuccess] = useState(false)
+  const [loginMessage, setLoginMessage] = useState<{
+    type: 'pending' | 'rejected'
+    text: string
+  } | null>(null)
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoginMessage(null)
     setLoading(true)
-    const { error } = await signIn(email, password)
+    const { error, approvalStatus } = await signIn(email, password)
     setLoading(false)
 
     if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Falha no login',
-        description: 'E-mail ou senha incorretos. Verifique as credenciais.',
-      })
+      if (approvalStatus === 'Pendente') {
+        setLoginMessage({
+          type: 'pending',
+          text: 'Seu cadastro está aguardando aprovação do gestor. Você receberá acesso assim que for aprovado.',
+        })
+      } else if (approvalStatus === 'Rejeitado') {
+        setLoginMessage({
+          type: 'rejected',
+          text: 'Seu cadastro foi rejeitado. Entre em contato com o gestor do sistema para mais informações.',
+        })
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Falha no login',
+          description: 'E-mail ou senha incorretos. Verifique as credenciais.',
+        })
+      }
     } else {
       toast({ title: 'Bem-vindo ao Sistema', description: 'Login realizado com sucesso.' })
       navigate('/')
@@ -77,14 +95,15 @@ export default function Login() {
         })
       }
     } else {
-      toast({ title: 'Conta criada!', description: 'Bem-vindo ao sistema.' })
-      navigate('/')
+      setSignupSuccess(true)
     }
   }
 
   const switchMode = (newMode: 'login' | 'signup') => {
     setMode(newMode)
     setFieldErrors({})
+    setLoginMessage(null)
+    setSignupSuccess(false)
     if (newMode === 'signup') {
       setEmail('')
       setPassword('')
@@ -92,6 +111,38 @@ export default function Login() {
       setEmail('leonardopth@gmail.com')
       setPassword('Skip@Pass')
     }
+  }
+
+  if (signupSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4 relative overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-cyan-500/20 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] pointer-events-none" />
+        <Card className="w-full max-w-md shadow-2xl border-slate-800 bg-slate-900/90 backdrop-blur-xl text-slate-100">
+          <div className="p-6 bg-slate-950 border-b border-slate-800/80 text-center">
+            <div className="mx-auto flex items-center justify-center py-2">
+              <img src={logoImg} alt="RexturAdvance Logo" className="h-11 object-contain" />
+            </div>
+          </div>
+          <CardContent className="p-6 text-center space-y-4">
+            <div className="mx-auto w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center">
+              <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-100">Cadastro Enviado!</h3>
+            <p className="text-sm text-slate-400">
+              Seu registro foi enviado para aprovação do gestor. Você receberá acesso ao sistema
+              assim que sua conta for aprovada.
+            </p>
+            <Button
+              onClick={() => switchMode('login')}
+              className="w-full bg-gradient-to-r from-cyan-500 via-indigo-600 to-purple-600 hover:from-cyan-600 hover:via-indigo-700 hover:to-purple-700 text-white h-10 font-bold"
+            >
+              Voltar para Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -134,6 +185,23 @@ export default function Login() {
               Cadastrar
             </button>
           </div>
+
+          {loginMessage && (
+            <div
+              className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${
+                loginMessage.type === 'pending'
+                  ? 'bg-amber-950/50 border-amber-800 text-amber-300'
+                  : 'bg-rose-950/50 border-rose-800 text-rose-300'
+              }`}
+            >
+              {loginMessage.type === 'pending' ? (
+                <Clock className="h-4 w-4 shrink-0 mt-0.5" />
+              ) : (
+                <XCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              )}
+              <span>{loginMessage.text}</span>
+            </div>
+          )}
 
           {mode === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-4 pt-2">
@@ -187,10 +255,15 @@ export default function Login() {
                 )}
               </Button>
 
-              <div className="mt-4 p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-center">
+              <div className="mt-4 p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-center space-y-1">
                 <p className="text-xs text-cyan-400 font-semibold">Conta Demo RexturAdvance</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
                   <strong>leonardopth@gmail.com</strong> / <strong>Skip@Pass</strong>
+                </p>
+                <p className="text-[11px] text-purple-400 font-semibold mt-1">Conta Master</p>
+                <p className="text-[11px] text-slate-400">
+                  <strong>leonardo.thereziano@rexturadvance.com.br</strong> /{' '}
+                  <strong>Skip@Pass</strong>
                 </p>
               </div>
             </form>
@@ -265,9 +338,16 @@ export default function Login() {
                     <SelectItem value="Supervisores">Supervisores</SelectItem>
                     <SelectItem value="Líderes">Líderes</SelectItem>
                     <SelectItem value="Consultores">Consultores</SelectItem>
+                    <SelectItem value="Executivo de contas">Executivo de contas</SelectItem>
                   </SelectContent>
                 </Select>
                 {fieldErrors.role && <p className="text-xs text-rose-400">{fieldErrors.role}</p>}
+              </div>
+
+              <div className="p-2.5 bg-amber-950/40 border border-amber-900/50 rounded-lg">
+                <p className="text-[11px] text-amber-300 text-center">
+                  Seu cadastro será enviado para aprovação do gestor antes de liberar o acesso.
+                </p>
               </div>
 
               <Button
@@ -279,7 +359,7 @@ export default function Login() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <span className="flex items-center gap-2">
-                    Criar Conta <ArrowRight className="h-4 w-4" />
+                    Enviar para Aprovação <ArrowRight className="h-4 w-4" />
                   </span>
                 )}
               </Button>

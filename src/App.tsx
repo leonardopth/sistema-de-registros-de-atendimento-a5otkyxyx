@@ -4,6 +4,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { MasterRoute } from '@/components/MasterRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
@@ -11,6 +12,7 @@ import NovoAtendimento from '@/pages/NovoAtendimento'
 import Atendimentos from '@/pages/Atendimentos'
 import Clientes from '@/pages/Clientes'
 import ExecutivosContas from '@/pages/ExecutivosContas'
+import GestaoUsuarios from '@/pages/GestaoUsuarios'
 import Login from '@/pages/Login'
 import NotFound from '@/pages/NotFound'
 
@@ -35,6 +37,14 @@ const App = () => (
               <Route path="/atendimentos" element={<Atendimentos />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/executivos" element={<ExecutivosContas />} />
+              <Route
+                path="/gestao-usuarios"
+                element={
+                  <MasterRoute>
+                    <GestaoUsuarios />
+                  </MasterRoute>
+                }
+              />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
