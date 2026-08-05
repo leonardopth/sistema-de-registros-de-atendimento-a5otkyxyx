@@ -43,7 +43,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
   const { user } = useAuth()
   const { toast } = useToast()
 
-  const [useExisting, setUseExisting] = useState(false)
+  const [useExisting, setUseExisting] = useState(true)
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [selectedClientId, setSelectedClientId] = useState('')
   const [selectedAgentId, setSelectedAgentId] = useState('')
@@ -71,6 +71,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
 
   useEffect(() => {
     if (open) {
+      setUseExisting(true)
       getClients()
         .then(setClients)
         .catch(() => {})
@@ -197,14 +198,14 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 className="text-xs text-indigo-600 h-7"
                 onClick={() => setUseExisting(!useExisting)}
               >
-                {useExisting ? 'Digitar Novo Cliente' : 'Selecionar Cliente Existente'}
+                {useExisting ? 'Digitar Cliente Manualmente' : 'Selecionar Agência'}
               </Button>
             </div>
 
             {useExisting ? (
               <div className="space-y-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">Selecionar Empresa</Label>
+                  <Label className="text-xs">Selecionar Agência</Label>
                   <SearchableSelect
                     options={clients
                       .filter(
@@ -239,12 +240,13 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1 col-span-2">
-                <Label className="text-xs">Empresa / Razão Social</Label>
+                <Label className="text-xs">Agência</Label>
                 <Input
                   className="h-9 text-xs"
                   value={clientCompany}
                   onChange={(e) => setClientCompany(e.target.value)}
-                  placeholder="Nome da empresa"
+                  placeholder="Nome da agência"
+                  disabled={useExisting}
                 />
               </div>
               <div className="space-y-1 col-span-2">

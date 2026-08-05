@@ -39,7 +39,7 @@ export default function NovoAtendimento() {
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  const [useExisting, setUseExisting] = useState(false)
+  const [useExisting, setUseExisting] = useState(true)
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [selectedClientId, setSelectedClientId] = useState('')
   const [selectedAgentId, setSelectedAgentId] = useState('')
@@ -199,14 +199,14 @@ export default function NovoAtendimento() {
                 className="text-xs text-indigo-600"
                 onClick={() => setUseExisting(!useExisting)}
               >
-                {useExisting ? 'Digitar Cliente Manualmente' : 'Selecionar Cliente Cadastrado'}
+                {useExisting ? 'Digitar Cliente Manualmente' : 'Selecionar Agência'}
               </Button>
             </div>
 
             {useExisting && (
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Selecionar Empresa</Label>
+                  <Label className="text-xs">Selecionar Agência</Label>
                   <SearchableSelect
                     options={clients
                       .filter(
@@ -239,11 +239,12 @@ export default function NovoAtendimento() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5 sm:col-span-2">
-                <Label>Empresa / Razão Social</Label>
+                <Label>Agência</Label>
                 <Input
                   value={clientCompany}
                   onChange={(e) => setClientCompany(e.target.value)}
-                  placeholder="Nome da empresa"
+                  placeholder="Nome da agência"
+                  disabled={useExisting}
                 />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
