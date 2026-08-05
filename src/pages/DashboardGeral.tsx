@@ -28,6 +28,8 @@ import {
   getPreviousPeriodCount,
 } from '@/lib/dashboard-filters'
 import { ShieldAlert, BarChart3, Users2 } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { ComparativeView } from '@/components/ComparativeView'
 
 const PRIVILEGED_ROLES = ['Master', 'Gerentes', 'Supervisores', 'Líderes']
 
@@ -157,78 +159,94 @@ export default function DashboardGeral() {
 
       <DashboardAdvancedFilters filters={filters} onChange={setFilters} />
 
-      {filters.dateFrom && filters.dateTo && (
-        <PeriodComparison currentCount={filtered.length} previousCount={prevCount} />
-      )}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview" className="text-xs">
+            Visão Geral
+          </TabsTrigger>
+          <TabsTrigger value="comparative" className="text-xs">
+            Comparativo
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview" className="space-y-6">
+          {filters.dateFrom && filters.dateTo && (
+            <PeriodComparison currentCount={filtered.length} previousCount={prevCount} />
+          )}
 
-      <DashboardStats {...stats} />
+          <DashboardStats {...stats} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="border-slate-200 shadow-subtle">
-          <CardContent className="p-4">
-            <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-indigo-600" /> Por Grupo
-            </h3>
-            <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow>
-                  <TableHead className="text-xs font-bold">Grupo</TableHead>
-                  <TableHead className="text-xs font-bold text-center">Total</TableHead>
-                  <TableHead className="text-xs font-bold text-center">Evitáveis</TableHead>
-                  <TableHead className="text-xs font-bold text-center">Taxa</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {groupStats.map((g) => (
-                  <TableRow key={g.label} className="hover:bg-slate-50">
-                    <TableCell className="text-xs font-semibold">{g.label}</TableCell>
-                    <TableCell className="text-xs text-center">{g.total}</TableCell>
-                    <TableCell className="text-xs text-center">{g.avoidable}</TableCell>
-                    <TableCell className="text-xs text-center font-bold">{g.rate}%</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        <Card className="border-slate-200 shadow-subtle">
-          <CardContent className="p-4">
-            <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-              <Users2 className="h-4 w-4 text-indigo-600" /> Por Executivo
-            </h3>
-            <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow>
-                  <TableHead className="text-xs font-bold">Executivo</TableHead>
-                  <TableHead className="text-xs font-bold text-center">Total</TableHead>
-                  <TableHead className="text-xs font-bold text-center">Evitáveis</TableHead>
-                  <TableHead className="text-xs font-bold text-center">Taxa</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {execStats.map((e) => (
-                  <TableRow key={e.name} className="hover:bg-slate-50">
-                    <TableCell className="text-xs font-semibold">{e.name}</TableCell>
-                    <TableCell className="text-xs text-center">{e.total}</TableCell>
-                    <TableCell className="text-xs text-center">{e.avoidable}</TableCell>
-                    <TableCell className="text-xs text-center font-bold">{e.rate}%</TableCell>
-                  </TableRow>
-                ))}
-                {execStats.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-xs text-slate-400 py-4">
-                      Nenhum dado
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card className="border-slate-200 shadow-subtle">
+              <CardContent className="p-4">
+                <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-indigo-600" /> Por Grupo
+                </h3>
+                <Table>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow>
+                      <TableHead className="text-xs font-bold">Grupo</TableHead>
+                      <TableHead className="text-xs font-bold text-center">Total</TableHead>
+                      <TableHead className="text-xs font-bold text-center">Evitáveis</TableHead>
+                      <TableHead className="text-xs font-bold text-center">Taxa</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {groupStats.map((g) => (
+                      <TableRow key={g.label} className="hover:bg-slate-50">
+                        <TableCell className="text-xs font-semibold">{g.label}</TableCell>
+                        <TableCell className="text-xs text-center">{g.total}</TableCell>
+                        <TableCell className="text-xs text-center">{g.avoidable}</TableCell>
+                        <TableCell className="text-xs text-center font-bold">{g.rate}%</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+            <Card className="border-slate-200 shadow-subtle">
+              <CardContent className="p-4">
+                <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <Users2 className="h-4 w-4 text-indigo-600" /> Por Executivo
+                </h3>
+                <Table>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow>
+                      <TableHead className="text-xs font-bold">Executivo</TableHead>
+                      <TableHead className="text-xs font-bold text-center">Total</TableHead>
+                      <TableHead className="text-xs font-bold text-center">Evitáveis</TableHead>
+                      <TableHead className="text-xs font-bold text-center">Taxa</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {execStats.map((e) => (
+                      <TableRow key={e.name} className="hover:bg-slate-50">
+                        <TableCell className="text-xs font-semibold">{e.name}</TableCell>
+                        <TableCell className="text-xs text-center">{e.total}</TableCell>
+                        <TableCell className="text-xs text-center">{e.avoidable}</TableCell>
+                        <TableCell className="text-xs text-center font-bold">{e.rate}%</TableCell>
+                      </TableRow>
+                    ))}
+                    {execStats.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-xs text-slate-400 py-4">
+                          Nenhum dado
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
 
-      <ConsolidatedReportPanel records={filtered} />
-      <FeedbackReviewPanel />
+          <ConsolidatedReportPanel records={filtered} />
+          <FeedbackReviewPanel />
+        </TabsContent>
+
+        <TabsContent value="comparative" className="space-y-4">
+          <ComparativeView records={filtered} clients={clients} executives={executives} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

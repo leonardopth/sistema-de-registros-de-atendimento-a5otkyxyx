@@ -98,6 +98,7 @@ export interface ClientRecord {
   city?: string
   state?: string
   service_group?: string
+  avoidable_contact_threshold?: number
   created: string
   updated: string
   expand?: {
@@ -127,7 +128,14 @@ export interface AgentRecord {
   }
 }
 
-export type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'approval' | 'report'
+export type NotificationType =
+  | 'info'
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'approval'
+  | 'report'
+  | 'alert'
 
 export interface NotificationRecord {
   id: string
