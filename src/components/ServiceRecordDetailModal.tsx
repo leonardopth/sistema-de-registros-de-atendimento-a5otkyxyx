@@ -46,15 +46,24 @@ import {
   Lock,
   RotateCcw,
   Calendar,
+  CheckCircle2,
+  Undo2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { cn } from '@/lib/utils'
 
 interface ServiceRecordDetailModalProps {
   record: ServiceRecord | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdateSuccess?: () => void
+}
+
+const isDueDateNear = (dueDate: string): boolean => {
+  const due = new Date(dueDate)
+  const now = new Date()
+  return due.getTime() - now.getTime() <= 24 * 60 * 60 * 1000
 }
 
 const EDITABLE_STATUSES: ServiceStatus[] = ['Aberto', 'Em Andamento']
@@ -86,6 +95,7 @@ export function ServiceRecordDetailModal({
   const [reopenOpen, setReopenOpen] = useState(false)
   const [reopenLoading, setReopenLoading] = useState(false)
   const [users, setUsers] = useState<UserRecord[]>([])
+  const [completingTask, setCompletingTask] = useState<number | null>(null)
 
   const isEditable = record ? EDITABLE_STATUSES.includes(record.status) : false
   const canReopen = record ? REOPENABLE_STATUSES.includes(record.status) : false
@@ -141,6 +151,52 @@ export function ServiceRecordDetailModal({
   const handleRemoveTask = (index: number) => {
     if (!isEditable) return
     setTasks(tasks.filter((_, idx) => idx !== index))
+  }
+
+  const handleCompleteTask = async (index: number) => {
+    if (!isEditable || !record) return
+    const updated = [...tasks]
+    updated[index] = {
+      ...updated[index],
+      done: true,
+      done_at: new Date().toISOString(),
+      done_by: user?.id,
+    }
+    setTasks(updated)
+    setCompletingTask(index)
+    try {
+      await updateServiceRecordWithHistory(record.id, { tasks: updated }, user?.id || '')
+      toast({ title: 'Tarefa concluída', description: updated[index].title })
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro ao concluir tarefa' })
+      updated[index] = { ...updated[index], done: false, done_at: undefined, done_by: undefined }
+      setTasks([...updated])
+    } finally {
+      setCompletingTask(null)
+    }
+  }
+
+  const handleReopenTask = async (index: number) => {
+    if (!isEditable || !record) return
+    const updated = [...tasks]
+    updated[index] = {
+      ...updated[index],
+      done: false,
+      done_at: undefined,
+      done_by: undefined,
+    }
+    setTasks(updated)
+    setCompletingTask(index)
+    try {
+      await updateServiceRecordWithHistory(record.id, { tasks: updated }, user?.id || '')
+      toast({ title: 'Tarefa reaberta', description: updated[index].title })
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro ao reabrir tarefa' })
+      updated[index] = { ...updated[index], done: true }
+      setTasks([...updated])
+    } finally {
+      setCompletingTask(null)
+    }
   }
 
   const handleSave = async () => {
@@ -407,50 +463,106 @@ export function ServiceRecordDetailModal({
                   {tasks.map((task, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-2.5 p-2 bg-slate-50 rounded border border-slate-100 group"
+                      className={cn(
+                        'flex items-center gap-2.5 p-2 rounded border group',
+                        task.done
+                          ? 'bg-emerald-50 border-emerald-100'
+                          : 'bg-slate-50 border-slate-100',
+                      )}
                     >
                       <Checkbox
                         id={`task-${idx}`}
                         checked={task.done}
-                        onCheckedChange={() => handleTaskToggle(idx)}
-                        disabled={!isEditable}
+                        disabled
+                        className={cn(
+                          task.done && 'border-emerald-500 data-[state=checked]:bg-emerald-500',
+                        )}
                       />
                       <div className="flex-1 flex flex-col gap-0.5">
                         <label
                           htmlFor={`task-${idx}`}
-                          className={`text-xs cursor-pointer ${
-                            task.done ? 'line-through text-slate-400' : 'text-slate-800 font-medium'
-                          } ${!isEditable ? 'cursor-default' : ''}`}
+                          className={cn(
+                            'text-xs',
+                            task.done
+                              ? 'line-through text-slate-400'
+                              : 'text-slate-800 font-medium',
+                          )}
                         >
                           {task.title}
                         </label>
-                        {(task.responsible || task.due_date) && (
-                          <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                            {task.responsible && (
-                              <span className="flex items-center gap-0.5">
-                                <User className="h-2.5 w-2.5" /> {responsibleName(task.responsible)}
-                              </span>
-                            )}
-                            {task.due_date && (
-                              <span className="flex items-center gap-0.5">
-                                <Calendar className="h-2.5 w-2.5" />{' '}
-                                {format(new Date(task.due_date), 'dd/MM/yyyy', {
-                                  locale: ptBR,
-                                })}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500 flex-wrap">
+                          {task.responsible && (
+                            <span className="flex items-center gap-0.5">
+                              <User className="h-2.5 w-2.5" /> {responsibleName(task.responsible)}
+                            </span>
+                          )}
+                          {task.due_date && (
+                            <span
+                              className={cn(
+                                'flex items-center gap-0.5',
+                                !task.done &&
+                                  isDueDateNear(task.due_date) &&
+                                  'text-amber-600 font-medium',
+                              )}
+                            >
+                              <Calendar className="h-2.5 w-2.5" />{' '}
+                              {format(new Date(task.due_date), 'dd/MM/yyyy', {
+                                locale: ptBR,
+                              })}
+                            </span>
+                          )}
+                          {task.done && task.done_by && (
+                            <span className="flex items-center gap-0.5 text-emerald-600">
+                              <CheckCircle2 className="h-2.5 w-2.5" />{' '}
+                              {responsibleName(task.done_by)}
+                              {task.done_at &&
+                                ` em ${format(new Date(task.done_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {isEditable && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
-                          onClick={() => handleRemoveTask(idx)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          {task.done ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                              onClick={() => handleReopenTask(idx)}
+                              disabled={completingTask === idx}
+                            >
+                              {completingTask === idx ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Undo2 className="h-3 w-3" />
+                              )}
+                              Reabrir
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                              onClick={() => handleCompleteTask(idx)}
+                              disabled={completingTask === idx}
+                            >
+                              {completingTask === idx ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="h-3 w-3" />
+                              )}
+                              Concluir
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
+                            onClick={() => handleRemoveTask(idx)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       )}
                     </div>
                   ))}

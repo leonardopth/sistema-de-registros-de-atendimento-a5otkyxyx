@@ -4,6 +4,8 @@ export interface TaskItem {
   done: boolean
   due_date?: string
   responsible?: string
+  done_at?: string
+  done_by?: string
 }
 
 export type ContactReason =
