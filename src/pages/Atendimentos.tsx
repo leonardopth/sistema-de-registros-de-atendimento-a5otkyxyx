@@ -78,7 +78,7 @@ export default function Atendimentos() {
   const [view, setView] = useState<'all' | 'mine'>('all')
   const [wrongDeptFilter, setWrongDeptFilter] = useState<string>('todos')
   const [executiveFilter, setExecutiveFilter] = useState<string>('todos')
-  const [filterByUser, setFilterByUser] = useState(true)
+  const [filterByUser, setFilterByUser] = useState(false)
   const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -134,7 +134,7 @@ export default function Atendimentos() {
       r.expand?.account_executive?.id === executiveFilter ||
       r.assigned_agent === executives.find((e) => e.id === executiveFilter)?.name
 
-    const matchesUser = !filterByUser || r.assigned_user === user?.id
+    const matchesUser = !filterByUser || r.assigned_user === user?.id || r.user_id === user?.id
 
     const recDate = r.created ? r.created.substring(0, 10) : ''
     const matchesDateFrom = !dateFrom || recDate >= dateFrom
@@ -249,6 +249,7 @@ export default function Atendimentos() {
     setExecutiveFilter('todos')
     setFilterByUser(false)
     setDateFrom('')
+    setDateTo('')
     setDateTo('')
     if (searchParams.get('avoidable_contact')) {
       searchParams.delete('avoidable_contact')
