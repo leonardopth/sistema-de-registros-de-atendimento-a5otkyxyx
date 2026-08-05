@@ -19,6 +19,8 @@ import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
 import { Headset, Plus, Trash2, Loader2, Sparkles } from 'lucide-react'
+import { SERVICE_TEMPLATES } from '@/lib/service-templates'
+import { suggestArticles } from '@/lib/knowledge-base'
 import type {
   ContactReason,
   ServiceChannel,
@@ -57,6 +59,18 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
   const form = useServiceRecordForm(open)
   const { toast } = useToast()
   const [analyzing, setAnalyzing] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState('')
+
+  const handleTemplateSelect = (reason: string) => {
+    setSelectedTemplate(reason)
+    const template = SERVICE_TEMPLATES.find((t) => t.reason === reason)
+    if (template) {
+      form.setContactReason(template.reason as ContactReason)
+      form.setDescription(template.description)
+      form.setPriority(template.priority)
+      form.setTasks(template.tasks)
+    }
+  }
 
   useEffect(() => {
     if (open) form.resetForm()
@@ -104,6 +118,23 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs font-semibold text-slate-700 whitespace-nowrap">
+              Template:
+            </Label>
+            <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
+              <SelectTrigger className="h-8 text-xs flex-1">
+                <SelectValue placeholder="Modelo rápido (opcional)..." />
+              </SelectTrigger>
+              <SelectContent>
+                {SERVICE_TEMPLATES.map((t) => (
+                  <SelectItem key={t.reason} value={t.reason}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
@@ -459,6 +490,22 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
               </div>
             )}
           </div>
+
+          {form.avoidableContact && form.contactReason && (
+            <div className="p-2 bg-cyan-50 border border-cyan-100 rounded-lg space-y-1">
+              <p className="text-[10px] font-bold text-cyan-700 uppercase">
+                📚 Tutorial Recomendado
+              </p>
+              {suggestArticles(
+                form.contactReason as string,
+                form.avoidableContactReason as string,
+              ).map((a) => (
+                <div key={a.id} className="text-xs text-slate-700">
+                  <strong>{a.title}</strong> — {a.summary}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="pt-2 flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

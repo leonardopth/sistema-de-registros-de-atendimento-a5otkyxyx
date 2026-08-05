@@ -20,6 +20,8 @@ import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
 import { ArrowLeft, Plus, Trash2, Save, Loader2, Sparkles } from 'lucide-react'
+import { SERVICE_TEMPLATES } from '@/lib/service-templates'
+import { suggestArticles } from '@/lib/knowledge-base'
 import type {
   ContactReason,
   ServiceChannel,
@@ -54,6 +56,18 @@ export default function NovoAtendimento() {
   const form = useServiceRecordForm()
   const { toast } = useToast()
   const [analyzing, setAnalyzing] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState('')
+
+  const handleTemplateSelect = (reason: string) => {
+    setSelectedTemplate(reason)
+    const template = SERVICE_TEMPLATES.find((t) => t.reason === reason)
+    if (template) {
+      form.setContactReason(template.reason as ContactReason)
+      form.setDescription(template.description)
+      form.setPriority(template.priority)
+      form.setTasks(template.tasks)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     if (await form.handleSubmit(e)) navigate('/atendimentos')
@@ -100,6 +114,23 @@ export default function NovoAtendimento() {
 
       <form onSubmit={handleSubmit}>
         <Card className="border-slate-200 shadow-subtle space-y-6 p-6">
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <Label className="text-xs font-semibold text-slate-700 whitespace-nowrap">
+              Template rápido:
+            </Label>
+            <Select value={selectedTemplate} onValueChange={handleTemplateSelect}>
+              <SelectTrigger className="h-9 text-xs flex-1 max-w-xs">
+                <SelectValue placeholder="Escolha um modelo (opcional)..." />
+              </SelectTrigger>
+              <SelectContent>
+                {SERVICE_TEMPLATES.map((t) => (
+                  <SelectItem key={t.reason} value={t.reason}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b pb-2">
               <h3 className="text-sm font-bold text-indigo-950 uppercase tracking-wider">
@@ -424,6 +455,22 @@ export default function NovoAtendimento() {
               </div>
             )}
           </div>
+
+          {form.avoidableContact && form.contactReason && (
+            <div className="p-3 bg-cyan-50 border border-cyan-100 rounded-lg space-y-1">
+              <p className="text-xs font-bold text-cyan-700 uppercase">
+                📚 Tutorial Recomendado para o Cliente
+              </p>
+              {suggestArticles(
+                form.contactReason as string,
+                form.avoidableContactReason as string,
+              ).map((a) => (
+                <div key={a.id} className="text-xs text-slate-700">
+                  <strong>{a.title}</strong> — {a.summary}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-4 pt-2">
             <h3 className="text-sm font-bold text-indigo-950 uppercase tracking-wider border-b pb-2">

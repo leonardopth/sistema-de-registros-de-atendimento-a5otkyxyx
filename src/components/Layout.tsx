@@ -33,6 +33,9 @@ import {
 import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/components/NotificationBell'
 import logoImg from '../assets/image-b4a05.png'
+import { QuickLog } from '@/components/QuickLog'
+import { ConsultantAIWidget } from '@/components/ConsultantAIWidget'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 
 export function Layout() {
   const { user, signOut } = useAuth()
@@ -41,6 +44,9 @@ export function Layout() {
   const [collapsed, setCollapsed] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [quickLogOpen, setQuickLogOpen] = useState(false)
+
+  useKeyboardShortcuts([{ key: 'n', ctrlKey: true, handler: () => setQuickLogOpen(true) }])
 
   const navItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -298,6 +304,8 @@ export function Layout() {
           <span>Sistema de Registros de Atendimento — Todos os direitos reservados.</span>
         </footer>
       </div>
+      <QuickLog open={quickLogOpen} onOpenChange={setQuickLogOpen} />
+      <ConsultantAIWidget />
     </div>
   )
 }

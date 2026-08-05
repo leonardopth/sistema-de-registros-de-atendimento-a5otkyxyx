@@ -326,6 +326,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
     executiveError,
     showExecutiveSelect: !useExisting,
     tasks,
+    setTasks,
     newTaskTitle,
     setNewTaskTitle,
     handleAddTask,
