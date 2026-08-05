@@ -202,7 +202,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
             <SearchableSelect
               options={SERVICE_GROUP_OPTIONS.map((o) => ({
                 value: o.value,
-                label: o.description ? `${o.label} — ${o.description}` : o.label,
+                label: o.label,
               }))}
               value={serviceGroup}
               onValueChange={(v) => {
