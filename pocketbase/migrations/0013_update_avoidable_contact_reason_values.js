@@ -1,10 +1,7 @@
 migrate(
   (app) => {
     const col = app.findCollectionByNameOrId('service_records')
-    var oldField = col.fields.getByName('avoidable_contact_reason')
-    if (oldField) {
-      col.fields.remove(oldField)
-    }
+    col.fields.removeByName('avoidable_contact_reason')
     col.fields.add(
       new SelectField({
         name: 'avoidable_contact_reason',
@@ -17,10 +14,7 @@ migrate(
   },
   (app) => {
     const col = app.findCollectionByNameOrId('service_records')
-    var newField = col.fields.getByName('avoidable_contact_reason')
-    if (newField) {
-      col.fields.remove(newField)
-    }
+    col.fields.removeByName('avoidable_contact_reason')
     col.fields.add(
       new SelectField({
         name: 'avoidable_contact_reason',

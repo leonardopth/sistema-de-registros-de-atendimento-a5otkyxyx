@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T03:33:49.253Z",
+  "generatedAt": "2026-08-05T03:36:53.663Z",
   "collections": [
     {
       "name": "users",
@@ -283,15 +283,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "Cálculo Reemissão",
-            "Emissão",
-            "Reserva simples",
-            "Reembolso",
-            "Financeiro",
-            "Help Desk",
-            "Outros"
-          ]
+          "selectValues": ["Disponível no RF", "Fora do Escopo", "Erro RF", "Outros"]
         }
       ],
       "indexes": [
