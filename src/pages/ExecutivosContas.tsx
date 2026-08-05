@@ -28,7 +28,7 @@ import { AccountExecutiveRecord } from '@/types/service_record'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
-import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
+import { extractFieldErrors, getErrorMessage, type FieldErrors } from '@/lib/pocketbase/errors'
 import { UserCog, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 
 export default function ExecutivosContas() {
@@ -44,7 +44,7 @@ export default function ExecutivosContas() {
   const [phone, setPhone] = useState('')
   const [saving, setSaving] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
-  const canManage = user?.role && user.role !== 'Consultores'
+  const canManage = ['Gerentes', 'Supervisores', 'Líderes', 'Master'].includes(user?.role)
 
   const loadData = async () => {
     setLoading(true)
@@ -122,7 +122,11 @@ export default function ExecutivosContas() {
       loadData()
     } catch (err) {
       setFieldErrors(extractFieldErrors(err))
-      toast({ variant: 'destructive', title: 'Erro ao salvar executivo' })
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar executivo',
+        description: getErrorMessage(err),
+      })
     } finally {
       setSaving(false)
     }
