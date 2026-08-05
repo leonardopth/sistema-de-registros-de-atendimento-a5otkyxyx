@@ -19,7 +19,9 @@ import { ServiceTimer } from '@/components/ServiceTimer'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Plus, Trash2, Save, Loader2, Sparkles } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Save, Loader2, Sparkles, User, Calendar } from 'lucide-react'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { SERVICE_TEMPLATES } from '@/lib/service-templates'
 import { suggestArticles } from '@/lib/knowledge-base'
 import type {
@@ -344,6 +346,7 @@ export default function NovoAtendimento() {
                 <Input
                   type="number"
                   min={0}
+                  step="0.01"
                   value={form.duration || ''}
                   onChange={(e) => form.setDuration(e.target.value ? Number(e.target.value) : 0)}
                 />
@@ -511,7 +514,25 @@ export default function NovoAtendimento() {
                   key={idx}
                   className="flex items-center justify-between p-2.5 bg-slate-50 border rounded-lg text-sm"
                 >
-                  <span className="font-medium text-slate-800">{t.title}</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium text-slate-800">{t.title}</span>
+                    {(t.responsible || t.due_date) && (
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        {t.responsible && (
+                          <span className="flex items-center gap-0.5">
+                            <User className="h-3 w-3" />
+                            {form.users.find((u) => u.id === t.responsible)?.name || t.responsible}
+                          </span>
+                        )}
+                        {t.due_date && (
+                          <span className="flex items-center gap-0.5">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(t.due_date), 'dd/MM/yyyy', { locale: ptBR })}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"

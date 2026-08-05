@@ -15,8 +15,9 @@ export function AgentStatsList({ clientId }: AgentStatsListProps) {
 
   const loadData = async () => {
     try {
-      const [agentList, allRecords] = await Promise.all([getAgents(clientId), getServiceRecords()])
-      setAgents(agentList)
+      const [agentList, allRecords] = await Promise.all([getAgents(), getServiceRecords()])
+      const filtered = agentList.filter((a: AgentRecord) => a.client_id === clientId)
+      setAgents(filtered)
       setRecords(allRecords)
     } catch (err) {
       console.error(err)

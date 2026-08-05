@@ -183,6 +183,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
   }
 
   const handleTimerStart = () => {
+    if (timerRunning) return
     setTimerStart(new Date().toISOString())
     setTimerRunning(true)
   }
@@ -214,7 +215,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setDescription('')
     setPriority('Média')
     setStatus('Aberto')
-    setDuration(10)
+    setDuration(0)
     setSelectedExecutiveId('')
     setExecutiveError('')
     setAutoExecutive('')

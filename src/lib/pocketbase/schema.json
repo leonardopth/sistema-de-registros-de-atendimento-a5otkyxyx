@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T22:58:56.173Z",
+  "generatedAt": "2026-08-05T23:21:12.450Z",
   "collections": [
     {
       "name": "users",
@@ -200,8 +200,8 @@
       "name": "service_records",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || assigned_user = @request.auth.id || user_id = @request.auth.id)",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || assigned_user = @request.auth.id || user_id = @request.auth.id)",
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || assigned_user = @request.auth.id || user_id = @request.auth.id)",
         "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || assigned_user = @request.auth.id || user_id = @request.auth.id)"
@@ -234,7 +234,7 @@
         {
           "name": "description",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {

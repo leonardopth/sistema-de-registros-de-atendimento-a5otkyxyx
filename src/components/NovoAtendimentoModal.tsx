@@ -59,8 +59,6 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
   const { toast } = useToast()
   const [analyzing, setAnalyzing] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState('')
-  const [newTaskResponsible, setNewTaskResponsible] = useState('')
-  const [newTaskDueDate, setNewTaskDueDate] = useState('')
 
   const handleTemplateSelect = (reason: string) => {
     setSelectedTemplate(reason)
@@ -310,10 +308,11 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
               <Label className="text-xs">Duração Estimada (minutos)</Label>
               <Input
                 type="number"
-                min={1}
+                min={0}
+                step="0.01"
                 className="h-9 text-xs"
-                value={form.duration}
-                onChange={(e) => form.setDuration(Number(e.target.value))}
+                value={form.duration || ''}
+                onChange={(e) => form.setDuration(e.target.value ? Number(e.target.value) : 0)}
               />
             </div>
           </div>
@@ -339,6 +338,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             <ServiceTimer
               timerStart={form.timerStart}
               timerRunning={form.timerRunning}
+              accumulatedMs={form.accumulatedMs}
               duration={form.duration}
               onStart={form.handleTimerStart}
               onPause={form.handleTimerPause}
@@ -393,7 +393,6 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             </div>
             <Textarea
               rows={3}
-              required
               value={form.description}
               onChange={(e) => form.setDescription(e.target.value)}
               placeholder="Detalhes do atendimento prestado... (ou use o microfone 🎤)"
@@ -446,11 +445,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => {
-                    form.handleAddTask(newTaskResponsible, newTaskDueDate)
-                    setNewTaskResponsible('')
-                    setNewTaskDueDate('')
-                  }}
+                  onClick={() => form.handleAddTask()}
                   variant="outline"
                   className="h-8"
                 >
@@ -458,7 +453,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 </Button>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <Select value={newTaskResponsible} onValueChange={setNewTaskResponsible}>
+                <Select value={form.newTaskResponsible} onValueChange={form.setNewTaskResponsible}>
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Responsável (opcional)" />
                   </SelectTrigger>
@@ -473,8 +468,8 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 <Input
                   type="date"
                   className="h-8 text-xs"
-                  value={newTaskDueDate}
-                  onChange={(e) => setNewTaskDueDate(e.target.value)}
+                  value={form.newTaskDueDate}
+                  onChange={(e) => form.setNewTaskDueDate(e.target.value)}
                 />
               </div>
             </div>
