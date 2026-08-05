@@ -55,7 +55,6 @@ export default function NovoAtendimento() {
   const [status, setStatus] = useState<ServiceStatus>('Aberto')
   const [duration, setDuration] = useState<number>(20)
   const [allAgents, setAllAgents] = useState<AgentRecord[]>([])
-  const [selectedAgentId, setSelectedAgentId] = useState('')
   const [agentError, setAgentError] = useState('')
 
   const [tasks, setTasks] = useState<TaskItem[]>([])
