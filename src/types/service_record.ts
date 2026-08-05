@@ -38,6 +38,8 @@ export type UserRole =
 
 export type ApprovalStatus = 'Pendente' | 'Aprovado' | 'Rejeitado'
 
+export type ServiceGroup = 'Concierge' | 'Exclusivo' | 'LOT' | 'BR1' | 'BR2' | 'SAO' | 'SPI' | 'SUL'
+
 export interface ServiceRecord {
   id: string
   client_name: string
@@ -87,6 +89,7 @@ export interface UserRecord {
   approved_by?: string
   approved_by_id?: string
   approved_at?: string
+  service_groups?: ServiceGroup[]
 }
 
 export interface ClientRecord {

@@ -45,6 +45,8 @@ import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { UserCheck, Check, X, Pencil, Loader2, Trash2, Clock } from 'lucide-react'
 import { Mail } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -100,6 +102,7 @@ export default function GestaoUsuarios() {
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [editServiceGroups, setEditServiceGroups] = useState<string[]>([])
 
   const loadData = async () => {
     setLoading(true)
@@ -133,6 +136,7 @@ export default function GestaoUsuarios() {
     setEditEmail(u.email || '')
     setEditRole(u.role || 'Consultores')
     setEditStatus(u.approval_status || 'Aprovado')
+    setEditServiceGroups(u.service_groups || [])
     setFieldErrors({})
     setDialogOpen(true)
   }
@@ -158,6 +162,9 @@ export default function GestaoUsuarios() {
         email: trimmedEmail,
         role: editRole,
         approval_status: editStatus,
+        service_groups: ['Gerentes', 'Supervisores', 'Líderes', 'Consultores'].includes(editRole)
+          ? editServiceGroups
+          : [],
       })
       toast({ title: 'Usuário atualizado com sucesso' })
       setDialogOpen(false)
@@ -397,6 +404,39 @@ export default function GestaoUsuarios() {
                 </SelectContent>
               </Select>
             </div>
+            {['Gerentes', 'Supervisores', 'Líderes', 'Consultores'].includes(editRole) && (
+              <div className="space-y-2">
+                <Label>Grupo de Atendimento</Label>
+                <p className="text-xs text-slate-500">
+                  Selecione um ou mais grupos para restringir o acesso do usuário.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {SERVICE_GROUP_OPTIONS.map((option) => (
+                    <div key={option.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`sg-${option.value}`}
+                        checked={editServiceGroups.includes(option.value)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setEditServiceGroups([...editServiceGroups, option.value])
+                          } else {
+                            setEditServiceGroups(
+                              editServiceGroups.filter((g) => g !== option.value),
+                            )
+                          }
+                        }}
+                      />
+                      <Label
+                        htmlFor={`sg-${option.value}`}
+                        className="cursor-pointer text-sm font-normal"
+                      >
+                        {option.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancelar

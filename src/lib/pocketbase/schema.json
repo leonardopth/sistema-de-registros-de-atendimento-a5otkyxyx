@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T23:21:12.450Z",
+  "generatedAt": "2026-08-05T23:43:47.342Z",
   "collections": [
     {
       "name": "users",
@@ -88,6 +88,13 @@
           "type": "bool",
           "required": false,
           "system": false
+        },
+        {
+          "name": "service_groups",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Concierge", "Exclusivo", "LOT", "BR1", "BR2", "SAO", "SPI", "SUL"]
         }
       ],
       "indexes": [

@@ -31,6 +31,7 @@ import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/hooks/use-auth'
 import { UserPlus, Search, Headset, ArrowLeft, Loader2, Save, Pencil, FilterX } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -65,6 +66,10 @@ export default function Clientes() {
     error: filterCitiesError,
   } = useIbgeCities(normalizedFilterState)
   const { toast } = useToast()
+  const { user } = useAuth()
+
+  const userServiceGroups = (user?.service_groups as string[] | undefined) || []
+  const hasGroupRestriction = userServiceGroups.length > 0
 
   const loadClients = async () => {
     try {
@@ -156,7 +161,12 @@ export default function Clientes() {
       !filterState || normalizeStateValue(c.state || '') === normalizedFilterState
     const matchesCity = !filterCity || (c.city || '') === filterCity
     const matchesServiceGroup = !filterServiceGroup || c.service_group === filterServiceGroup
-    return matchesSearch && matchesState && matchesCity && matchesServiceGroup
+    const matchesGroupRestriction =
+      !hasGroupRestriction ||
+      (c.service_group ? userServiceGroups.includes(c.service_group) : false)
+    return (
+      matchesSearch && matchesState && matchesCity && matchesServiceGroup && matchesGroupRestriction
+    )
   })
 
   return (

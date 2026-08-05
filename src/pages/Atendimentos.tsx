@@ -29,6 +29,7 @@ import {
   ServiceStatus,
   ContactReason,
   AccountExecutiveRecord,
+  ClientRecord,
 } from '@/types/service_record'
 import { StatusBadge } from '@/components/StatusBadge'
 import { PriorityBadge } from '@/components/PriorityBadge'
@@ -50,6 +51,8 @@ import { MinhasTarefasList } from '@/components/MinhasTarefasList'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
 import { getAccountExecutives } from '@/services/account_executives'
 import { exportServiceRecordsByExecutiveCSV } from '@/lib/executive-export'
+import { getClients } from '@/services/clients'
+import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { downloadServiceRecordsCSV } from '@/lib/report-export'
 import {
   downloadServiceRecordsExcel,
@@ -82,6 +85,8 @@ export default function Atendimentos() {
   const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [serviceGroupFilter, setServiceGroupFilter] = useState<string>('todos')
+  const [clients, setClients] = useState<ClientRecord[]>([])
 
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -97,12 +102,14 @@ export default function Atendimentos() {
 
   const loadData = async () => {
     try {
-      const [data, execs] = await Promise.all([
+      const [data, execs, clientsData] = await Promise.all([
         getServiceRecords('', sortAsc ? 'created' : '-created'),
         getAccountExecutives(),
+        getClients(),
       ])
       setRecords(data)
       setExecutives(execs)
+      setClients(clientsData)
     } catch (err) {
       console.error(err)
     }
@@ -116,7 +123,20 @@ export default function Atendimentos() {
     loadData()
   })
 
+  const isConsultor = user?.role === 'Consultores'
+
+  const companyToServiceGroup = new Map<string, string>()
+  clients.forEach((c) => {
+    if (c.company && c.service_group) {
+      companyToServiceGroup.set(c.company.toLowerCase(), c.service_group)
+    }
+  })
+
   const filteredRecords = records.filter((r) => {
+    if (isConsultor && r.assigned_user !== user?.id && r.user_id !== user?.id) {
+      return false
+    }
+
     const matchesSearch =
       r.client_name.toLowerCase().includes(search.toLowerCase()) ||
       r.description.toLowerCase().includes(search.toLowerCase()) ||
@@ -140,6 +160,12 @@ export default function Atendimentos() {
     const matchesDateFrom = !dateFrom || recDate >= dateFrom
     const matchesDateTo = !dateTo || recDate <= dateTo
 
+    const recordServiceGroup =
+      r.expand?.client?.service_group ||
+      (r.client_company ? companyToServiceGroup.get(r.client_company.toLowerCase()) : undefined)
+    const matchesServiceGroup =
+      serviceGroupFilter === 'todos' || recordServiceGroup === serviceGroupFilter
+
     return (
       matchesSearch &&
       matchesStatus &&
@@ -148,7 +174,8 @@ export default function Atendimentos() {
       matchesDateFrom &&
       matchesDateTo &&
       matchesExecutive &&
-      matchesUser
+      matchesUser &&
+      matchesServiceGroup
     )
   })
 
@@ -251,6 +278,7 @@ export default function Atendimentos() {
     setDateFrom('')
     setDateTo('')
     setDateTo('')
+    setServiceGroupFilter('todos')
     if (searchParams.get('avoidable_contact')) {
       searchParams.delete('avoidable_contact')
       setSearchParams(searchParams)
@@ -361,6 +389,25 @@ export default function Atendimentos() {
               <SelectItem value="todos">Todos</SelectItem>
               <SelectItem value="sim">Sim</SelectItem>
               <SelectItem value="nao">Não</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+            <Filter className="h-3.5 w-3.5 text-indigo-500" /> Grupo de Atendimento:
+          </span>
+          <Select value={serviceGroupFilter} onValueChange={setServiceGroupFilter}>
+            <SelectTrigger className="h-9 text-xs w-40">
+              <SelectValue placeholder="Todos os Grupos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Grupos</SelectItem>
+              {SERVICE_GROUP_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

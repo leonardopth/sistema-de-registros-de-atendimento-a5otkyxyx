@@ -291,7 +291,7 @@ export default function NovoAtendimento() {
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <div className="flex items-center justify-between">
-                  <Label>Descrição Detalhada do Atendimento *</Label>
+                  <Label>Descrição Detalhada do Atendimento</Label>
                   <Button
                     type="button"
                     variant="outline"

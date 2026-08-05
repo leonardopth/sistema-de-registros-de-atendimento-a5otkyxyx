@@ -19,7 +19,13 @@ export const updateUser = (
   data: Partial<
     Pick<
       UserRecord,
-      'name' | 'email' | 'role' | 'approval_status' | 'telegram_id' | 'telegram_alerts'
+      | 'name'
+      | 'email'
+      | 'role'
+      | 'approval_status'
+      | 'telegram_id'
+      | 'telegram_alerts'
+      | 'service_groups'
     >
   >,
 ) => {
