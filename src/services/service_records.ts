@@ -32,6 +32,52 @@ export const updateServiceRecord = (id: string, data: Partial<ServiceRecord>) =>
   return pb.collection('service_records').update<ServiceRecord>(id, data)
 }
 
+const TRACKED_FIELDS = [
+  'status',
+  'channel',
+  'priority',
+  'description',
+  'contact_reason',
+  'assigned_agent',
+  'assigned_user',
+  'duration',
+  'avoidable_contact',
+  'avoidable_contact_explanation',
+  'avoidable_contact_reason',
+  'tasks',
+] as const
+
+const stringifyValue = (val: unknown): string => {
+  if (val === undefined || val === null) return ''
+  if (typeof val === 'object') return JSON.stringify(val)
+  return String(val)
+}
+
+export const updateServiceRecordWithHistory = async (
+  id: string,
+  data: Partial<ServiceRecord>,
+  userId: string,
+) => {
+  const oldRecord = await getServiceRecord(id)
+  await updateServiceRecord(id, data)
+
+  for (const field of TRACKED_FIELDS) {
+    if (!(field in data)) continue
+    const oldVal = stringifyValue(oldRecord[field as keyof ServiceRecord])
+    const newVal = stringifyValue(data[field as keyof ServiceRecord])
+    if (oldVal !== newVal) {
+      await pb.collection('service_record_history').create({
+        service_record: id,
+        user: userId,
+        field,
+        old_value: oldVal,
+        new_value: newVal,
+        justification: data.reopen_justification || '',
+      })
+    }
+  }
+}
+
 export const deleteServiceRecord = (id: string) => {
   return pb.collection('service_records').delete(id)
 }

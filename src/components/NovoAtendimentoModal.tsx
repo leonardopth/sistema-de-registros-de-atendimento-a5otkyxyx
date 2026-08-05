@@ -18,7 +18,9 @@ import { ServiceTimer } from '@/components/ServiceTimer'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
-import { Headset, Plus, Trash2, Loader2, Sparkles } from 'lucide-react'
+import { Headset, Plus, Trash2, Loader2, Sparkles, Calendar, User } from 'lucide-react'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { VoiceInputButton } from '@/components/VoiceInputButton'
 import { SERVICE_TEMPLATES } from '@/lib/service-templates'
 import { suggestArticles } from '@/lib/knowledge-base'
@@ -61,6 +63,8 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
   const { toast } = useToast()
   const [analyzing, setAnalyzing] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState('')
+  const [newTaskResponsible, setNewTaskResponsible] = useState('')
+  const [newTaskDueDate, setNewTaskDueDate] = useState('')
 
   const handleTemplateSelect = (reason: string) => {
     setSelectedTemplate(reason)
@@ -435,29 +439,73 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             <Label className="text-xs font-semibold text-slate-700">
               Tarefas de Acompanhamento
             </Label>
-            <div className="flex gap-2">
-              <Input
-                className="h-8 text-xs flex-1"
-                value={form.newTaskTitle}
-                onChange={(e) => form.setNewTaskTitle(e.target.value)}
-                placeholder="Nova tarefa..."
-              />
-              <Button
-                type="button"
-                size="sm"
-                onClick={form.handleAddTask}
-                variant="outline"
-                className="h-8"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add
-              </Button>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  className="h-8 text-xs flex-1"
+                  value={form.newTaskTitle}
+                  onChange={(e) => form.setNewTaskTitle(e.target.value)}
+                  placeholder="Nova tarefa..."
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    form.handleAddTask(newTaskResponsible, newTaskDueDate)
+                    setNewTaskResponsible('')
+                    setNewTaskDueDate('')
+                  }}
+                  variant="outline"
+                  className="h-8"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={newTaskResponsible} onValueChange={setNewTaskResponsible}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Responsável (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {form.users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="date"
+                  className="h-8 text-xs"
+                  value={newTaskDueDate}
+                  onChange={(e) => setNewTaskDueDate(e.target.value)}
+                />
+              </div>
             </div>
             {form.tasks.map((t, idx) => (
               <div
                 key={idx}
                 className="flex items-center justify-between text-xs bg-slate-50 p-2 rounded border"
               >
-                <span>{t.title}</span>
+                <div className="flex flex-col gap-0.5">
+                  <span>{t.title}</span>
+                  {(t.responsible || t.due_date) && (
+                    <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                      {t.responsible && (
+                        <span className="flex items-center gap-0.5">
+                          <User className="h-2.5 w-2.5" />
+                          {form.users.find((u) => u.id === t.responsible)?.name || t.responsible}
+                        </span>
+                      )}
+                      {t.due_date && (
+                        <span className="flex items-center gap-0.5">
+                          <Calendar className="h-2.5 w-2.5" />
+                          {format(new Date(t.due_date), 'dd/MM/yyyy', { locale: ptBR })}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <Button
                   type="button"
                   variant="ghost"

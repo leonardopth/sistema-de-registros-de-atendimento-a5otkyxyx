@@ -66,6 +66,7 @@ export interface ServiceRecord {
   agent?: string
   timer_start?: string
   timer_running?: boolean
+  reopen_justification?: string
   expand?: {
     account_executive?: AccountExecutiveRecord
     client?: ClientRecord
@@ -179,5 +180,21 @@ export interface FeedbackRecord {
   updated: string
   expand?: {
     user_id?: UserRecord
+  }
+}
+
+export interface ServiceRecordHistory {
+  id: string
+  service_record: string
+  user?: string
+  field: string
+  old_value?: string
+  new_value?: string
+  justification?: string
+  created: string
+  updated: string
+  expand?: {
+    user?: UserRecord
+    service_record?: ServiceRecord
   }
 }

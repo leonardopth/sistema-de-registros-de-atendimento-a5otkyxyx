@@ -146,9 +146,17 @@ export function useServiceRecordForm(enabled: boolean = true) {
     }
   }
 
-  const handleAddTask = () => {
+  const handleAddTask = (responsible?: string, dueDate?: string) => {
     if (!newTaskTitle.trim()) return
-    setTasks([...tasks, { title: newTaskTitle.trim(), done: false }])
+    setTasks([
+      ...tasks,
+      {
+        title: newTaskTitle.trim(),
+        done: false,
+        responsible: responsible || undefined,
+        due_date: dueDate || undefined,
+      },
+    ])
     setNewTaskTitle('')
   }
   const handleRemoveTask = (i: number) => setTasks(tasks.filter((_, idx) => idx !== i))

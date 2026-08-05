@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T17:10:41.946Z",
+  "generatedAt": "2026-08-05T17:25:39.470Z",
   "collections": [
     {
       "name": "users",
@@ -385,6 +385,12 @@
           "type": "bool",
           "required": false,
           "system": false
+        },
+        {
+          "name": "reopen_justification",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -768,6 +774,75 @@
       "indexes": [
         "CREATE INDEX idx_scheduled_reports_user ON scheduled_reports (user_id)",
         "CREATE INDEX idx_scheduled_reports_active ON scheduled_reports (active)"
+      ]
+    },
+    {
+      "name": "service_record_history",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != \"\"",
+        "view": "@request.auth.id != \"\"",
+        "create": "@request.auth.id != \"\"",
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "service_record",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "service_records"
+        },
+        {
+          "name": "user",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "field",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "old_value",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "new_value",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "justification",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_srh_service_record ON service_record_history (service_record)",
+        "CREATE INDEX idx_srh_created ON service_record_history (created DESC)"
       ]
     }
   ]
