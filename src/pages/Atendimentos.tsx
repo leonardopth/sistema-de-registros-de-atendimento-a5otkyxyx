@@ -496,7 +496,7 @@ export default function Atendimentos() {
                       {r.duration ? `${r.duration} min` : '-'}
                     </TableCell>
                     <TableCell className="text-xs text-slate-600">
-                      {r.assigned_agent || '-'}
+                      {r.expand?.assigned_user?.name || r.assigned_agent || '-'}
                     </TableCell>
                     <TableCell className="text-xs text-slate-500">
                       {r.created
