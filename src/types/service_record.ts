@@ -201,6 +201,21 @@ export interface FeedbackRecord {
   }
 }
 
+export interface ServiceRecordShare {
+  id: string
+  service_record: string
+  user: string
+  shared_by: string
+  permission: 'Visualizar' | 'Editar'
+  created: string
+  updated: string
+  expand?: {
+    user?: UserRecord
+    shared_by?: UserRecord
+    service_record?: ServiceRecord
+  }
+}
+
 export interface ServiceRecordHistory {
   id: string
   service_record: string

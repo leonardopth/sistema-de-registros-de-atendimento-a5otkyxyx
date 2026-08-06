@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-06T12:23:50.321Z",
+  "generatedAt": "2026-08-06T12:53:17.423Z",
   "collections": [
     {
       "name": "users",
@@ -866,6 +866,66 @@
       "indexes": [
         "CREATE INDEX idx_srh_service_record ON service_record_history (service_record)",
         "CREATE INDEX idx_srh_created ON service_record_history (created DESC)"
+      ]
+    },
+    {
+      "name": "service_record_shares",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != \"\" && (user = @request.auth.id || shared_by = @request.auth.id)",
+        "view": "@request.auth.id != \"\" && (user = @request.auth.id || shared_by = @request.auth.id)",
+        "create": "@request.auth.id != \"\"",
+        "update": "@request.auth.id != \"\"",
+        "delete": "@request.auth.id != \"\""
+      },
+      "fields": [
+        {
+          "name": "service_record",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "service_records"
+        },
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "shared_by",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "permission",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Visualizar", "Editar"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_srs_service_record ON service_record_shares (service_record)",
+        "CREATE INDEX idx_srs_user ON service_record_shares (user)",
+        "CREATE UNIQUE INDEX idx_srs_record_user ON service_record_shares (service_record, user)"
       ]
     }
   ]

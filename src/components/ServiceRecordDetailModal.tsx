@@ -50,10 +50,14 @@ import {
   Calendar,
   CheckCircle2,
   Undo2,
+  Share2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { ShareDialog } from './ShareDialog'
+import { SharedUsersList } from './SharedUsersList'
+import { getSharesByRecord } from '@/services/service_record_shares'
 
 interface ServiceRecordDetailModalProps {
   record: ServiceRecord | null
@@ -104,8 +108,20 @@ export function ServiceRecordDetailModal({
   const [duration, setDuration] = useState(0)
   const [description, setDescription] = useState('')
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [userSharePermission, setUserSharePermission] = useState<'Visualizar' | 'Editar' | null>(
+    null,
+  )
 
-  const isEditable = record ? EDITABLE_STATUSES.includes(record.status) : false
+  const isOwner = record
+    ? record.user_id === user?.id || record.assigned_user === user?.id || user?.role === 'Master'
+    : false
+  const isManagerRole = ['Gerentes', 'Supervisores', 'Líderes'].includes(user?.role || '')
+  const isEditable = record
+    ? EDITABLE_STATUSES.includes(record.status) &&
+      (isOwner || isManagerRole || userSharePermission === 'Editar')
+    : false
+  const canShare = isOwner
   const canReopen = record ? REOPENABLE_STATUSES.includes(record.status) : false
 
   useEffect(() => {
@@ -136,6 +152,23 @@ export function ServiceRecordDetailModal({
         .catch(() => {})
     }
   }, [open])
+
+  useEffect(() => {
+    if (record && user?.id) {
+      const isOwner =
+        record.user_id === user?.id || record.assigned_user === user?.id || user?.role === 'Master'
+      if (!isOwner) {
+        getSharesByRecord(record.id)
+          .then((shares) => {
+            const userShare = shares.find((s) => s.user === user?.id)
+            setUserSharePermission(userShare?.permission || null)
+          })
+          .catch(() => setUserSharePermission(null))
+      } else {
+        setUserSharePermission(null)
+      }
+    }
+  }, [record, user?.id])
 
   if (!record) return null
 
@@ -821,6 +854,15 @@ export function ServiceRecordDetailModal({
               )}
             </div>
 
+            {canShare && (
+              <div className="space-y-2 border-t pt-3">
+                <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                  <Share2 className="h-3.5 w-3.5" /> Usuários Compartilhados
+                </span>
+                <SharedUsersList recordId={record.id} />
+              </div>
+            )}
+
             {record.reopen_justification && (
               <div className="p-2.5 bg-amber-50 border border-amber-100 rounded-lg">
                 <span className="text-[10px] font-bold text-amber-700 uppercase">
@@ -838,6 +880,16 @@ export function ServiceRecordDetailModal({
 
         <DialogFooter className="flex items-center justify-between border-t pt-3 sm:justify-between">
           <div className="flex items-center gap-2">
+            {canShare && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShareDialogOpen(true)}
+                className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+              >
+                <Share2 className="h-4 w-4 mr-1.5" /> Compartilhar
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -906,6 +958,14 @@ export function ServiceRecordDetailModal({
           onConfirm={handleReopen}
           loading={reopenLoading}
         />
+
+        {canShare && (
+          <ShareDialog
+            recordId={record.id}
+            open={shareDialogOpen}
+            onOpenChange={setShareDialogOpen}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

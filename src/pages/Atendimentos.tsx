@@ -58,6 +58,7 @@ import { getAccountExecutives } from '@/services/account_executives'
 import { exportServiceRecordsByExecutiveCSV } from '@/lib/executive-export'
 import { getClients } from '@/services/clients'
 import { getUsers } from '@/services/users'
+import { getSharesByUser } from '@/services/service_record_shares'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { downloadServiceRecordsCSV } from '@/lib/report-export'
 import {
@@ -98,6 +99,7 @@ export default function Atendimentos() {
   const [serviceGroupFilter, setServiceGroupFilter] = useState<string>('todos')
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [users, setUsers] = useState<UserRecord[]>([])
+  const [sharedRecordIds, setSharedRecordIds] = useState<Set<string>>(new Set())
 
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -113,16 +115,18 @@ export default function Atendimentos() {
 
   const loadData = async () => {
     try {
-      const [data, execs, clientsData, usersData] = await Promise.all([
+      const [data, execs, clientsData, usersData, userShares] = await Promise.all([
         getServiceRecords('', sortAsc ? 'created' : '-created'),
         getAccountExecutives(),
         getClients(),
         getUsers(),
+        getSharesByUser(user?.id || '').catch(() => []),
       ])
       setRecords(data)
       setExecutives(execs)
       setClients(clientsData)
       setUsers(usersData)
+      setSharedRecordIds(new Set(userShares.map((s: any) => s.service_record)))
     } catch (err) {
       console.error(err)
     }
@@ -134,6 +138,16 @@ export default function Atendimentos() {
 
   useRealtime('service_records', () => {
     loadData()
+  })
+
+  useRealtime('service_record_shares', () => {
+    if (user?.id) {
+      getSharesByUser(user.id)
+        .then((shares) => {
+          setSharedRecordIds(new Set(shares.map((s: any) => s.service_record)))
+        })
+        .catch(() => {})
+    }
   })
 
   const timerStateRef = useRef({ timerRunning, timerStart, activeTimerRecordId, accumulatedMs })
@@ -197,36 +211,41 @@ export default function Atendimentos() {
   })
 
   const filteredRecords = records.filter((r) => {
-    if (executiveAccessIds !== null) {
-      const isOwner = r.user_id === user?.id || r.assigned_user === user?.id
-      if (!executiveAccessIds.includes(r.account_executive || '') && !isOwner) {
-        return false
+    const isSharedWithUser = sharedRecordIds.has(r.id)
+    if (!isSharedWithUser) {
+      if (executiveAccessIds !== null) {
+        const isOwner = r.user_id === user?.id || r.assigned_user === user?.id
+        if (!executiveAccessIds.includes(r.account_executive || '') && !isOwner) {
+          return false
+        }
       }
-    }
 
-    if (hasGroupRestriction) {
-      const isCreator = r.user_id === user?.id || r.assigned_user === user?.id
-      if (!isCreator) {
-        const recordServiceGroup =
-          r.expand?.client?.service_group ||
-          (r.client ? clientIdToServiceGroup.get(r.client) : undefined) ||
-          (r.client_company ? companyToServiceGroup.get(r.client_company.toLowerCase()) : undefined)
-        const clientGroupMatch =
-          recordServiceGroup && userServiceGroups.includes(recordServiceGroup)
-        if (!clientGroupMatch) {
-          if (isManager) {
-            const creatorId = r.assigned_user || r.user_id
-            const creatorGroups = creatorId
-              ? userGroupMap.get(creatorId)?.service_groups
-              : undefined
-            if (
-              !creatorGroups ||
-              !creatorGroups.some((g: string) => userServiceGroups.includes(g))
-            ) {
+      if (hasGroupRestriction) {
+        const isCreator = r.user_id === user?.id || r.assigned_user === user?.id
+        if (!isCreator) {
+          const recordServiceGroup =
+            r.expand?.client?.service_group ||
+            (r.client ? clientIdToServiceGroup.get(r.client) : undefined) ||
+            (r.client_company
+              ? companyToServiceGroup.get(r.client_company.toLowerCase())
+              : undefined)
+          const clientGroupMatch =
+            recordServiceGroup && userServiceGroups.includes(recordServiceGroup)
+          if (!clientGroupMatch) {
+            if (isManager) {
+              const creatorId = r.assigned_user || r.user_id
+              const creatorGroups = creatorId
+                ? userGroupMap.get(creatorId)?.service_groups
+                : undefined
+              if (
+                !creatorGroups ||
+                !creatorGroups.some((g: string) => userServiceGroups.includes(g))
+              ) {
+                return false
+              }
+            } else {
               return false
             }
-          } else {
-            return false
           }
         }
       }
