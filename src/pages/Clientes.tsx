@@ -140,6 +140,7 @@ export default function Clientes() {
     setEditCompany(c.company || '')
     setEditCity(c.city || '')
     setEditState(c.state || '')
+    setEditNotes(c.notes || '')
     setEditServiceGroup(c.service_group || '')
     setServiceGroupError('')
   }
@@ -160,6 +161,7 @@ export default function Clientes() {
     try {
       await updateClient(selectedClient.id, {
         name: selectedExec.name,
+        account_executive_rel: editExecutiveId,
         phone: editPhone,
         company: editCompany,
         city: editCity,

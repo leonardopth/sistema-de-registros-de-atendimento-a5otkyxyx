@@ -9,8 +9,62 @@ export interface DashboardFilters {
   avoidableOnly?: boolean
   startDate?: string
   endDate?: string
+  dateFrom?: string
+  dateTo?: string
   serviceGroup?: string
   commercialBase?: string
+}
+
+const PRIVILEGED_ROLES = ['Master', 'Gerentes', 'Supervisores', 'Líderes']
+
+export function filterByUserAccess(
+  records: ServiceRecord[],
+  user: { id?: string; role?: string } | null | undefined,
+  clientMap: Map<string, ClientRecord>,
+  userMap: Map<string, { service_groups?: string[] }>,
+): ServiceRecord[] {
+  if (!Array.isArray(records)) return []
+  if (!user) return []
+  if (PRIVILEGED_ROLES.includes(user.role || '')) return records
+
+  const userServiceGroups = userMap.get(user.id || '')?.service_groups || []
+
+  return records.filter((r) => {
+    if (r.user_id === user.id) return true
+    if (r.assigned_user === user.id) return true
+
+    if (r.client && clientMap.has(r.client)) {
+      const client = clientMap.get(r.client)
+      if (client && userServiceGroups.includes(client.service_group || '')) return true
+    }
+
+    return false
+  })
+}
+
+export function getPreviousPeriodCount(
+  records: ServiceRecord[],
+  dateFrom?: string,
+  dateTo?: string,
+): number {
+  if (!Array.isArray(records) || !dateFrom || !dateTo) return 0
+
+  const from = new Date(dateFrom)
+  const to = new Date(dateTo)
+  if (isNaN(from.getTime()) || isNaN(to.getTime())) return 0
+
+  const diffMs = to.getTime() - from.getTime()
+  const prevTo = new Date(from.getTime() - 1)
+  const prevFrom = new Date(prevTo.getTime() - diffMs)
+
+  const prevFromStr = prevFrom.toISOString().substring(0, 10)
+  const prevToStr = prevTo.toISOString().substring(0, 10)
+
+  return records.filter((r) => {
+    if (!r.created) return false
+    const createdDate = r.created.substring(0, 10)
+    return createdDate >= prevFromStr && createdDate <= prevToStr
+  }).length
 }
 
 export const DEFAULT_FILTERS: DashboardFilters = {}

@@ -118,10 +118,15 @@ export interface ClientRecord {
   state?: string
   service_group?: string
   avoidable_contact_threshold?: number
+  blocked?: boolean
+  block_reason?: string
+  blocked_by?: string
+  blocked_at?: string
   created: string
   updated: string
   expand?: {
     account_executive_rel?: AccountExecutiveRecord
+    blocked_by?: UserRecord
   }
 }
 
