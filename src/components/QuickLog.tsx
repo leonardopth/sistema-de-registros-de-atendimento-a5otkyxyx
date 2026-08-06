@@ -17,7 +17,7 @@ interface QuickLogProps {
 }
 
 export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
-  const form = useServiceRecordForm(open)
+  const form = useServiceRecordForm(open, true)
   const { toast } = useToast()
   const [analyzing, setAnalyzing] = useState(false)
 
@@ -88,7 +88,7 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
           </div>
           {form.selectedClientId && form.agents.length > 0 && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Agente</Label>
+              <Label className="text-xs font-semibold">Cliente/Agente</Label>
               <SearchableSelect
                 options={form.agents.map((a) => ({ value: a.id, label: a.name }))}
                 value={form.selectedAgentId}

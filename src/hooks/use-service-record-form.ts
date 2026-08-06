@@ -27,7 +27,7 @@ const AVOIDABLE_REASON_MAP: Partial<Record<string, AvoidableContactReason>> = {
   'erro RF': 'Erro RF',
 }
 
-export function useServiceRecordForm(enabled: boolean = true) {
+export function useServiceRecordForm(enabled: boolean = true, disableTimer: boolean = false) {
   const { user } = useAuth()
   const { toast } = useToast()
 
@@ -102,7 +102,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
   }, [user?.id])
 
   useEffect(() => {
-    if (enabled && !timerAutoStartedRef.current) {
+    if (enabled && !disableTimer && !timerAutoStartedRef.current) {
       setTimerStart(new Date().toISOString())
       setTimerRunning(true)
       timerAutoStartedRef.current = true
@@ -110,7 +110,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
     if (!enabled) {
       timerAutoStartedRef.current = false
     }
-  }, [enabled])
+  }, [enabled, disableTimer])
 
   useRealtime('clients', () => loadClients(), enabled)
   useRealtime('account_executives', () => loadExecutives(), enabled)
@@ -258,8 +258,13 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setAvoidableContact(false)
     setAvoidableContactReason('')
     setAvoidableContactExplanation('')
-    setTimerStart(new Date().toISOString())
-    setTimerRunning(true)
+    if (!disableTimer) {
+      setTimerStart(new Date().toISOString())
+      setTimerRunning(true)
+    } else {
+      setTimerStart(null)
+      setTimerRunning(false)
+    }
     setAccumulatedMs(0)
     setDurationManuallySet(false)
     setNewTaskResponsible('')
