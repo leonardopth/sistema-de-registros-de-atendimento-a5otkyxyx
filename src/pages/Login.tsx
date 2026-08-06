@@ -30,6 +30,7 @@ import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 import { UserRole } from '@/types/service_record'
 import { PasswordRecoveryForm } from '@/components/PasswordRecoveryForm'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
+import { COMMERCIAL_BASE_OPTIONS } from '@/lib/commercial-bases'
 import logoImg from '../assets/image-b4a05.png'
 
 const REMEMBER_EMAIL_KEY = 'rememberEmail'
@@ -50,6 +51,7 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [signupServiceGroups, setSignupServiceGroups] = useState<string[]>([])
+  const [signupBases, setSignupBases] = useState<string[]>([])
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -118,6 +120,7 @@ export default function Login() {
       name.trim(),
       role as UserRole,
       signupServiceGroups,
+      signupBases,
     )
     setLoading(false)
 
@@ -146,6 +149,7 @@ export default function Login() {
     setEmail('')
     setPassword('')
     setSignupServiceGroups([])
+    setSignupBases([])
   }
 
   const goToRecovery = () => {
@@ -442,6 +446,7 @@ export default function Login() {
                         <SelectItem value="Líderes">Líderes</SelectItem>
                         <SelectItem value="Consultores">Consultores</SelectItem>
                         <SelectItem value="Executivo de contas">Executivo de contas</SelectItem>
+                        <SelectItem value="Gestor Comercial">Gestor Comercial</SelectItem>
                       </SelectContent>
                     </Select>
                     {fieldErrors.role && (
@@ -476,6 +481,39 @@ export default function Login() {
                             />
                             <Label
                               htmlFor={`signup-sg-${option.value}`}
+                              className="cursor-pointer text-xs font-normal text-slate-300"
+                            >
+                              {option.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {['Gestor Comercial', 'Executivo de contas'].includes(role as string) && (
+                    <div className="space-y-2">
+                      <Label className="text-slate-300 text-xs font-medium">Bases Regionais</Label>
+                      <p className="text-[11px] text-slate-500">
+                        Selecione uma ou mais bases para o usuário.
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {COMMERCIAL_BASE_OPTIONS.map((option) => (
+                          <div key={option.value} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`signup-base-${option.value}`}
+                              checked={signupBases.includes(option.value)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSignupBases([...signupBases, option.value])
+                                } else {
+                                  setSignupBases(signupBases.filter((b) => b !== option.value))
+                                }
+                              }}
+                              className="border-slate-700 data-[state=checked]:bg-cyan-600 data-[state=checked]:border-cyan-600"
+                            />
+                            <Label
+                              htmlFor={`signup-base-${option.value}`}
                               className="cursor-pointer text-xs font-normal text-slate-300"
                             >
                               {option.label}
