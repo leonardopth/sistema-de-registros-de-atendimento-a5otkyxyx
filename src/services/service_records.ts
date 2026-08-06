@@ -2,13 +2,38 @@ import pb from '@/lib/pocketbase/client'
 import { createAuditLog } from '@/services/audit-log'
 import type { ServiceRecord } from '@/types/service_record'
 
-export async function getServiceRecords(): Promise<ServiceRecord[]> {
+function sortRecords(records: ServiceRecord[], sort: string): ServiceRecord[] {
+  const desc = sort.startsWith('-')
+  const field = desc ? sort.slice(1) : sort
+  return [...records].sort((a, b) => {
+    let aVal: string | number
+    let bVal: string | number
+    if (field === 'assigned_user') {
+      aVal = (a.expand?.assigned_user?.name || a.assigned_agent || '').toLowerCase()
+      bVal = (b.expand?.assigned_user?.name || b.assigned_agent || '').toLowerCase()
+    } else {
+      const av = (a as Record<string, unknown>)[field]
+      const bv = (b as Record<string, unknown>)[field]
+      aVal = typeof av === 'number' ? av : ((av as string) ?? '')
+      bVal = typeof bv === 'number' ? bv : ((bv as string) ?? '')
+    }
+    let cmp = 0
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      cmp = aVal - bVal
+    } else {
+      cmp = String(aVal).localeCompare(String(bVal))
+    }
+    return desc ? -cmp : cmp
+  })
+}
+
+export async function getServiceRecords(sort: string = '-created'): Promise<ServiceRecord> {
   const currentUser = pb.authStore.record
   const isMaster = currentUser?.role === 'Master' || currentUser?.master_access === true
 
   if (isMaster) {
     return await pb.collection('service_records').getFullList<ServiceRecord>({
-      sort: '-created',
+      sort,
       expand: 'account_executive,client,agent,assigned_user,user_id',
     })
   }
@@ -21,7 +46,7 @@ export async function getServiceRecords(): Promise<ServiceRecord[]> {
       .collection('service_records')
       .getFullList<ServiceRecord>({
         filter: `user_id = "${userId}" || assigned_user = "${userId}"`,
-        sort: '-created',
+        sort,
         expand: 'account_executive,client,agent,assigned_user,user_id',
       })
       .catch(() => []),
@@ -45,7 +70,7 @@ export async function getServiceRecords(): Promise<ServiceRecord[]> {
       .collection('service_records')
       .getFullList<ServiceRecord>({
         filter: idFilter,
-        sort: '-created',
+        sort,
         expand: 'account_executive,client,agent,assigned_user,user_id',
       })
       .catch(() => [])
@@ -55,9 +80,7 @@ export async function getServiceRecords(): Promise<ServiceRecord[]> {
   ownedRecords.forEach((r) => recordMap.set(r.id, r))
   sharedRecords.forEach((r) => recordMap.set(r.id, r))
 
-  return Array.from(recordMap.values()).sort(
-    (a, b) => new Date(b.created).getTime() - new Date(a.created).getTime(),
-  )
+  return sortRecords(Array.from(recordMap.values()), sort)
 }
 
 export async function getMyServiceRecords(userId: string): Promise<ServiceRecord[]> {

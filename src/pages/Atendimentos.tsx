@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { SortableHeader } from '@/components/SortableHeader'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   getServiceRecords,
@@ -88,7 +89,8 @@ export default function Atendimentos() {
   const [timerStart, setTimerStart] = useState<string | null>(null)
   const [timerRunning, setTimerRunning] = useState(false)
   const [accumulatedMs, setAccumulatedMs] = useState(0)
-  const [sortAsc, setSortAsc] = useState(false)
+  const [sortField, setSortField] = useState<string>('created')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [view, setView] = useState<'all' | 'mine'>('all')
   const [wrongDeptFilter, setWrongDeptFilter] = useState<string>('todos')
   const [executiveFilter, setExecutiveFilter] = useState<string>('todos')
@@ -113,10 +115,12 @@ export default function Atendimentos() {
   const { toast } = useToast()
   const { user } = useAuth()
 
+  const backendSort = `${sortDirection === 'desc' ? '-' : ''}${sortField}`
+
   const loadData = async () => {
     try {
       const [data, execs, clientsData, usersData, userShares] = await Promise.all([
-        getServiceRecords('', sortAsc ? 'created' : '-created'),
+        getServiceRecords(backendSort),
         getAccountExecutives(),
         getClients(),
         getUsers(),
@@ -134,7 +138,7 @@ export default function Atendimentos() {
 
   useEffect(() => {
     loadData()
-  }, [sortAsc])
+  }, [sortField, sortDirection])
 
   useRealtime('service_records', () => {
     loadData()
@@ -293,11 +297,37 @@ export default function Atendimentos() {
     )
   })
 
+  const displayRecords = useMemo(() => {
+    if (sortField === 'assigned_user') {
+      const sorted = [...filteredRecords]
+      sorted.sort((a, b) => {
+        const aVal = (a.expand?.assigned_user?.name || a.assigned_agent || '').toLowerCase()
+        const bVal = (b.expand?.assigned_user?.name || b.assigned_agent || '').toLowerCase()
+        const cmp = aVal.localeCompare(bVal)
+        return sortDirection === 'asc' ? cmp : -cmp
+      })
+      return sorted
+    }
+    return filteredRecords
+  }, [filteredRecords, sortField, sortDirection])
+
   const myRecords = filteredRecords.filter((r) => r.assigned_user === user?.id)
+
+  const handleSort = (field: string) => {
+    if (sortField !== field) {
+      setSortField(field)
+      setSortDirection('asc')
+    } else if (sortDirection === 'asc') {
+      setSortDirection('desc')
+    } else {
+      setSortField('created')
+      setSortDirection('desc')
+    }
+  }
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(filteredRecords.map((r) => r.id))
+      setSelectedIds(displayRecords.map((r) => r.id))
     } else {
       setSelectedIds([])
     }
@@ -339,7 +369,7 @@ export default function Atendimentos() {
     }
   }
 
-  const exportData = view === 'mine' ? myRecords : filteredRecords
+  const exportData = view === 'mine' ? myRecords : displayRecords
 
   const handleExportCSV = () => {
     downloadServiceRecordsCSV(exportData, 'relatorio-atendimentos.csv')
@@ -391,7 +421,8 @@ export default function Atendimentos() {
     setFilterByUser(false)
     setDateFrom('')
     setDateTo('')
-    setDateTo('')
+    setSortField('created')
+    setSortDirection('desc')
     setServiceGroupFilter('todos')
     if (searchParams.get('avoidable_contact')) {
       searchParams.delete('avoidable_contact')
@@ -667,28 +698,65 @@ export default function Atendimentos() {
                   <TableHead className="w-10">
                     <Checkbox
                       checked={
-                        selectedIds.length > 0 && selectedIds.length === filteredRecords.length
+                        selectedIds.length > 0 && selectedIds.length === displayRecords.length
                       }
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead className="text-xs font-bold">Cliente</TableHead>
-                  <TableHead className="text-xs font-bold">Contato</TableHead>
-                  <TableHead className="text-xs font-bold">Status</TableHead>
-                  <TableHead className="text-xs font-bold">Prioridade</TableHead>
-                  <TableHead className="text-xs font-bold">Duração</TableHead>
-                  <TableHead className="text-xs font-bold">Consultor</TableHead>
-                  <TableHead
-                    className="text-xs font-bold cursor-pointer select-none flex items-center gap-1 py-3"
-                    onClick={() => setSortAsc(!sortAsc)}
-                  >
-                    Criado em <ArrowUpDown className="h-3 w-3" />
-                  </TableHead>
+                  <SortableHeader
+                    label="Cliente"
+                    field="client_name"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Contato"
+                    field="contact_reason"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Status"
+                    field="status"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Prioridade"
+                    field="priority"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Duração"
+                    field="duration"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Consultor"
+                    field="assigned_user"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <SortableHeader
+                    label="Criado em"
+                    field="created"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
                   <TableHead className="text-xs font-bold text-right">Ação</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRecords.map((r) => (
+                {displayRecords.map((r) => (
                   <TableRow key={r.id} className="hover:bg-slate-50">
                     <TableCell>
                       <Checkbox
@@ -764,7 +832,7 @@ export default function Atendimentos() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredRecords.length === 0 && (
+                {displayRecords.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-12 text-slate-400 text-xs">
                       Nenhum atendimento encontrado para os filtros selecionados.

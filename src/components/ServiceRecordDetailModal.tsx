@@ -412,7 +412,7 @@ export function ServiceRecordDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[620px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader className="border-b pb-3">
           <div className="flex items-center justify-between pr-6">
             <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -883,8 +883,8 @@ export function ServiceRecordDetailModal({
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="flex items-center justify-between border-t pt-3 sm:justify-between">
-          <div className="flex items-center gap-2">
+        <DialogFooter className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             {canShare && (
               <Button
                 variant="outline"
@@ -920,7 +920,7 @@ export function ServiceRecordDetailModal({
               </Button>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Fechar
             </Button>
