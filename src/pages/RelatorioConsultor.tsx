@@ -64,6 +64,15 @@ export default function RelatorioConsultor() {
 
   const myStats = useMemo(() => allStats.find((s) => s.uid === user?.id), [allStats, user?.id])
 
+  const anonymizedNames = useMemo(() => {
+    const sorted = [...allStats].sort((a, b) => a.uid.localeCompare(b.uid))
+    const map = new Map<string, string>()
+    sorted.forEach((s, i) => {
+      map.set(s.uid, `Consultor ${i + 1}`)
+    })
+    return map
+  }, [allStats])
+
   const teamAvg = useMemo(() => {
     if (allStats.length === 0)
       return { total: 0, avgDuration: 0, avoidableRate: 0, resolutionRate: 0 }
@@ -186,7 +195,7 @@ export default function RelatorioConsultor() {
                       {s.uid === user?.id && (
                         <Award className="inline h-3 w-3 text-indigo-600 mr-1" />
                       )}
-                      {s.user?.name || 'Consultor'}
+                      {anonymizedNames.get(s.uid) || 'Consultor'}
                     </td>
                     <td className="py-2 text-center text-slate-700">{s.total}</td>
                     <td className="py-2 text-center text-slate-700">{s.avgDuration}min</td>

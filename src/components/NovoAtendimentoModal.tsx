@@ -189,6 +189,16 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                     emptyText="Nenhuma empresa encontrada."
                     className="h-9"
                   />
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="m-show-all-clients"
+                      checked={form.showAllClients}
+                      onCheckedChange={(c) => form.setShowAllClients(!!c)}
+                    />
+                    <Label htmlFor="m-show-all-clients" className="text-xs cursor-pointer">
+                      Mostrar todos os clientes
+                    </Label>
+                  </div>
                 </div>
                 {form.selectedClientId && (
                   <div className="space-y-1">

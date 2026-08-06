@@ -162,6 +162,16 @@ export default function NovoAtendimento() {
                     placeholder="Escolha uma empresa da base..."
                     emptyText="Nenhuma empresa encontrada."
                   />
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="p-show-all-clients"
+                      checked={form.showAllClients}
+                      onCheckedChange={(c) => form.setShowAllClients(!!c)}
+                    />
+                    <Label htmlFor="p-show-all-clients" className="text-xs cursor-pointer">
+                      Mostrar todos os clientes
+                    </Label>
+                  </div>
                 </div>
                 {form.selectedClientId && (
                   <div className="space-y-1.5">

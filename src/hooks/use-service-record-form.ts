@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { getClients } from '@/services/clients'
+import { filterClientsByUserAccess, isMasterUser } from '@/lib/service-group-access'
 import { getAgents } from '@/services/agents'
 import { getAccountExecutives } from '@/services/account_executives'
 import { getUsers } from '@/services/users'
@@ -29,6 +30,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
   const { toast } = useToast()
 
   const [useExisting, setUseExisting] = useState(true)
+  const [showAllClients, setShowAllClients] = useState(false)
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [selectedClientId, setSelectedClientId] = useState('')
   const [selectedAgentId, setSelectedAgentId] = useState('')
@@ -200,8 +202,14 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setDuration(0)
   }
 
+  const filteredClients = useMemo(() => {
+    if (showAllClients || isMasterUser(user)) return clients
+    return filterClientsByUserAccess(clients, user)
+  }, [clients, showAllClients, user])
+
   const resetForm = () => {
     setUseExisting(true)
+    setShowAllClients(false)
     setSelectedClientId('')
     setSelectedAgentId('')
     setAgents([])
@@ -321,7 +329,9 @@ export function useServiceRecordForm(enabled: boolean = true) {
   return {
     useExisting,
     setUseExisting,
-    clients,
+    showAllClients,
+    setShowAllClients,
+    clients: filteredClients,
     selectedClientId,
     handleSelectCompany,
     selectedAgentId,
