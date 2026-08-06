@@ -46,3 +46,17 @@ export const updateTelegramSettings = (id: string, telegram_id: string, telegram
 export const deleteUser = (id: string) => pb.collection('users').delete(id)
 
 export const testTelegram = () => pb.send('/backend/v1/telegram/test', { method: 'POST' })
+
+export const updateUserEmail = (id: string, email: string) =>
+  pb.send(`/backend/v1/users/${id}/email`, {
+    method: 'PATCH',
+    body: JSON.stringify({ email }),
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+export const updateUserServiceGroups = (id: string, service_groups: string[]) =>
+  pb.send(`/backend/v1/users/${id}/service-groups`, {
+    method: 'PATCH',
+    body: JSON.stringify({ service_groups }),
+    headers: { 'Content-Type': 'application/json' },
+  })
