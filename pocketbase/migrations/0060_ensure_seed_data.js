@@ -414,7 +414,7 @@ migrate(
         state: 'GO',
         notes:
           'Viagens corporativas no Centro-Oeste. Solicitação de bloqueio por uso indevido de canal.',
-        service_group: 'CO',
+        service_group: 'BR1',
         aeName: 'Fernanda Lima',
         threshold: 3,
         blocked: true,
