@@ -15,8 +15,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { UserPlus, Check, X, Trash2, Loader2, Crown, History } from 'lucide-react'
+import { UserPlus, Check, X, Trash2, Loader2, Crown, History, Pencil } from 'lucide-react'
 import { NewUserDialog } from '@/components/NewUserDialog'
+import { EditUserDialog } from '@/components/EditUserDialog'
 import { MasterAccessHistoryDialog } from '@/components/MasterAccessHistoryDialog'
 import type { UserRecord, ApprovalStatus } from '@/types/service_record'
 
@@ -35,6 +36,7 @@ export default function GestaoUsuarios() {
   const [showNewUser, setShowNewUser] = useState(false)
   const [showMasterOnly, setShowMasterOnly] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [editingUser, setEditingUser] = useState<UserRecord | null>(null)
   const [loading, setLoading] = useState(true)
 
   const loadUsers = useCallback(async () => {
@@ -55,8 +57,9 @@ export default function GestaoUsuarios() {
 
   const handleApprove = async (id: string) => {
     try {
-      await approveUser(id)
+      await approveUser(id, user?.id || '', user?.name || '')
       toast({ title: 'Usuário aprovado!' })
+      loadUsers()
     } catch {
       toast({ variant: 'destructive', title: 'Erro ao aprovar' })
     }
@@ -65,6 +68,7 @@ export default function GestaoUsuarios() {
     try {
       await rejectUser(id)
       toast({ title: 'Usuário rejeitado' })
+      loadUsers()
     } catch {
       toast({ variant: 'destructive', title: 'Erro ao rejeitar' })
     }
@@ -74,6 +78,7 @@ export default function GestaoUsuarios() {
     try {
       await deleteUser(id)
       toast({ title: 'Usuário removido' })
+      loadUsers()
     } catch {
       toast({ variant: 'destructive', title: 'Erro ao remover' })
     }
@@ -84,6 +89,7 @@ export default function GestaoUsuarios() {
       toast({
         title: master_access ? 'Acesso Master concedido!' : 'Acesso Master revogado!',
       })
+      loadUsers()
     } catch {
       toast({ variant: 'destructive', title: 'Erro ao alterar acesso Master' })
     }
@@ -172,6 +178,14 @@ export default function GestaoUsuarios() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingUser(u)}
+                        title="Editar usuário"
+                      >
+                        <Pencil className="h-4 w-4 text-indigo-600" />
+                      </Button>
                       {u.approval_status === 'Pendente' && (
                         <>
                           <Button size="sm" variant="ghost" onClick={() => handleApprove(u.id)}>
@@ -218,6 +232,14 @@ export default function GestaoUsuarios() {
         </div>
       )}
       <NewUserDialog open={showNewUser} onOpenChange={setShowNewUser} onSuccess={loadUsers} />
+      <EditUserDialog
+        user={editingUser}
+        open={!!editingUser}
+        onOpenChange={(v) => {
+          if (!v) setEditingUser(null)
+        }}
+        onSuccess={loadUsers}
+      />
       <MasterAccessHistoryDialog open={showHistory} onOpenChange={setShowHistory} />
     </div>
   )

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -19,11 +19,23 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Loader2, UserPlus } from 'lucide-react'
-import pb from '@/lib/pocketbase/client'
+import { Loader2, Pencil } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
-import type { UserRole, ServiceGroup, CommercialBase } from '@/types/service_record'
+import {
+  updateUser,
+  toggleMasterAccess,
+  updateUserEmail,
+  updateUserServiceGroups,
+  updateUserBases,
+} from '@/services/users'
+import type {
+  UserRecord,
+  UserRole,
+  ServiceGroup,
+  CommercialBase,
+  ApprovalStatus,
+} from '@/types/service_record'
 
 const ATENDIMENTO_ROLES: UserRole[] = ['Gerentes', 'Supervisores', 'Líderes', 'Consultores']
 const VENDAS_ROLES: UserRole[] = ['Gestor Comercial', 'Executivo de contas']
@@ -47,121 +59,107 @@ const BASE_OPTIONS: CommercialBase[] = [
   'LOT',
   'INSIDE SALES',
 ]
+const APPROVAL_OPTIONS: ApprovalStatus[] = ['Pendente', 'Aprovado', 'Rejeitado']
 
-interface NewUserDialogProps {
+interface EditUserDialogProps {
+  user: UserRecord | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
 }
 
-export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogProps) {
+export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUserDialogProps) {
   const { toast } = useToast()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole | ''>('')
+  const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>('Pendente')
+  const [masterAccess, setMasterAccess] = useState(false)
   const [serviceGroups, setServiceGroups] = useState<ServiceGroup[]>([])
   const [bases, setBases] = useState<CommercialBase[]>([])
   const [loading, setLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '')
+      setEmail(user.email || '')
+      setRole(user.role || '')
+      setApprovalStatus(user.approval_status || 'Pendente')
+      setMasterAccess(user.master_access || false)
+      setServiceGroups(user.service_groups || [])
+      setBases(user.bases || [])
+      setFieldErrors({})
+    }
+  }, [user])
+
   const isAtendimento = ATENDIMENTO_ROLES.includes(role as UserRole)
   const isVendas = VENDAS_ROLES.includes(role as UserRole)
-
-  const reset = () => {
-    setName('')
-    setEmail('')
-    setPassword('')
-    setRole('')
-    setServiceGroups([])
-    setBases([])
-    setFieldErrors({})
-  }
 
   const toggleGroup = (g: ServiceGroup) =>
     setServiceGroups((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
   const toggleBase = (b: CommercialBase) =>
     setBases((prev) => (prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]))
 
-  const handleSubmit = async () => {
-    if (!name.trim() || !email.trim() || !password.trim() || !role) {
-      toast({ variant: 'destructive', title: 'Preencha todos os campos obrigatórios' })
-      return
-    }
+  const handleSave = async () => {
+    if (!user || !name.trim()) return
     setLoading(true)
     setFieldErrors({})
     try {
-      await pb.collection('users').create({
+      await updateUser(user.id, {
         name: name.trim(),
-        email: email.trim(),
-        password,
-        passwordConfirm: password,
-        role,
-        service_groups: isAtendimento ? serviceGroups : [],
-        bases: isVendas ? bases : [],
-        approval_status: 'Aprovado',
+        role: role as UserRole,
+        approval_status: approvalStatus,
       })
-      toast({ title: 'Usuário criado com sucesso!' })
-      reset()
+      if (email.trim() !== user.email) {
+        await updateUserEmail(user.id, email.trim())
+      }
+      if (isAtendimento) {
+        await updateUserServiceGroups(user.id, serviceGroups)
+      }
+      if (isVendas) {
+        await updateUserBases(user.id, bases)
+      }
+      if (masterAccess !== (user.master_access || false)) {
+        await toggleMasterAccess(user.id, masterAccess)
+      }
+      toast({ title: 'Usuário atualizado com sucesso!' })
       onOpenChange(false)
       onSuccess?.()
     } catch (err) {
       setFieldErrors(extractFieldErrors(err))
-      toast({ variant: 'destructive', title: 'Erro ao criar usuário' })
+      toast({ variant: 'destructive', title: 'Erro ao atualizar usuário' })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) reset()
-        onOpenChange(v)
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" /> Novo Usuário
+            <Pencil className="h-5 w-5" /> Editar Usuário
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Nome *</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Nome completo"
-              className="h-9"
-            />
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="h-9" />
             {fieldErrors.name && <p className="text-xs text-red-500">{fieldErrors.name}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">E-mail *</Label>
+            <Label className="text-xs font-semibold">E-mail</Label>
             <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@exemplo.com"
               className="h-9"
             />
             {fieldErrors.email && <p className="text-xs text-red-500">{fieldErrors.email}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Senha *</Label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
-              className="h-9"
-            />
-            {fieldErrors.password && <p className="text-xs text-red-500">{fieldErrors.password}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Cargo *</Label>
+            <Label className="text-xs font-semibold">Cargo</Label>
             <Select
               value={role}
               onValueChange={(v) => {
@@ -171,7 +169,7 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
               }}
             >
               <SelectTrigger className="h-9">
-                <SelectValue placeholder="Selecione o cargo..." />
+                <SelectValue placeholder="Selecione..." />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -190,9 +188,30 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
                     </SelectItem>
                   ))}
                 </SelectGroup>
+                <SelectGroup>
+                  <SelectLabel>Admin</SelectLabel>
+                  <SelectItem value="Master">Master</SelectItem>
+                </SelectGroup>
               </SelectContent>
             </Select>
-            {fieldErrors.role && <p className="text-xs text-red-500">{fieldErrors.role}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Status de Aprovação</Label>
+            <Select
+              value={approvalStatus}
+              onValueChange={(v) => setApprovalStatus(v as ApprovalStatus)}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {APPROVAL_OPTIONS.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {isAtendimento && (
             <div className="space-y-2">
@@ -223,14 +242,18 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
               </div>
             </div>
           )}
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox checked={masterAccess} onCheckedChange={(v) => setMasterAccess(v === true)} />
+            <span className="font-semibold">Acesso Master</span>
+          </label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
+          <Button onClick={handleSave} disabled={loading}>
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Criar Usuário
+            Salvar
           </Button>
         </DialogFooter>
       </DialogContent>

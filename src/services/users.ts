@@ -34,7 +34,11 @@ export async function updateUser(id: string, data: Partial<UserRecord>) {
 }
 
 export async function toggleMasterAccess(userId: string, masterAccess: boolean) {
-  const updated = await pb.collection('users').update(userId, { master_access: masterAccess })
+  const updated = await pb.send(`/backend/v1/users/${userId}/master-access`, {
+    method: 'PATCH',
+    body: JSON.stringify({ master_access: masterAccess }),
+    headers: { 'Content-Type': 'application/json' },
+  })
   try {
     await createAuditLog({
       action: masterAccess ? 'Granted Master Access' : 'Revoked Master Access',
@@ -113,7 +117,11 @@ export async function testTelegram(userId: string) {
 }
 
 export async function updateUserEmail(userId: string, email: string) {
-  return await pb.collection('users').update(userId, { email })
+  return await pb.send(`/backend/v1/users/${userId}/email`, {
+    method: 'PATCH',
+    body: JSON.stringify({ email }),
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
 
 export async function updateUserServiceGroups(userId: string, serviceGroups: string[]) {
