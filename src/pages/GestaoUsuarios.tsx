@@ -37,8 +37,26 @@ import {
 } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 import { UserPlus, Search, Loader2, Check, X, Trash2, Pencil, FilterX } from 'lucide-react'
+
+const ATTENDANCE_ROLES = ['Gerentes', 'Supervisores', 'Líderes', 'Consultores']
+const SALES_ROLES = ['Gestor Comercial', 'Executivo de contas']
+
+const isAttendanceRole = (role: string) => ATTENDANCE_ROLES.includes(role)
+const isSalesRole = (role: string) => SALES_ROLES.includes(role)
+const isMasterRole = (role: string) => role === 'Master'
+const shouldShowGroups = (role: string) => isAttendanceRole(role) || isMasterRole(role)
+const shouldShowBases = (role: string) => isSalesRole(role) || isMasterRole(role)
 
 export default function GestaoUsuarios() {
   const { user: currentUser } = useAuth()
@@ -417,50 +435,84 @@ export default function GestaoUsuarios() {
             </div>
             <div className="space-y-1.5">
               <Label>Cargo *</Label>
-              <SearchableSelect
-                options={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label }))}
+              <Select
                 value={nuRole}
-                onValueChange={(v) => setNuRole(v as UserRole)}
-                placeholder="Selecione um cargo"
-                emptyText="Nenhum cargo encontrado."
-                className="h-9"
-              />
+                onValueChange={(v) => {
+                  setNuRole(v as UserRole)
+                  if (isAttendanceRole(v)) setNuBases([])
+                  else if (isSalesRole(v)) setNuGroups([])
+                }}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione um cargo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Atendimento</SelectLabel>
+                    {ROLE_OPTIONS.filter((r) => ATTENDANCE_ROLES.includes(r.value)).map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Vendas</SelectLabel>
+                    {ROLE_OPTIONS.filter((r) => SALES_ROLES.includes(r.value)).map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Administrador</SelectLabel>
+                    {ROLE_OPTIONS.filter((r) => r.value === 'Master').map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
               {nuErrors.role && <p className="text-xs text-red-500">{nuErrors.role}</p>}
             </div>
-            <div className="space-y-2">
-              <Label>Grupos de Atendimento</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {SERVICE_GROUP_OPTIONS.map((g: { value: string; label: string }) => (
-                  <div key={g.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`nu-g-${g.value}`}
-                      checked={nuGroups.includes(g.value)}
-                      onCheckedChange={() => setNuGroups(toggleArrayValue(nuGroups, g.value))}
-                    />
-                    <Label htmlFor={`nu-g-${g.value}`} className="text-xs cursor-pointer">
-                      {g.label}
-                    </Label>
-                  </div>
-                ))}
+            {shouldShowGroups(nuRole) && (
+              <div className="space-y-2">
+                <Label>Grupos de Atendimento</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {SERVICE_GROUP_OPTIONS.map((g: { value: string; label: string }) => (
+                    <div key={g.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`nu-g-${g.value}`}
+                        checked={nuGroups.includes(g.value)}
+                        onCheckedChange={() => setNuGroups(toggleArrayValue(nuGroups, g.value))}
+                      />
+                      <Label htmlFor={`nu-g-${g.value}`} className="text-xs cursor-pointer">
+                        {g.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Bases</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {COMMERCIAL_BASE_OPTIONS.map((b: { value: string; label: string }) => (
-                  <div key={b.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`nu-b-${b.value}`}
-                      checked={nuBases.includes(b.value)}
-                      onCheckedChange={() => setNuBases(toggleArrayValue(nuBases, b.value))}
-                    />
-                    <Label htmlFor={`nu-b-${b.value}`} className="text-xs cursor-pointer">
-                      {b.label}
-                    </Label>
-                  </div>
-                ))}
+            )}
+            {shouldShowBases(nuRole) && (
+              <div className="space-y-2">
+                <Label>Bases</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {COMMERCIAL_BASE_OPTIONS.map((b: { value: string; label: string }) => (
+                    <div key={b.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`nu-b-${b.value}`}
+                        checked={nuBases.includes(b.value)}
+                        onCheckedChange={() => setNuBases(toggleArrayValue(nuBases, b.value))}
+                      />
+                      <Label htmlFor={`nu-b-${b.value}`} className="text-xs cursor-pointer">
+                        {b.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <DialogFooter className="pt-2">
               <Button
                 type="button"
@@ -508,49 +560,83 @@ export default function GestaoUsuarios() {
             </div>
             <div className="space-y-1.5">
               <Label>Cargo</Label>
-              <SearchableSelect
-                options={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label }))}
+              <Select
                 value={edRole}
-                onValueChange={(v) => setEdRole(v as UserRole)}
-                placeholder="Selecione um cargo"
-                emptyText="Nenhum cargo encontrado."
-                className="h-9"
-              />
+                onValueChange={(v) => {
+                  setEdRole(v as UserRole)
+                  if (isAttendanceRole(v)) setEdBases([])
+                  else if (isSalesRole(v)) setEdGroups([])
+                }}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione um cargo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Atendimento</SelectLabel>
+                    {ROLE_OPTIONS.filter((r) => ATTENDANCE_ROLES.includes(r.value)).map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Vendas</SelectLabel>
+                    {ROLE_OPTIONS.filter((r) => SALES_ROLES.includes(r.value)).map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Administrador</SelectLabel>
+                    {ROLE_OPTIONS.filter((r) => r.value === 'Master').map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Grupos de Atendimento</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {SERVICE_GROUP_OPTIONS.map((g: { value: string; label: string }) => (
-                  <div key={g.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`ed-g-${g.value}`}
-                      checked={edGroups.includes(g.value)}
-                      onCheckedChange={() => setEdGroups(toggleArrayValue(edGroups, g.value))}
-                    />
-                    <Label htmlFor={`ed-g-${g.value}`} className="text-xs cursor-pointer">
-                      {g.label}
-                    </Label>
-                  </div>
-                ))}
+            {shouldShowGroups(edRole) && (
+              <div className="space-y-2">
+                <Label>Grupos de Atendimento</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {SERVICE_GROUP_OPTIONS.map((g: { value: string; label: string }) => (
+                    <div key={g.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`ed-g-${g.value}`}
+                        checked={edGroups.includes(g.value)}
+                        onCheckedChange={() => setEdGroups(toggleArrayValue(edGroups, g.value))}
+                      />
+                      <Label htmlFor={`ed-g-${g.value}`} className="text-xs cursor-pointer">
+                        {g.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Bases</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {COMMERCIAL_BASE_OPTIONS.map((b: { value: string; label: string }) => (
-                  <div key={b.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`ed-b-${b.value}`}
-                      checked={edBases.includes(b.value)}
-                      onCheckedChange={() => setEdBases(toggleArrayValue(edBases, b.value))}
-                    />
-                    <Label htmlFor={`ed-b-${b.value}`} className="text-xs cursor-pointer">
-                      {b.label}
-                    </Label>
-                  </div>
-                ))}
+            )}
+            {shouldShowBases(edRole) && (
+              <div className="space-y-2">
+                <Label>Bases</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {COMMERCIAL_BASE_OPTIONS.map((b: { value: string; label: string }) => (
+                    <div key={b.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`ed-b-${b.value}`}
+                        checked={edBases.includes(b.value)}
+                        onCheckedChange={() => setEdBases(toggleArrayValue(edBases, b.value))}
+                      />
+                      <Label htmlFor={`ed-b-${b.value}`} className="text-xs cursor-pointer">
+                        {b.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setEditTarget(null)}>
                 Cancelar

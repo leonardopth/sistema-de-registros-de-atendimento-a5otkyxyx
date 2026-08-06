@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import { ServiceTimer } from '@/components/ServiceTimer'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
@@ -25,7 +24,6 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
   useEffect(() => {
     if (open) {
       form.resetForm()
-      form.handleTimerStart()
     }
   }, [open])
 
@@ -88,6 +86,19 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
               className="h-9"
             />
           </div>
+          {form.selectedClientId && form.agents.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Agente</Label>
+              <SearchableSelect
+                options={form.agents.map((a) => ({ value: a.id, label: a.name }))}
+                value={form.selectedAgentId}
+                onValueChange={form.handleSelectAgent}
+                placeholder="Selecione o agente..."
+                emptyText="Nenhum agente encontrado."
+                className="h-9"
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">O que aconteceu? *</Label>
@@ -116,15 +127,6 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
               className="text-sm"
             />
           </div>
-          <ServiceTimer
-            timerStart={form.timerStart}
-            timerRunning={form.timerRunning}
-            accumulatedMs={form.accumulatedMs}
-            duration={form.duration}
-            onStart={form.handleTimerStart}
-            onPause={form.handleTimerPause}
-            onReset={form.handleTimerReset}
-          />
           {form.contactReason && (
             <div className="flex items-center gap-2 text-xs flex-wrap">
               <span className="text-slate-500">IA detectou:</span>
