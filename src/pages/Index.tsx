@@ -16,6 +16,7 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { Zap, PlusCircle, Headset, Keyboard } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 
 export default function Index() {
   const { user } = useAuth()
@@ -23,6 +24,8 @@ export default function Index() {
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [quickLogOpen, setQuickLogOpen] = useState(false)
+
+  useKeyboardShortcuts([{ key: 'e', altKey: true, handler: () => setQuickLogOpen(true) }])
 
   const loadData = async () => {
     try {
@@ -84,7 +87,7 @@ export default function Index() {
         <span>
           Dica: pressione{' '}
           <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-300 font-mono text-[10px]">
-            Ctrl+N
+            Alt+E
           </kbd>{' '}
           para registro expresso
         </span>
