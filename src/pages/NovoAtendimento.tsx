@@ -30,8 +30,10 @@ import type {
   ServiceStatus,
   ServicePriority,
   AvoidableContactReason,
+  ServiceGroup,
 } from '@/types/service_record'
 import { AVOIDABLE_CONTACT_REASONS } from '@/lib/constants'
+import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 
 const contactReasons: ContactReason[] = [
   'Bagagem',
@@ -197,6 +199,18 @@ export default function NovoAtendimento() {
                   disabled={form.useExisting}
                 />
               </div>
+              {!form.useExisting && (
+                <div className="sm:col-span-2 flex items-center space-x-2">
+                  <Checkbox
+                    id="p-register-client"
+                    checked={form.registerClient}
+                    onCheckedChange={(c) => form.setRegisterClient(!!c)}
+                  />
+                  <Label htmlFor="p-register-client" className="text-xs cursor-pointer">
+                    Cadastrar cliente na base de clientes
+                  </Label>
+                </div>
+              )}
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Nome do Agente *</Label>
                 <Input
@@ -226,6 +240,55 @@ export default function NovoAtendimento() {
                   disabled={form.agentLocked}
                 />
               </div>
+              {!form.useExisting && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Executivo de Contas</Label>
+                  <Select
+                    value={form.selectedExecutiveId}
+                    onValueChange={form.setSelectedExecutiveId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um executivo de contas (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {form.allExecutives.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {!form.useExisting && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Grupo de Atendimento</Label>
+                  <Select
+                    value={form.manualServiceGroup}
+                    onValueChange={(v) => form.setManualServiceGroup(v as ServiceGroup)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um grupo (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SERVICE_GROUP_OPTIONS.map((g) => (
+                        <SelectItem key={g.value} value={g.value}>
+                          {g.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {Object.keys(form.clientFieldErrors).length > 0 && (
+                    <div className="space-y-1">
+                      {Object.entries(form.clientFieldErrors).map(([field, msg]) => (
+                        <p key={field} className="text-xs text-red-500">
+                          {msg}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -389,29 +452,6 @@ export default function NovoAtendimento() {
                 onReset={form.handleTimerReset}
               />
             </div>
-            {form.showExecutiveSelect && (
-              <div className="space-y-1.5">
-                <Label>Executivo de Contas *</Label>
-                <Select
-                  value={form.selectedExecutiveId}
-                  onValueChange={form.setSelectedExecutiveId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um executivo de contas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {form.allExecutives.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {form.executiveError && (
-                  <p className="text-xs text-red-500">{form.executiveError}</p>
-                )}
-              </div>
-            )}
           </div>
 
           <div className="space-y-4 pt-2">
