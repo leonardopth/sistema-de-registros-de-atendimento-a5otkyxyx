@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ import {
   getServiceRecords,
   batchUpdateStatus,
   batchDeleteServiceRecords,
+  updateServiceRecord,
 } from '@/services/service_records'
 import {
   ServiceRecord,
@@ -46,7 +47,10 @@ import {
   Trash2,
   ArrowUpDown,
   ListChecks,
+  Play,
 } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
 import { useAuth } from '@/hooks/use-auth'
 import { MinhasTarefasList } from '@/components/MinhasTarefasList'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
@@ -79,6 +83,10 @@ export default function Atendimentos() {
 
   const [selectedRecord, setSelectedRecord] = useState<ServiceRecord | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [activeTimerRecordId, setActiveTimerRecordId] = useState<string | null>(null)
+  const [timerStart, setTimerStart] = useState<string | null>(null)
+  const [timerRunning, setTimerRunning] = useState(false)
+  const [accumulatedMs, setAccumulatedMs] = useState(0)
   const [sortAsc, setSortAsc] = useState(false)
   const [view, setView] = useState<'all' | 'mine'>('all')
   const [wrongDeptFilter, setWrongDeptFilter] = useState<string>('todos')
@@ -127,6 +135,24 @@ export default function Atendimentos() {
   useRealtime('service_records', () => {
     loadData()
   })
+
+  const timerStateRef = useRef({ timerRunning, timerStart, activeTimerRecordId, accumulatedMs })
+  timerStateRef.current = { timerRunning, timerStart, activeTimerRecordId, accumulatedMs }
+
+  useEffect(() => {
+    return () => {
+      const s = timerStateRef.current
+      if (s.timerRunning && s.timerStart && s.activeTimerRecordId) {
+        const totalElapsed = s.accumulatedMs + (Date.now() - new Date(s.timerStart).getTime())
+        const durationMin = Math.round((totalElapsed / 60000) * 100) / 100
+        updateServiceRecord(s.activeTimerRecordId, {
+          timer_running: false,
+          timer_start: null,
+          duration: durationMin,
+        }).catch(() => {})
+      }
+    }
+  }, [])
 
   const isMasterUser = user?.role === 'Master'
   const isManager = ['Gerentes', 'Supervisores', 'Líderes'].includes(user?.role || '')
@@ -354,6 +380,72 @@ export default function Atendimentos() {
     }
   }
 
+  const handleContinueTimer = async (record: ServiceRecord) => {
+    if (timerRunning && timerStart && activeTimerRecordId) {
+      const totalElapsed = accumulatedMs + (Date.now() - new Date(timerStart).getTime())
+      const durationMin = Math.round((totalElapsed / 60000) * 100) / 100
+      setAccumulatedMs(totalElapsed)
+      setTimerRunning(false)
+      setTimerStart(null)
+      await updateServiceRecord(activeTimerRecordId, {
+        timer_running: false,
+        timer_start: null,
+        duration: durationMin,
+      }).catch(() => {})
+    }
+    const accMs = record.duration ? record.duration * 60000 : 0
+    setAccumulatedMs(accMs)
+    const now = new Date().toISOString()
+    setTimerStart(now)
+    setTimerRunning(true)
+    setActiveTimerRecordId(record.id)
+    await updateServiceRecord(record.id, {
+      timer_start: now,
+      timer_running: true,
+    }).catch(() => {})
+    toast({ title: 'Cronômetro retomado', description: 'O timer continua de onde parou.' })
+  }
+
+  const handleTimerStart = async () => {
+    const now = new Date().toISOString()
+    setTimerStart(now)
+    setTimerRunning(true)
+    if (activeTimerRecordId) {
+      await updateServiceRecord(activeTimerRecordId, {
+        timer_start: now,
+        timer_running: true,
+      }).catch(() => {})
+    }
+  }
+
+  const handleTimerPause = async (totalElapsedMs: number) => {
+    setAccumulatedMs(totalElapsedMs)
+    setTimerRunning(false)
+    setTimerStart(null)
+    if (activeTimerRecordId) {
+      const durationMin = Math.round((totalElapsedMs / 60000) * 100) / 100
+      await updateServiceRecord(activeTimerRecordId, {
+        timer_running: false,
+        timer_start: null,
+        duration: durationMin,
+      }).catch(() => {})
+    }
+  }
+
+  const handleTimerReset = async () => {
+    setAccumulatedMs(0)
+    const now = new Date().toISOString()
+    setTimerStart(now)
+    setTimerRunning(true)
+    if (activeTimerRecordId) {
+      await updateServiceRecord(activeTimerRecordId, {
+        timer_start: now,
+        timer_running: true,
+        duration: 0,
+      }).catch(() => {})
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -366,132 +458,144 @@ export default function Atendimentos() {
       </div>
 
       <Card className="p-4 border-slate-200 shadow-subtle space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Buscar cliente, empresa..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-xs"
-            />
-          </div>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 text-xs">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os Status</SelectItem>
-              <SelectItem value="Aberto">Aberto</SelectItem>
-              <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-              <SelectItem value="Concluído">Concluído</SelectItem>
-              <SelectItem value="Cancelado">Cancelado</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={reasonFilter} onValueChange={setReasonFilter}>
-            <SelectTrigger className="h-9 text-xs">
-              <SelectValue placeholder="Motivo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os Motivos</SelectItem>
-              <SelectItem value="Bagagem">Bagagem</SelectItem>
-              <SelectItem value="Assento">Assento</SelectItem>
-              <SelectItem value="cálculo reemissão">cálculo reemissão</SelectItem>
-              <SelectItem value="reembolso">reembolso</SelectItem>
-              <SelectItem value="cotação">cotação</SelectItem>
-              <SelectItem value="reserva">reserva</SelectItem>
-              <SelectItem value="cancelamento">cancelamento</SelectItem>
-              <SelectItem value="regras tarifárias">regras tarifárias</SelectItem>
-              <SelectItem value="erro RF">erro RF</SelectItem>
-              <SelectItem value="outros">outros</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearFilters}
-            className="h-9 text-xs text-slate-600"
-          >
-            <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar Filtros
-          </Button>
-          <div className="flex gap-2 col-span-1 sm:col-span-2 md:col-span-1">
-            <ExportMenu
-              label="Exportar Relatório"
-              variant="default"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              onCSV={handleExportCSV}
-              onExcel={handleExportExcel}
-              onPDF={handleExportPDF}
-            />
-            <ExportMenu
-              label="Consolidado"
-              onCSV={handleExportConsolidatedCSV}
-              onExcel={handleExportConsolidatedExcel}
-              onPDF={handleExportConsolidatedPDF}
-            />
+        <div className="space-y-2">
+          <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            Filtros Principais
+          </Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+            <div className="lg:col-span-4 relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Buscar cliente, empresa..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9 text-xs"
+              />
+            </div>
+            <div className="lg:col-span-3">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-9 text-xs w-full">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Status</SelectItem>
+                  <SelectItem value="Aberto">Aberto</SelectItem>
+                  <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                  <SelectItem value="Concluído">Concluído</SelectItem>
+                  <SelectItem value="Cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="lg:col-span-3">
+              <Select value={reasonFilter} onValueChange={setReasonFilter}>
+                <SelectTrigger className="h-9 text-xs w-full">
+                  <SelectValue placeholder="Motivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Motivos</SelectItem>
+                  <SelectItem value="Bagagem">Bagagem</SelectItem>
+                  <SelectItem value="Assento">Assento</SelectItem>
+                  <SelectItem value="cálculo reemissão">cálculo reemissão</SelectItem>
+                  <SelectItem value="reembolso">reembolso</SelectItem>
+                  <SelectItem value="cotação">cotação</SelectItem>
+                  <SelectItem value="reserva">reserva</SelectItem>
+                  <SelectItem value="cancelamento">cancelamento</SelectItem>
+                  <SelectItem value="regras tarifárias">regras tarifárias</SelectItem>
+                  <SelectItem value="erro RF">erro RF</SelectItem>
+                  <SelectItem value="outros">outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="lg:col-span-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearFilters}
+                className="h-9 text-xs text-slate-600 w-full"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Limpar Filtros
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
-            <Filter className="h-3.5 w-3.5 text-amber-500" /> Contato Evitável:
-          </span>
-          <Select
-            value={wrongDeptFilter}
-            onValueChange={(val) => {
-              setWrongDeptFilter(val)
-              if (val === 'todos') {
-                searchParams.delete('avoidable_contact')
-              } else {
-                searchParams.set('avoidable_contact', val)
-              }
-              setSearchParams(searchParams)
-            }}
-          >
-            <SelectTrigger className="h-9 text-xs w-40">
-              <SelectValue placeholder="Departamento" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="sim">Sim</SelectItem>
-              <SelectItem value="nao">Não</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="space-y-2">
+          <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            Filtros Avançados
+          </Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+            <div className="lg:col-span-3">
+              <Select
+                value={wrongDeptFilter}
+                onValueChange={(val) => {
+                  setWrongDeptFilter(val)
+                  if (val === 'todos') {
+                    searchParams.delete('avoidable_contact')
+                  } else {
+                    searchParams.set('avoidable_contact', val)
+                  }
+                  setSearchParams(searchParams)
+                }}
+              >
+                <SelectTrigger className="h-9 text-xs w-full">
+                  <Filter className="h-3.5 w-3.5 text-amber-500 mr-1.5 shrink-0" />
+                  <SelectValue placeholder="Contato Evitável" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Contato Evitável: Todos</SelectItem>
+                  <SelectItem value="sim">Sim</SelectItem>
+                  <SelectItem value="nao">Não</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="lg:col-span-3">
+              <Select value={serviceGroupFilter} onValueChange={setServiceGroupFilter}>
+                <SelectTrigger className="h-9 text-xs w-full">
+                  <Filter className="h-3.5 w-3.5 text-indigo-500 mr-1.5 shrink-0" />
+                  <SelectValue placeholder="Grupo de Atendimento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Grupos</SelectItem>
+                  {SERVICE_GROUP_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="lg:col-span-6">
+              <DateRangeFilter
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                onDateFromChange={setDateFrom}
+                onDateToChange={setDateTo}
+                onClear={() => {
+                  setDateFrom('')
+                  setDateTo('')
+                }}
+                hasActiveFilter={!!dateFrom || !!dateTo}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
-            <Filter className="h-3.5 w-3.5 text-indigo-500" /> Grupo de Atendimento:
-          </span>
-          <Select value={serviceGroupFilter} onValueChange={setServiceGroupFilter}>
-            <SelectTrigger className="h-9 text-xs w-40">
-              <SelectValue placeholder="Todos os Grupos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os Grupos</SelectItem>
-              {SERVICE_GROUP_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-slate-100">
+          <ExportMenu
+            label="Exportar Relatório"
+            variant="default"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            onCSV={handleExportCSV}
+            onExcel={handleExportExcel}
+            onPDF={handleExportPDF}
+          />
+          <ExportMenu
+            label="Consolidado"
+            onCSV={handleExportConsolidatedCSV}
+            onExcel={handleExportConsolidatedExcel}
+            onPDF={handleExportConsolidatedPDF}
+          />
         </div>
-
-        <DateRangeFilter
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onDateFromChange={setDateFrom}
-          onDateToChange={setDateTo}
-          onClear={() => {
-            setDateFrom('')
-            setDateTo('')
-          }}
-          hasActiveFilter={!!dateFrom || !!dateTo}
-        />
 
         {selectedIds.length > 0 && (
           <div className="flex items-center justify-between bg-cyan-50 p-2.5 rounded-lg border border-cyan-100">
@@ -621,17 +725,34 @@ export default function Atendimentos() {
                         : '-'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-indigo-600"
-                        onClick={() => {
-                          setSelectedRecord(r)
-                          setDetailOpen(true)
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        {r.status === 'Em Andamento' &&
+                          ((r.duration || 0) > 0 || r.timer_start) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-xs text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50"
+                              onClick={() => handleContinueTimer(r)}
+                              disabled={activeTimerRecordId === r.id && timerRunning}
+                            >
+                              <Play className="h-3.5 w-3.5 mr-1" />
+                              {activeTimerRecordId === r.id && timerRunning
+                                ? 'Cronometrando'
+                                : 'Continuar'}
+                            </Button>
+                          )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-indigo-600"
+                          onClick={() => {
+                            setSelectedRecord(r)
+                            setDetailOpen(true)
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -654,6 +775,18 @@ export default function Atendimentos() {
         onOpenChange={setDetailOpen}
         onUpdateSuccess={loadData}
       />
+
+      {activeTimerRecordId && (
+        <FloatingServiceTimer
+          timerStart={timerStart}
+          timerRunning={timerRunning}
+          accumulatedMs={accumulatedMs}
+          onStart={handleTimerStart}
+          onPause={handleTimerPause}
+          onReset={handleTimerReset}
+          position="bottom-right"
+        />
+      )}
     </div>
   )
 }

@@ -10,6 +10,7 @@ interface FloatingServiceTimerProps {
   onStart: () => void
   onPause: (totalElapsedMs: number) => void
   onReset: () => void
+  position?: 'top-right' | 'bottom-right'
 }
 
 export function FloatingServiceTimer({
@@ -19,6 +20,7 @@ export function FloatingServiceTimer({
   onStart,
   onPause,
   onReset,
+  position = 'top-right',
 }: FloatingServiceTimerProps) {
   const [elapsed, setElapsed] = useState(accumulatedMs)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -53,7 +55,12 @@ export function FloatingServiceTimer({
   }
 
   return (
-    <div className="fixed top-20 right-4 z-50 animate-fade-in">
+    <div
+      className={cn(
+        'fixed z-50 animate-fade-in',
+        position === 'bottom-right' ? 'bottom-4 right-4' : 'top-20 right-4',
+      )}
+    >
       <div className="flex flex-col items-center gap-1.5 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 shadow-sm backdrop-blur-sm">
         <div className="flex items-center gap-1.5">
           <Clock
