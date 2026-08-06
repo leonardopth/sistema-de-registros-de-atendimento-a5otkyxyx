@@ -15,6 +15,7 @@ import Atendimentos from '@/pages/Atendimentos'
 import Clientes from '@/pages/Clientes'
 import ExecutivosContas from '@/pages/ExecutivosContas'
 import GestaoUsuarios from '@/pages/GestaoUsuarios'
+import DiagnosticoEmail from '@/pages/DiagnosticoEmail'
 import PainelExecutivo from '@/pages/PainelExecutivo'
 import RelatoriosGrupo from '@/pages/RelatoriosGrupo'
 import DashboardGeral from '@/pages/DashboardGeral'
@@ -70,6 +71,14 @@ const App = () => (
                 element={
                   <MasterRoute>
                     <GestaoUsuarios />
+                  </MasterRoute>
+                }
+              />
+              <Route
+                path="/diagnostico-email"
+                element={
+                  <MasterRoute>
+                    <DiagnosticoEmail />
                   </MasterRoute>
                 }
               />
