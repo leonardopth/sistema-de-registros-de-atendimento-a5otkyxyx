@@ -96,6 +96,7 @@ export interface UserRecord {
   name: string
   email: string
   role: UserRole
+  master_access?: boolean
   approval_status?: ApprovalStatus
   approved_by?: string
   approved_by_id?: string

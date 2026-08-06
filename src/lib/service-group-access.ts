@@ -1,142 +1,112 @@
-import { ServiceRecord, ClientRecord } from '@/types/service_record'
+import type {
+  UserRecord,
+  ServiceRecord,
+  ClientRecord,
+  AccountExecutiveRecord,
+  ServiceGroup,
+  CommercialBase,
+} from '@/types/service_record'
 
-const MANAGER_ROLES = ['Gerentes', 'Supervisores', 'Líderes']
-
-export function isMasterUser(user: any): boolean {
-  return user?.role === 'Master'
+export function isMasterUser(user: UserRecord | null | undefined): boolean {
+  if (!user) return false
+  return user.role === 'Master' || user.master_access === true
 }
 
-export function isManagerUser(user: any): boolean {
-  return MANAGER_ROLES.includes(user?.role)
-}
-
-export function getUserServiceGroups(user: any): string[] {
-  if (!user || isMasterUser(user)) return []
-  return (user.service_groups as string[]) || []
-}
-
-export function hasGroupRestriction(user: any): boolean {
-  return getUserServiceGroups(user).length > 0
-}
-
-export function canAccessClient(user: any, client: ClientRecord): boolean {
+export function isManagerUser(user: UserRecord | null | undefined): boolean {
   if (!user) return false
   if (isMasterUser(user)) return true
-  const groups = getUserServiceGroups(user)
-  if (groups.length === 0) return true
-  return client.service_group ? groups.includes(client.service_group) : false
+  return ['Gerentes', 'Supervisores', 'Líderes'].includes(user.role)
 }
 
-export function canAccessRecord(
-  user: any,
-  record: ServiceRecord,
-  clientServiceGroup?: string,
-  creatorServiceGroups?: string[],
-): boolean {
-  if (!user) return false
-  if (isMasterUser(user)) return true
-  if (record.user_id === user.id || record.assigned_user === user.id) return true
-  const groups = getUserServiceGroups(user)
-  if (groups.length === 0) return true
-
-  if (clientServiceGroup && groups.includes(clientServiceGroup)) return true
-
-  if (isManagerUser(user) && creatorServiceGroups) {
-    if (creatorServiceGroups.some((g) => groups.includes(g))) return true
-  }
-
-  return false
-}
-
-export function canEditRecord(
-  user: any,
-  record: ServiceRecord,
-  clientServiceGroup?: string,
-  creatorServiceGroups?: string[],
-): boolean {
-  return canAccessRecord(user, record, clientServiceGroup, creatorServiceGroups)
-}
-
-export function filterRecordsByUserAccess(
-  records: ServiceRecord[],
-  user: any,
-  clientMap?: Map<string, { service_group?: string }>,
-  userMap?: Map<string, { service_groups?: string[] }>,
-): ServiceRecord[] {
-  if (!user) return []
-  if (isMasterUser(user)) return records
-  const groups = getUserServiceGroups(user)
-  if (groups.length === 0) return records
-
-  const manager = isManagerUser(user)
-
-  return records.filter((r) => {
-    if (r.user_id === user.id || r.assigned_user === user.id) return true
-
-    const sg = r.expand?.client?.service_group || clientMap?.get(r.client || '')?.service_group
-    if (sg && groups.includes(sg)) return true
-
-    if (manager) {
-      const creatorId = r.assigned_user || r.user_id
-      if (creatorId) {
-        const creatorGroups =
-          r.expand?.assigned_user?.service_groups ||
-          r.expand?.user_id?.service_groups ||
-          userMap?.get(creatorId)?.service_groups
-        if (creatorGroups && creatorGroups.some((g: string) => groups.includes(g))) return true
-      }
-    }
-
-    return false
-  })
-}
-
-export function isExecutivoContas(user: any): boolean {
+export function isExecutivoContas(user: UserRecord | null | undefined): boolean {
   return user?.role === 'Executivo de contas'
 }
 
-export function isGestorComercial(user: any): boolean {
+export function isGestorComercial(user: UserRecord | null | undefined): boolean {
   return user?.role === 'Gestor Comercial'
 }
 
-export function getUserBases(user: any): string[] {
-  if (!user) return []
-  return (user.bases as string[]) || []
+export function getUserServiceGroups(user: UserRecord | null | undefined): ServiceGroup[] {
+  return (user?.service_groups as ServiceGroup[]) || []
 }
 
-export function hasBaseRestriction(user: any): boolean {
-  return isExecutivoContas(user) || isGestorComercial(user)
+export function getUserBases(user: UserRecord | null | undefined): CommercialBase[] {
+  return (user?.bases as CommercialBase[]) || []
+}
+
+export function hasGroupRestriction(user: UserRecord | null | undefined): boolean {
+  if (!user) return false
+  if (isMasterUser(user)) return false
+  if (isManagerUser(user)) return false
+  return getUserServiceGroups(user).length > 0
+}
+
+export function hasBaseRestriction(user: UserRecord | null | undefined): boolean {
+  if (!user) return false
+  if (isMasterUser(user)) return false
+  if (isManagerUser(user)) return false
+  return getUserBases(user).length > 0
+}
+
+export function canAccessClient(
+  user: UserRecord | null | undefined,
+  client: ClientRecord,
+): boolean {
+  if (!user) return false
+  if (isMasterUser(user)) return true
+  if (isManagerUser(user)) return true
+  const userGroups = getUserServiceGroups(user)
+  if (userGroups.length > 0 && client.service_group) {
+    return userGroups.includes(client.service_group as ServiceGroup)
+  }
+  return true
+}
+
+export function canAccessRecord(
+  user: UserRecord | null | undefined,
+  record: ServiceRecord,
+): boolean {
+  if (!user) return false
+  if (isMasterUser(user)) return true
+  if (isManagerUser(user)) return true
+  if (record.user_id === user.id) return true
+  if (record.assigned_user === user.id) return true
+  if (record.expand?.client) {
+    return canAccessClient(user, record.expand.client)
+  }
+  return true
+}
+
+export function canEditRecord(user: UserRecord | null | undefined, record: ServiceRecord): boolean {
+  return canAccessRecord(user, record)
+}
+
+export function filterRecordsByUserAccess(
+  user: UserRecord | null | undefined,
+  records: ServiceRecord[],
+): ServiceRecord[] {
+  if (!user) return []
+  if (isMasterUser(user)) return records
+  if (isManagerUser(user)) return records
+  return records.filter((r) => canAccessRecord(user, r))
 }
 
 export function getAccessibleExecutiveIds(
-  user: any,
-  executives: Array<{ id: string; email?: string; name: string; bases?: string[] }>,
+  user: UserRecord | null | undefined,
+  executives: AccountExecutiveRecord[],
 ): string[] {
   if (!user) return []
   if (isMasterUser(user)) return executives.map((e) => e.id)
-
-  if (isExecutivoContas(user)) {
-    return executives.filter((e) => e.email === user.email || e.name === user.name).map((e) => e.id)
-  }
-
-  if (isGestorComercial(user)) {
-    const userBases = getUserBases(user)
-    if (userBases.length === 0) return []
-    return executives
-      .filter((e) => {
-        const execBases = (e.bases as string[]) || []
-        return execBases.some((b) => userBases.includes(b))
-      })
-      .map((e) => e.id)
-  }
-
-  return []
+  if (isManagerUser(user)) return executives.map((e) => e.id)
+  return executives.map((e) => e.id)
 }
 
-export function filterClientsByUserAccess(clients: ClientRecord[], user: any): ClientRecord[] {
+export function filterClientsByUserAccess(
+  user: UserRecord | null | undefined,
+  clients: ClientRecord[],
+): ClientRecord[] {
   if (!user) return []
   if (isMasterUser(user)) return clients
-  const groups = getUserServiceGroups(user)
-  if (groups.length === 0) return clients
-  return clients.filter((c) => (c.service_group ? groups.includes(c.service_group) : false))
+  if (isManagerUser(user)) return clients
+  return clients.filter((c) => canAccessClient(user, c))
 }

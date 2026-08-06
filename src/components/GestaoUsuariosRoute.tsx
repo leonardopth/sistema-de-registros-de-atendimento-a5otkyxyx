@@ -16,7 +16,7 @@ export function GestaoUsuariosRoute({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!user || !ALLOWED_ROLES.includes(user.role)) {
+  if (!user || (!ALLOWED_ROLES.includes(user.role) && !user.master_access)) {
     return <Navigate to="/" replace />
   }
 

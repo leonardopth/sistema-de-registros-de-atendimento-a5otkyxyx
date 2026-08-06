@@ -30,11 +30,15 @@ export const updateUser = (
       | 'telegram_id'
       | 'telegram_alerts'
       | 'service_groups'
+      | 'master_access'
     >
   >,
 ) => {
   return pb.collection('users').update<UserRecord>(id, data)
 }
+
+export const toggleMasterAccess = (id: string, master_access: boolean) =>
+  pb.collection('users').update<UserRecord>(id, { master_access })
 
 export const approveUser = (id: string) => updateUser(id, { approval_status: 'Aprovado' })
 

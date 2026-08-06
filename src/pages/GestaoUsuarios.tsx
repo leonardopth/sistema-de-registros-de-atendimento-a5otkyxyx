@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getUsers, approveUser, rejectUser, deleteUser } from '@/services/users'
+import { getUsers, approveUser, rejectUser, deleteUser, toggleMasterAccess } from '@/services/users'
+import { cn } from '@/lib/utils'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
@@ -14,7 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { UserPlus, Check, X, Trash2, Loader2 } from 'lucide-react'
+import { UserPlus, Check, X, Trash2, Loader2, Crown } from 'lucide-react'
 import { NewUserDialog } from '@/components/NewUserDialog'
 import type { UserRecord, ApprovalStatus } from '@/types/service_record'
 
@@ -74,6 +75,16 @@ export default function GestaoUsuarios() {
       toast({ variant: 'destructive', title: 'Erro ao remover' })
     }
   }
+  const handleToggleMaster = async (id: string, master_access: boolean) => {
+    try {
+      await toggleMasterAccess(id, master_access)
+      toast({
+        title: master_access ? 'Acesso Master concedido!' : 'Acesso Master revogado!',
+      })
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro ao alterar acesso Master' })
+    }
+  }
 
   const filtered = users.filter(
     (u) =>
@@ -117,7 +128,14 @@ export default function GestaoUsuarios() {
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.name || '-'}</TableCell>
                   <TableCell className="text-sm text-slate-600">{u.email || '-'}</TableCell>
-                  <TableCell className="text-sm">{u.role}</TableCell>
+                  <TableCell className="text-sm">
+                    {u.role}
+                    {u.master_access && u.role !== 'Master' && (
+                      <Badge className="ml-2 bg-amber-100 text-amber-700 hover:bg-amber-100">
+                        <Crown className="h-3 w-3 mr-1" /> Master
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <StatusBadge status={u.approval_status} />
                   </TableCell>
@@ -139,6 +157,21 @@ export default function GestaoUsuarios() {
                             <X className="h-4 w-4 text-red-600" />
                           </Button>
                         </>
+                      )}
+                      {user?.role === 'Master' && u.id !== user?.id && u.role !== 'Master' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleToggleMaster(u.id, !u.master_access)}
+                          title={u.master_access ? 'Revogar Master' : 'Tornar Master'}
+                        >
+                          <Crown
+                            className={cn(
+                              'h-4 w-4',
+                              u.master_access ? 'text-amber-500' : 'text-slate-400',
+                            )}
+                          />
+                        </Button>
                       )}
                       {u.id !== user?.id && u.role !== 'Master' && (
                         <Button size="sm" variant="ghost" onClick={() => handleDelete(u.id)}>

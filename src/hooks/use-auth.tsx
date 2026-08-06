@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
 import { UserRole } from '@/types/service_record'
 
 interface AuthContextType {
   user: any
   isAuthenticated: boolean
   isMaster: boolean
+  isActualMasterRole: boolean
   signUp: (
     email: string,
     password: string,
@@ -33,7 +35,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(pb.authStore.isValid)
   const [loading, setLoading] = useState(true)
 
-  const isMaster = user?.role === 'Master'
+  const isMaster = user?.role === 'Master' || user?.master_access === true
+  const isActualMasterRole = user?.role === 'Master'
 
   useEffect(() => {
     const unsubscribe = pb.authStore.onChange((_token, record) => {
@@ -60,6 +63,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       unsubscribe()
     }
   }, [])
+
+  useRealtime('users', (e) => {
+    if (e.action === 'update' && e.record.id === pb.authStore.record?.id) {
+      pb.collection('users')
+        .authRefresh()
+        .catch(() => {})
+    }
+  })
 
   const signUp = async (
     email: string,
@@ -128,6 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         isAuthenticated,
         isMaster,
+        isActualMasterRole,
         signUp,
         signIn,
         signOut,
