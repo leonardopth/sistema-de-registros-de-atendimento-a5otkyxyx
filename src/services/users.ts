@@ -1,77 +1,125 @@
 import pb from '@/lib/pocketbase/client'
-import { UserRecord, ApprovalStatus, UserRole } from '@/types/service_record'
-import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
+import { createAuditLog } from '@/services/audit-log'
+import type { UserRecord } from '@/types/service_record'
 
-export { extractFieldErrors, type FieldErrors }
-
-export const getUsers = () => {
-  return pb.collection('users').getFullList<UserRecord>({
+export async function getUsers(): Promise<UserRecord[]> {
+  return await pb.collection('users').getFullList<UserRecord>({
     sort: 'name',
   })
 }
 
-export const getUsersWithEmails = () => {
-  return pb.send('/backend/v1/users-with-emails', { method: 'GET' }) as Promise<UserRecord[]>
+export async function getUsersWithEmails(): Promise<UserRecord[]> {
+  return await pb.collection('users').getFullList<UserRecord>({
+    sort: 'name',
+  })
 }
 
-export const getUser = (id: string) => {
-  return pb.collection('users').getOne<UserRecord>(id)
+export async function getUser(id: string): Promise<UserRecord> {
+  return await pb.collection('users').getOne<UserRecord>(id)
 }
 
-export const updateUser = (
-  id: string,
-  data: Partial<
-    Pick<
-      UserRecord,
-      | 'name'
-      | 'email'
-      | 'role'
-      | 'approval_status'
-      | 'telegram_id'
-      | 'telegram_alerts'
-      | 'service_groups'
-      | 'master_access'
-    >
-  >,
-) => {
-  return pb.collection('users').update<UserRecord>(id, data)
+export async function updateUser(id: string, data: Partial<UserRecord>) {
+  const updated = await pb.collection('users').update(id, data)
+  try {
+    await createAuditLog({
+      action: 'Updated User',
+      entity: 'users',
+      entity_id: id,
+      details: data as Record<string, unknown>,
+    })
+  } catch (e) {
+    console.error('Audit log user update error:', e)
+  }
+  return updated
 }
 
-export const toggleMasterAccess = (id: string, master_access: boolean) =>
-  pb.send(`/backend/v1/users/${id}/master-access`, {
-    method: 'PATCH',
-    body: JSON.stringify({ master_access }),
-    headers: { 'Content-Type': 'application/json' },
+export async function toggleMasterAccess(userId: string, masterAccess: boolean) {
+  const updated = await pb.collection('users').update(userId, { master_access: masterAccess })
+  try {
+    await createAuditLog({
+      action: masterAccess ? 'Granted Master Access' : 'Revoked Master Access',
+      entity: 'users',
+      entity_id: userId,
+      details: { master_access: masterAccess },
+    })
+  } catch (e) {
+    console.error('Audit log master access error:', e)
+  }
+  return updated
+}
+
+export async function approveUser(userId: string, approvedById: string, approvedByName: string) {
+  const updated = await pb.collection('users').update(userId, {
+    approval_status: 'Aprovado',
+    approved_by_id: approvedById,
+    approved_by: approvedByName,
+    approved_at: new Date().toISOString(),
   })
+  try {
+    await createAuditLog({
+      action: 'Approved User',
+      entity: 'users',
+      entity_id: userId,
+      details: { approval_status: 'Aprovado', approved_by: approvedByName },
+    })
+  } catch (e) {
+    console.error('Audit log approve user error:', e)
+  }
+  return updated
+}
 
-export const approveUser = (id: string) => updateUser(id, { approval_status: 'Aprovado' })
-
-export const rejectUser = (id: string) => updateUser(id, { approval_status: 'Rejeitado' })
-
-export const updateTelegramSettings = (id: string, telegram_id: string, telegram_alerts: boolean) =>
-  pb.collection('users').update<UserRecord>(id, { telegram_id, telegram_alerts })
-
-export const deleteUser = (id: string) => pb.collection('users').delete(id)
-
-export const testTelegram = () => pb.send('/backend/v1/telegram/test', { method: 'POST' })
-
-export const updateUserEmail = (id: string, email: string) =>
-  pb.send(`/backend/v1/users/${id}/email`, {
-    method: 'PATCH',
-    body: JSON.stringify({ email }),
-    headers: { 'Content-Type': 'application/json' },
+export async function rejectUser(userId: string) {
+  const updated = await pb.collection('users').update(userId, {
+    approval_status: 'Rejeitado',
   })
+  try {
+    await createAuditLog({
+      action: 'Rejected User',
+      entity: 'users',
+      entity_id: userId,
+      details: { approval_status: 'Rejeitado' },
+    })
+  } catch (e) {
+    console.error('Audit log reject user error:', e)
+  }
+  return updated
+}
 
-export const updateUserServiceGroups = (id: string, service_groups: string[]) =>
-  pb.send(`/backend/v1/users/${id}/service-groups`, {
-    method: 'PATCH',
-    body: JSON.stringify({ service_groups }),
-    headers: { 'Content-Type': 'application/json' },
+export async function updateTelegramSettings(userId: string, telegramId: string, alerts: boolean) {
+  return await pb.collection('users').update(userId, {
+    telegram_id: telegramId,
+    telegram_alerts: alerts,
   })
+}
 
-export const updateUserBases = (id: string, bases: string[]) =>
-  pb.send(`/backend/v1/users/${id}/bases`, {
-    method: 'PATCH',
-    body: JSON.stringify({ bases }),
-    headers: { 'Content-Type': 'application/json' },
+export async function deleteUser(id: string) {
+  try {
+    await createAuditLog({
+      action: 'Deleted User',
+      entity: 'users',
+      entity_id: id,
+    })
+  } catch (e) {
+    console.error('Audit log delete user error:', e)
+  }
+  return await pb.collection('users').delete(id)
+}
+
+export async function testTelegram(userId: string) {
+  return await pb.send('/backend/v1/telegram-test', {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
   })
+}
+
+export async function updateUserEmail(userId: string, email: string) {
+  return await pb.collection('users').update(userId, { email })
+}
+
+export async function updateUserServiceGroups(userId: string, serviceGroups: string[]) {
+  return await pb.collection('users').update(userId, { service_groups: serviceGroups })
+}
+
+export async function updateUserBases(userId: string, bases: string[]) {
+  return await pb.collection('users').update(userId, { bases })
+}

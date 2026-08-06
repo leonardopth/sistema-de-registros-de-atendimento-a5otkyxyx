@@ -518,14 +518,14 @@ export function ServiceRecordDetailModal({
 
             <div className="grid grid-cols-2 gap-4 items-center">
               <div>
-                <span className="text-xs font-medium text-slate-500 block mb-1">Canal</span>
+                <span className="text-xs font-medium text-slate-500 block mb-1">Canal *</span>
                 {isEditable ? (
                   <div>
                     <Select
                       value={channel}
                       onValueChange={(val) => setChannel(val as ServiceChannel)}
                     >
-                      <SelectTrigger className={cn('h-9', fieldErrors.channel && 'border-red-400')}>
+                      <SelectTrigger className={cn('h-9', fieldErrors.channel && 'border-red-500')}>
                         <SelectValue placeholder="Selecione um canal" />
                       </SelectTrigger>
                       <SelectContent>
@@ -537,7 +537,7 @@ export function ServiceRecordDetailModal({
                       </SelectContent>
                     </Select>
                     {fieldErrors.channel && (
-                      <p className="text-xs text-red-500 mt-1">{fieldErrors.channel}</p>
+                      <p className="text-xs text-red-500 font-medium mt-1">{fieldErrors.channel}</p>
                     )}
                   </div>
                 ) : (

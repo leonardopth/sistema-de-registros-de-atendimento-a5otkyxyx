@@ -300,7 +300,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 value={form.channel}
                 onValueChange={(v) => form.setChannel(v as ServiceChannel)}
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger className={`h-9 ${form.channelError ? 'border-red-500' : ''}`}>
                   <SelectValue placeholder="Selecione um canal" />
                 </SelectTrigger>
                 <SelectContent>
@@ -311,7 +311,9 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                   ))}
                 </SelectContent>
               </Select>
-              {form.channelError && <p className="text-xs text-red-500">{form.channelError}</p>}
+              {form.channelError && (
+                <p className="text-xs text-red-500 font-medium">{form.channelError}</p>
+              )}
             </div>
           </div>
 

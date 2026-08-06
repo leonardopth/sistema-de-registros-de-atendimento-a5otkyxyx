@@ -2,34 +2,82 @@ import pb from '@/lib/pocketbase/client'
 import type { AuditLogRecord } from '@/types/audit-log'
 
 export interface AuditLogFilter {
-  user?: string
+  user_id?: string
   action?: string
   entity?: string
   startDate?: string
   endDate?: string
 }
 
-export const getAuditLogs = async (filter: AuditLogFilter = {}, page = 1, perPage = 50) => {
-  const parts: string[] = []
-  if (filter.user) parts.push(`user = "${filter.user}"`)
-  if (filter.action) parts.push(`action = "${filter.action}"`)
-  if (filter.entity) parts.push(`entity = "${filter.entity}"`)
-  if (filter.startDate) parts.push(`created >= "${filter.startDate}"`)
-  if (filter.endDate) parts.push(`created <= "${filter.endDate}"`)
+export async function createAuditLog(data: {
+  user?: string
+  action: string
+  entity: string
+  entity_id?: string
+  details?: Record<string, unknown>
+}) {
+  try {
+    const userId = data.user || pb.authStore.record?.id || ''
+    return await pb.collection('audit_log').create({
+      user: userId || undefined,
+      action: data.action,
+      entity: data.entity,
+      entity_id: data.entity_id || '',
+      details: data.details || {},
+    })
+  } catch (err) {
+    console.error('Failed to create audit log:', err)
+  }
+}
 
-  return pb.collection('audit_log').getList<AuditLogRecord>(page, perPage, {
+export async function getAuditLogs(filter?: AuditLogFilter): Promise<AuditLogRecord[]> {
+  const filterParts: string[] = []
+
+  if (filter?.user_id && filter.user_id !== 'ALL') {
+    filterParts.push(`user = "${filter.user_id}"`)
+  }
+  if (filter?.action && filter.action !== 'ALL') {
+    filterParts.push(`action ~ "${filter.action}"`)
+  }
+  if (filter?.entity && filter.entity !== 'ALL') {
+    filterParts.push(`entity = "${filter.entity}"`)
+  }
+  if (filter?.startDate) {
+    filterParts.push(`created >= "${filter.startDate} 00:00:00"`)
+  }
+  if (filter?.endDate) {
+    filterParts.push(`created <= "${filter.endDate} 23:59:59"`)
+  }
+
+  const filterString = filterParts.join(' && ')
+
+  return await pb.collection('audit_log').getFullList<AuditLogRecord>({
+    filter: filterString || undefined,
     sort: '-created',
-    filter: parts.join(' && '),
     expand: 'user',
   })
 }
 
-export const getAuditLogActions = async () => {
-  const records = await pb.collection('audit_log').getFullList<AuditLogRecord>({ sort: 'action' })
-  return [...new Set(records.map((r) => r.action))]
+export async function getAuditLogActions(): Promise<string[]> {
+  try {
+    const logs = await pb.collection('audit_log').getFullList({ fields: 'action' })
+    const actions = new Set(
+      logs.map((l: { action?: string }) => l.action).filter(Boolean) as string[],
+    )
+    return Array.from(actions)
+  } catch {
+    return []
+  }
 }
 
-export const getAuditLogEntities = async () => {
-  const records = await pb.collection('audit_log').getFullList<AuditLogRecord>({ sort: 'entity' })
-  return [...new Set(records.map((r) => r.entity))]
+export async function getAuditLogEntities(): Promise<string[]> {
+  try {
+    const logs = await pb.collection('audit_log').getFullList({ fields: 'entity' })
+    const entities = new Set(
+      logs.map((l: { entity?: string }) => l.entity).filter(Boolean) as string[],
+    )
+    return Array.from(entities)
+  } catch {
+    return []
+  }
 }
