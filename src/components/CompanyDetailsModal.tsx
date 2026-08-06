@@ -26,7 +26,12 @@ interface CompanyDetailsModalProps {
   clientId?: string
 }
 
-export function CompanyDetailsModal({ open, onOpenChange, companyName, clientId }: CompanyDetailsModalProps) {
+export function CompanyDetailsModal({
+  open,
+  onOpenChange,
+  companyName,
+  clientId,
+}: CompanyDetailsModalProps) {
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [agents, setAgents] = useState<AgentRecord[]>([])
   const [records, setRecords] = useState<ServiceRecord[]>([])
@@ -55,9 +60,27 @@ export function CompanyDetailsModal({ open, onOpenChange, companyName, clientId 
     }
   }, [open, companyName, loadData])
 
-  useRealtime('service_records', () => { if (open) loadData() }, open)
-  useRealtime('agents', () => { if (open) loadData() }, open)
-  useRealtime('service_record_history', () => { if (open) loadData() }, open)
+  useRealtime(
+    'service_records',
+    () => {
+      if (open) loadData()
+    },
+    open,
+  )
+  useRealtime(
+    'agents',
+    () => {
+      if (open) loadData()
+    },
+    open,
+  )
+  useRealtime(
+    'service_record_history',
+    () => {
+      if (open) loadData()
+    },
+    open,
+  )
 
   const matchingClient = useMemo(
     () => clients.find((c) => (clientId ? c.id === clientId : c.company === companyName)),
@@ -77,7 +100,9 @@ export function CompanyDetailsModal({ open, onOpenChange, companyName, clientId 
         (clientId && r.client === clientId) ||
         r.client_company === companyName ||
         (matchingClient && r.client_name.toLowerCase() === matchingClient.name.toLowerCase()) ||
-        (matchingClient?.email && r.client_email && r.client_email.toLowerCase() === matchingClient.email.toLowerCase()),
+        (matchingClient?.email &&
+          r.client_email &&
+          r.client_email.toLowerCase() === matchingClient.email.toLowerCase()),
     )
     const userGroupMap = new Map<string, { service_groups?: string[] }>()
     users.forEach((u) => {
@@ -209,53 +234,51 @@ export function CompanyDetailsModal({ open, onOpenChange, companyName, clientId 
           </div>
         )}
 
-          {clientId && (
-            <>
-              <Card className="border-slate-200 p-4 space-y-3">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <Headset className="h-4 w-4 text-indigo-600" /> Histórico de Atendimentos (
-                    {clientRecords.length})
-                  </h3>
-                </div>
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-                  {clientRecords.map((r) => (
-                    <div key={r.id} className="p-3.5 bg-slate-50 border rounded-lg space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-indigo-950">{r.contact_reason}</span>
-                        <StatusBadge status={r.status} />
-                      </div>
-                      <p className="text-xs text-slate-700">{r.description}</p>
-                      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t">
-                        <div className="flex items-center gap-3">
-                          <span>Agente: {r.expand?.agent?.name || r.assigned_agent || '-'}</span>
-                          {r.expand?.assigned_user?.name && (
-                            <span>Consultor: {r.expand.assigned_user.name}</span>
-                          )}
-                        </div>
-                        <span>
-                          {r.created
-                            ? format(new Date(r.created), 'dd/MM/yyyy HH:mm', { locale: ptBR })
-                            : ''}
-                        </span>
-                      </div>
+        {clientId && (
+          <>
+            <Card className="border-slate-200 p-4 space-y-3">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Headset className="h-4 w-4 text-indigo-600" /> Histórico de Atendimentos (
+                  {clientRecords.length})
+                </h3>
+              </div>
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                {clientRecords.map((r) => (
+                  <div key={r.id} className="p-3.5 bg-slate-50 border rounded-lg space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-indigo-950">{r.contact_reason}</span>
+                      <StatusBadge status={r.status} />
                     </div>
-                  ))}
-                  {clientRecords.length === 0 && (
-                    <p className="text-xs text-slate-400 text-center py-8">
-                      Nenhum atendimento registrado para este cliente.
-                    </p>
-                  )}
-                </div>
-              </Card>
+                    <p className="text-xs text-slate-700">{r.description}</p>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t">
+                      <div className="flex items-center gap-3">
+                        <span>Agente: {r.expand?.agent?.name || r.assigned_agent || '-'}</span>
+                        {r.expand?.assigned_user?.name && (
+                          <span>Consultor: {r.expand.assigned_user.name}</span>
+                        )}
+                      </div>
+                      <span>
+                        {r.created
+                          ? format(new Date(r.created), 'dd/MM/yyyy HH:mm', { locale: ptBR })
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {clientRecords.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-8">
+                    Nenhum atendimento registrado para este cliente.
+                  </p>
+                )}
+              </div>
+            </Card>
 
-              <Card className="border-slate-200 p-4">
-                <AgentStatsList clientId={clientId} />
-              </Card>
-            </>
-          )}
-        </div>
-      )}
+            <Card className="border-slate-200 p-4">
+              <AgentStatsList clientId={clientId} />
+            </Card>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   )
