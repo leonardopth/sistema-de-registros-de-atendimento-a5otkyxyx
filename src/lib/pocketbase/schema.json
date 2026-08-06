@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T23:58:01.948Z",
+  "generatedAt": "2026-08-06T00:31:28.377Z",
   "collections": [
     {
       "name": "users",
@@ -210,7 +210,7 @@
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || assigned_user = @request.auth.id || user_id = @request.auth.id)",
+        "update": "@request.auth.id != ''",
         "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || assigned_user = @request.auth.id || user_id = @request.auth.id)"
       },
       "fields": [

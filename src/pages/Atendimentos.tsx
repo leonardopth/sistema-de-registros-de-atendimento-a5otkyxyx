@@ -30,6 +30,7 @@ import {
   ContactReason,
   AccountExecutiveRecord,
   ClientRecord,
+  UserRecord,
 } from '@/types/service_record'
 import { StatusBadge } from '@/components/StatusBadge'
 import { PriorityBadge } from '@/components/PriorityBadge'
@@ -52,6 +53,7 @@ import { DateRangeFilter } from '@/components/DateRangeFilter'
 import { getAccountExecutives } from '@/services/account_executives'
 import { exportServiceRecordsByExecutiveCSV } from '@/lib/executive-export'
 import { getClients } from '@/services/clients'
+import { getUsers } from '@/services/users'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { downloadServiceRecordsCSV } from '@/lib/report-export'
 import {
@@ -87,6 +89,7 @@ export default function Atendimentos() {
   const [dateTo, setDateTo] = useState('')
   const [serviceGroupFilter, setServiceGroupFilter] = useState<string>('todos')
   const [clients, setClients] = useState<ClientRecord[]>([])
+  const [users, setUsers] = useState<UserRecord[]>([])
 
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -102,14 +105,16 @@ export default function Atendimentos() {
 
   const loadData = async () => {
     try {
-      const [data, execs, clientsData] = await Promise.all([
+      const [data, execs, clientsData, usersData] = await Promise.all([
         getServiceRecords('', sortAsc ? 'created' : '-created'),
         getAccountExecutives(),
         getClients(),
+        getUsers(),
       ])
       setRecords(data)
       setExecutives(execs)
       setClients(clientsData)
+      setUsers(usersData)
     } catch (err) {
       console.error(err)
     }
@@ -123,18 +128,54 @@ export default function Atendimentos() {
     loadData()
   })
 
-  const isConsultor = user?.role === 'Consultores'
+  const isMasterUser = user?.role === 'Master'
+  const isManager = ['Gerentes', 'Supervisores', 'Líderes'].includes(user?.role || '')
+  const userServiceGroups = (user?.service_groups as string[] | undefined) || []
+  const hasGroupRestriction = !isMasterUser && userServiceGroups.length > 0
 
   const companyToServiceGroup = new Map<string, string>()
+  const clientIdToServiceGroup = new Map<string, string>()
   clients.forEach((c) => {
     if (c.company && c.service_group) {
       companyToServiceGroup.set(c.company.toLowerCase(), c.service_group)
     }
+    if (c.id && c.service_group) {
+      clientIdToServiceGroup.set(c.id, c.service_group)
+    }
+  })
+
+  const userGroupMap = new Map<string, { service_groups?: string[] }>()
+  users.forEach((u) => {
+    userGroupMap.set(u.id, { service_groups: u.service_groups as string[] | undefined })
   })
 
   const filteredRecords = records.filter((r) => {
-    if (isConsultor && r.assigned_user !== user?.id && r.user_id !== user?.id) {
-      return false
+    if (hasGroupRestriction) {
+      const isCreator = r.user_id === user?.id || r.assigned_user === user?.id
+      if (!isCreator) {
+        const recordServiceGroup =
+          r.expand?.client?.service_group ||
+          (r.client ? clientIdToServiceGroup.get(r.client) : undefined) ||
+          (r.client_company ? companyToServiceGroup.get(r.client_company.toLowerCase()) : undefined)
+        const clientGroupMatch =
+          recordServiceGroup && userServiceGroups.includes(recordServiceGroup)
+        if (!clientGroupMatch) {
+          if (isManager) {
+            const creatorId = r.assigned_user || r.user_id
+            const creatorGroups = creatorId
+              ? userGroupMap.get(creatorId)?.service_groups
+              : undefined
+            if (
+              !creatorGroups ||
+              !creatorGroups.some((g: string) => userServiceGroups.includes(g))
+            ) {
+              return false
+            }
+          } else {
+            return false
+          }
+        }
+      }
     }
 
     const matchesSearch =

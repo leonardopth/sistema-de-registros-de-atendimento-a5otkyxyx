@@ -11,7 +11,13 @@ import {
 import { getServiceRecords } from '@/services/service_records'
 import { getClients } from '@/services/clients'
 import { getAccountExecutives } from '@/services/account_executives'
-import { ClientRecord, ServiceRecord, AccountExecutiveRecord } from '@/types/service_record'
+import { getUsers } from '@/services/users'
+import {
+  ClientRecord,
+  ServiceRecord,
+  AccountExecutiveRecord,
+  UserRecord,
+} from '@/types/service_record'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { DashboardStats } from '@/components/DashboardStats'
@@ -25,6 +31,7 @@ import {
   DashboardFilters,
   DEFAULT_FILTERS,
   filterRecords,
+  filterByUserAccess,
   getPreviousPeriodCount,
 } from '@/lib/dashboard-filters'
 import { ShieldAlert, BarChart3, Users2 } from 'lucide-react'
@@ -40,18 +47,21 @@ export default function DashboardGeral() {
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
+  const [users, setUsers] = useState<UserRecord[]>([])
   const [filters, setFilters] = useState<DashboardFilters>(DEFAULT_FILTERS)
 
   const loadData = async () => {
     try {
-      const [c, r, e] = await Promise.all([
+      const [c, r, e, u] = await Promise.all([
         getClients(),
         getServiceRecords('', '-created'),
         getAccountExecutives(),
+        getUsers(),
       ])
       setClients(c)
       setRecords(r)
       setExecutives(e)
+      setUsers(u)
     } catch (err) {
       console.error(err)
     }
@@ -64,13 +74,22 @@ export default function DashboardGeral() {
   useRealtime('clients', () => loadData())
 
   const clientMap = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients])
+  const userMap = useMemo(() => {
+    const m = new Map<string, { service_groups?: string[] }>()
+    users.forEach((u) => m.set(u.id, { service_groups: u.service_groups as string[] | undefined }))
+    return m
+  }, [users])
+  const accessibleRecords = useMemo(
+    () => filterByUserAccess(records, user, clientMap, userMap),
+    [records, user, clientMap, userMap],
+  )
   const filtered = useMemo(
-    () => filterRecords(records, filters, clientMap),
-    [records, filters, clientMap],
+    () => filterRecords(accessibleRecords, filters, clientMap),
+    [accessibleRecords, filters, clientMap],
   )
   const prevCount = useMemo(
-    () => getPreviousPeriodCount(records, filters.dateFrom, filters.dateTo),
-    [records, filters],
+    () => getPreviousPeriodCount(accessibleRecords, filters.dateFrom, filters.dateTo),
+    [accessibleRecords, filters],
   )
 
   const stats = useMemo(() => {
@@ -244,7 +263,7 @@ export default function DashboardGeral() {
             </Card>
           </div>
 
-          <ThresholdSuggestionPanel records={records} clients={clients} />
+          <ThresholdSuggestionPanel records={accessibleRecords} clients={clients} />
           <ConsolidatedReportPanel records={filtered} />
           <FeedbackReviewPanel />
         </TabsContent>
@@ -254,7 +273,11 @@ export default function DashboardGeral() {
         </TabsContent>
 
         <TabsContent value="period" className="space-y-4">
-          <PeriodComparisonView records={records} clients={clients} executives={executives} />
+          <PeriodComparisonView
+            records={accessibleRecords}
+            clients={clients}
+            executives={executives}
+          />
         </TabsContent>
       </Tabs>
     </div>

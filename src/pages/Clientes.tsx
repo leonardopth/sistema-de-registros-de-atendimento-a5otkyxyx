@@ -13,11 +13,14 @@ import {
 import { getClients, updateClient } from '@/services/clients'
 import { getServiceRecords } from '@/services/service_records'
 import { getAccountExecutives } from '@/services/account_executives'
+import { getUsers } from '@/services/users'
+import { filterRecordsByUserAccess } from '@/lib/service-group-access'
 import {
   AccountExecutiveRecord,
   ClientRecord,
   ServiceRecord,
   ServiceGroup,
+  UserRecord,
 } from '@/types/service_record'
 import { NewClientModal } from '@/components/NewClientModal'
 import { StateCitySelect } from '@/components/StateCitySelect'
@@ -38,6 +41,7 @@ import { ptBR } from 'date-fns/locale'
 
 export default function Clientes() {
   const [clients, setClients] = useState<ClientRecord[]>([])
+  const [users, setUsers] = useState<UserRecord[]>([])
   const [search, setSearch] = useState('')
   const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(null)
   const [clientRecords, setClientRecords] = useState<ServiceRecord[]>([])
@@ -69,11 +73,13 @@ export default function Clientes() {
   const { user } = useAuth()
 
   const userServiceGroups = (user?.service_groups as string[] | undefined) || []
-  const hasGroupRestriction = userServiceGroups.length > 0
+  const hasGroupRestriction = userServiceGroups.length > 0 && user?.role !== 'Master'
 
   const loadClients = async () => {
     try {
-      setClients(await getClients())
+      const [c, u] = await Promise.all([getClients(), getUsers()])
+      setClients(c)
+      setUsers(u)
     } catch (err) {
       console.error(err)
     }
@@ -104,13 +110,18 @@ export default function Clientes() {
     setServiceGroupError('')
     try {
       const records = await getServiceRecords('', '-created')
-      setClientRecords(
-        records.filter(
-          (r) =>
-            r.client_name.toLowerCase() === c.name.toLowerCase() ||
-            (c.email && r.client_email && r.client_email.toLowerCase() === c.email.toLowerCase()),
-        ),
+      const userGroupMap = new Map<string, { service_groups?: string[] }>()
+      users.forEach((u) => {
+        userGroupMap.set(u.id, { service_groups: u.service_groups as string[] | undefined })
+      })
+      const clientMap = new Map<string, { service_group?: string }>()
+      clientMap.set(c.id, { service_group: c.service_group })
+      const filtered = records.filter(
+        (r) =>
+          r.client_name.toLowerCase() === c.name.toLowerCase() ||
+          (c.email && r.client_email && r.client_email.toLowerCase() === c.email.toLowerCase()),
       )
+      setClientRecords(filterRecordsByUserAccess(filtered, user, clientMap, userGroupMap))
     } catch (err) {
       console.error(err)
     }
