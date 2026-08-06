@@ -29,6 +29,7 @@ import {
   Share2,
   X,
   ArrowLeft,
+  CheckCircle2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -45,6 +46,7 @@ import type {
   ServicePriority,
   AvoidableContactReason,
   ServiceGroup,
+  TravelType,
 } from '@/types/service_record'
 import { AVOIDABLE_CONTACT_REASONS } from '@/lib/constants'
 
@@ -85,6 +87,14 @@ export default function NovoAtendimento() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     if (await form.handleSubmit(e)) {
+      form.resetForm()
+      navigate('/atendimentos')
+    }
+  }
+
+  const handleSaveAndConclude = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (await form.handleSubmit(e as unknown as React.FormEvent, 'Concluído')) {
       form.resetForm()
       navigate('/atendimentos')
     }
@@ -346,6 +356,27 @@ export default function NovoAtendimento() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label className="text-xs">Nacional / Internacional *</Label>
+              <Select
+                value={form.travelType}
+                onValueChange={(v) => form.setTravelType(v as TravelType)}
+              >
+                <SelectTrigger className={`h-9 ${form.travelTypeError ? 'border-red-500' : ''}`}>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Nacional">Nacional</SelectItem>
+                  <SelectItem value="Internacional">Internacional</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.travelTypeError && (
+                <p className="text-xs text-red-500 font-medium">{form.travelTypeError}</p>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-1">
             <Label className="text-xs">Nível de Prioridade</Label>
             <RadioGroup
@@ -379,7 +410,7 @@ export default function NovoAtendimento() {
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Descrição Detalhada do Atendimento *</Label>
+              <Label className="text-xs">Descrição Detalhada do Atendimento</Label>
               <div className="flex items-center gap-2">
                 <VoiceInputButton
                   onTranscript={handleVoiceTranscript}
@@ -737,6 +768,19 @@ export default function NovoAtendimento() {
           >
             {form.loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Salvar Atendimento
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSaveAndConclude}
+            disabled={form.loading}
+            className="bg-emerald-600 hover:bg-emerald-700 px-6"
+          >
+            {form.loading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+            )}
+            Salvar e Concluir
           </Button>
         </div>
       </form>

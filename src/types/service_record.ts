@@ -28,6 +28,8 @@ export type ServiceStatus = 'Aberto' | 'Em Andamento' | 'Concluído' | 'Cancelad
 
 export type AvoidableContactReason = 'Disponível no RF' | 'Fora do Escopo' | 'Erro RF' | 'Outros'
 
+export type TravelType = 'Nacional' | 'Internacional'
+
 export type UserRole =
   | 'Gerentes'
   | 'Supervisores'
@@ -58,6 +60,7 @@ export interface ServiceRecord {
   client_phone?: string
   client_company?: string
   contact_reason: ContactReason
+  travel_type?: TravelType
   description: string
   priority: ServicePriority
   status: ServiceStatus

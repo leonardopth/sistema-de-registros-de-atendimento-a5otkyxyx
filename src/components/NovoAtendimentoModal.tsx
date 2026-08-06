@@ -18,7 +18,18 @@ import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
-import { Headset, Plus, Trash2, Loader2, Sparkles, Calendar, User, Share2, X } from 'lucide-react'
+import {
+  Headset,
+  Plus,
+  Trash2,
+  Loader2,
+  Sparkles,
+  Calendar,
+  User,
+  Share2,
+  X,
+  CheckCircle2,
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { VoiceInputButton } from '@/components/VoiceInputButton'
@@ -34,6 +45,7 @@ import type {
   ServicePriority,
   AvoidableContactReason,
   ServiceGroup,
+  TravelType,
 } from '@/types/service_record'
 import { AVOIDABLE_CONTACT_REASONS } from '@/lib/constants'
 
@@ -83,6 +95,15 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
 
   const handleSubmit = async (e: React.FormEvent) => {
     if (await form.handleSubmit(e)) {
+      form.resetForm()
+      onOpenChange(false)
+      onSuccess?.()
+    }
+  }
+
+  const handleSaveAndConclude = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (await form.handleSubmit(e as unknown as React.FormEvent, 'Concluído')) {
       form.resetForm()
       onOpenChange(false)
       onSuccess?.()
@@ -319,6 +340,27 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
+              <Label className="text-xs">Nacional / Internacional *</Label>
+              <Select
+                value={form.travelType}
+                onValueChange={(v) => form.setTravelType(v as TravelType)}
+              >
+                <SelectTrigger className={`h-9 ${form.travelTypeError ? 'border-red-500' : ''}`}>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Nacional">Nacional</SelectItem>
+                  <SelectItem value="Internacional">Internacional</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.travelTypeError && (
+                <p className="text-xs text-red-500 font-medium">{form.travelTypeError}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
               <Label className="text-xs">Status Inicial</Label>
               <Select value={form.status} onValueChange={(v) => form.setStatus(v as ServiceStatus)}>
                 <SelectTrigger className="h-9">
@@ -468,7 +510,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
 
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Descrição / Observações *</Label>
+              <Label className="text-xs">Descrição / Observações</Label>
               <div className="flex items-center gap-1.5">
                 <VoiceInputButton
                   onTranscript={handleVoiceTranscript}
@@ -699,6 +741,19 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             >
               {form.loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar Atendimento
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveAndConclude}
+              disabled={form.loading}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {form.loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+              )}
+              Salvar e Concluir
             </Button>
           </div>
         </form>

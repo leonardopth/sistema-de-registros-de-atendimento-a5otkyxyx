@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-06T22:32:45.973Z",
+  "generatedAt": "2026-08-06T23:19:05.524Z",
   "collections": [
     {
       "name": "users",
@@ -439,6 +439,13 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "travel_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Nacional", "Internacional"]
         }
       ],
       "indexes": [

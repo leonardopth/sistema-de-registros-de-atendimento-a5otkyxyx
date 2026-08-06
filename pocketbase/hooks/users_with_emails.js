@@ -6,7 +6,18 @@ routerAdd(
     if (!userId) return e.unauthorizedError('auth required')
 
     const role = e.auth.getString('role')
-    if (role !== 'Master' && role !== 'Gerentes') {
+    const isMasterAccess = e.auth.getBool('master_access')
+    const allowedRoles = [
+      'Master',
+      'Gestor Comercial',
+      'Gerentes',
+      'Supervisores',
+      'Líderes',
+      'Executivo de contas',
+      'Consultores',
+    ]
+
+    if (!allowedRoles.includes(role) && !isMasterAccess) {
       return e.forbiddenError('access denied')
     }
 
@@ -14,32 +25,29 @@ routerAdd(
       const records = $app.findRecordsByFilter('_pb_users_auth_', "id != ''", 'name', 0, 0)
 
       var managerGroups = []
-      if (role === 'Gerentes') {
+      if (role === 'Gerentes' && !isMasterAccess) {
         managerGroups = e.auth.get('service_groups') || []
-        if (managerGroups.length === 0) {
-          return e.json(200, [])
-        }
       }
 
       var result = []
       for (var i = 0; i < records.length; i++) {
         var r = records[i]
 
-        if (role === 'Gerentes') {
+        if (role === 'Gerentes' && !isMasterAccess && managerGroups.length > 0) {
           var userGroups = r.get('service_groups') || []
-          if (!userGroups || userGroups.length === 0) continue
-
-          var hasOverlap = false
-          for (var j = 0; j < managerGroups.length; j++) {
-            for (var k = 0; k < userGroups.length; k++) {
-              if (managerGroups[j] === userGroups[k]) {
-                hasOverlap = true
-                break
+          if (userGroups && userGroups.length > 0) {
+            var hasOverlap = false
+            for (var j = 0; j < managerGroups.length; j++) {
+              for (var k = 0; k < userGroups.length; k++) {
+                if (managerGroups[j] === userGroups[k]) {
+                  hasOverlap = true
+                  break
+                }
               }
+              if (hasOverlap) break
             }
-            if (hasOverlap) break
+            if (!hasOverlap) continue
           }
-          if (!hasOverlap) continue
         }
 
         result.push({

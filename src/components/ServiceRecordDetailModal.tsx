@@ -24,6 +24,7 @@ import {
   TaskItem,
   UserRecord,
   AvoidableContactReason,
+  TravelType,
 } from '@/types/service_record'
 import { AVOIDABLE_CONTACT_REASONS } from '@/lib/constants'
 import { StatusBadge } from './StatusBadge'
@@ -107,6 +108,7 @@ export function ServiceRecordDetailModal({
   const [accumulatedMs, setAccumulatedMs] = useState(0)
   const [duration, setDuration] = useState(0)
   const [description, setDescription] = useState('')
+  const [travelType, setTravelType] = useState<TravelType | ''>('')
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [userSharePermission, setUserSharePermission] = useState<'Visualizar' | 'Editar' | null>(
@@ -140,6 +142,7 @@ export function ServiceRecordDetailModal({
       setAccumulatedMs(record.duration ? record.duration * 60000 : 0)
       setDuration(record.duration || 0)
       setDescription(record.description || '')
+      setTravelType((record.travel_type as TravelType) || '')
       setFieldErrors({})
       setActiveTab('details')
     }
@@ -276,6 +279,11 @@ export function ServiceRecordDetailModal({
       return
     }
 
+    if (!travelType) {
+      toast({ variant: 'destructive', title: 'Selecione Nacional ou Internacional' })
+      return
+    }
+
     if (avoidableContact && !avoidableContactReason) {
       toast({ variant: 'destructive', title: 'Selecione o motivo do contato evitável' })
       return
@@ -325,6 +333,7 @@ export function ServiceRecordDetailModal({
         {
           status: effectiveStatus,
           channel: channel || undefined,
+          travel_type: travelType as TravelType,
           description: description.trim(),
           tasks: cleanTasks,
           end_time: isCompletedNow ? new Date().toISOString() : record.end_time,
@@ -568,6 +577,32 @@ export function ServiceRecordDetailModal({
                 ) : (
                   <div className="h-9 flex items-center text-sm text-slate-700 px-3 bg-slate-50 rounded-md border border-slate-200">
                     {status}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 items-center">
+              <div>
+                <span className="text-xs font-medium text-slate-500 block mb-1">
+                  Nacional / Internacional *
+                </span>
+                {isEditable ? (
+                  <Select
+                    value={travelType}
+                    onValueChange={(val) => setTravelType(val as TravelType)}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Nacional">Nacional</SelectItem>
+                      <SelectItem value="Internacional">Internacional</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="h-9 flex items-center text-sm text-slate-700 px-3 bg-slate-50 rounded-md border border-slate-200">
+                    {travelType || '—'}
                   </div>
                 )}
               </div>

@@ -21,6 +21,7 @@ import type {
   ServiceStatus,
   TaskItem,
   AvoidableContactReason,
+  TravelType,
   UserRecord,
 } from '@/types/service_record'
 
@@ -62,6 +63,8 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     '',
   )
   const [avoidableContactExplanation, setAvoidableContactExplanation] = useState('')
+  const [travelType, setTravelType] = useState<TravelType | ''>('')
+  const [travelTypeError, setTravelTypeError] = useState('')
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<UserRecord[]>([])
   const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
@@ -236,6 +239,11 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     if (v) setChannelError('')
   }
 
+  const handleTravelTypeChange = (v: TravelType | '') => {
+    setTravelType(v)
+    if (v) setTravelTypeError('')
+  }
+
   const filteredClients = useMemo(() => {
     if (showAllClients || isMasterUser(user)) return clients
     return filterClientsByUserAccess(clients, user)
@@ -253,6 +261,8 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     setClientPhone('')
     setClientCompany('')
     setContactReason('')
+    setTravelType('')
+    setTravelTypeError('')
     setChannel('')
     setDescription('')
     setPriority('Média')
@@ -303,7 +313,13 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
       toast({ variant: 'destructive', title: 'Canal é obrigatório' })
       return false
     }
+    if (!travelType) {
+      setTravelTypeError('Nacional / Internacional é obrigatório')
+      toast({ variant: 'destructive', title: 'Selecione Nacional ou Internacional' })
+      return false
+    }
     setChannelError('')
+    setTravelTypeError('')
     let assignedAgent = autoExecutive
     if (!useExisting) {
       const exec = allExecutives.find((ex) => ex.id === selectedExecutiveId)
@@ -373,6 +389,7 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
         client_phone: clientPhone.trim(),
         client_company: clientCompany.trim(),
         contact_reason: contactReason as ContactReason,
+        travel_type: travelType as TravelType,
         channel: channel || undefined,
         description: description.trim(),
         priority,
@@ -381,6 +398,7 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
         duration: finalDuration || undefined,
         assigned_agent: assignedAgent,
         assigned_user: assignedUserId || user?.id,
+        user_id: user?.id,
         tasks,
         avoidable_contact: avoidableContact,
         avoidable_contact_reason: avoidableContact
@@ -440,6 +458,9 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     setClientCompany,
     contactReason,
     setContactReason: handleContactReasonChange,
+    travelType,
+    setTravelType: handleTravelTypeChange,
+    travelTypeError,
     channel,
     setChannel: handleChannelChange,
     channelError,

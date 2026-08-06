@@ -3,15 +3,23 @@ import { createAuditLog } from '@/services/audit-log'
 import type { UserRecord } from '@/types/service_record'
 
 export async function getUsers(): Promise<UserRecord[]> {
+  try {
+    const customUsers = await pb.send<UserRecord[]>('/backend/v1/users-with-emails', {
+      method: 'GET',
+    })
+    if (Array.isArray(customUsers) && customUsers.length > 0) {
+      return customUsers
+    }
+  } catch (err) {
+    console.warn('Fallback to SDK list for users:', err)
+  }
   return await pb.collection('users').getFullList<UserRecord>({
     sort: 'name',
   })
 }
 
 export async function getUsersWithEmails(): Promise<UserRecord[]> {
-  return await pb.collection('users').getFullList<UserRecord>({
-    sort: 'name',
-  })
+  return getUsers()
 }
 
 export async function getUser(id: string): Promise<UserRecord> {

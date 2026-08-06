@@ -3,13 +3,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { VoiceInputButton } from '@/components/VoiceInputButton'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
 import { Zap, Loader2, Sparkles, CheckCircle2 } from 'lucide-react'
-import type { ContactReason, AvoidableContactReason } from '@/types/service_record'
+import type { ContactReason, AvoidableContactReason, TravelType } from '@/types/service_record'
 
 interface QuickLogProps {
   open: boolean
@@ -118,6 +125,24 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
             </div>
           )}
           <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Nacional / Internacional *</Label>
+            <Select
+              value={form.travelType}
+              onValueChange={(v) => form.setTravelType(v as TravelType)}
+            >
+              <SelectTrigger className={`h-9 ${form.travelTypeError ? 'border-red-500' : ''}`}>
+                <SelectValue placeholder="Selecione o tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Nacional">Nacional</SelectItem>
+                <SelectItem value="Internacional">Internacional</SelectItem>
+              </SelectContent>
+            </Select>
+            {form.travelTypeError && (
+              <p className="text-xs text-red-500 font-medium">{form.travelTypeError}</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">O que aconteceu? *</Label>
               <div className="flex items-center gap-2">
@@ -145,7 +170,6 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
             </div>
             <Textarea
               rows={3}
-              required
               value={form.description}
               onChange={(e) => form.setDescription(e.target.value)}
               placeholder="Ex: Agência XYZ ligou perguntando sobre reembolso de bagagem..."
