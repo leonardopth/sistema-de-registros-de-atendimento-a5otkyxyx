@@ -3,49 +3,18 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getServiceRecords } from '@/services/service_records'
 import { getUsers } from '@/services/users'
-import { ServiceRecord, UserRecord, UserRole } from '@/types/service_record'
+import { ServiceRecord, UserRecord } from '@/types/service_record'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { isManagerUser, isMasterUser } from '@/lib/service-group-access'
+import {
+  computeConsultantStats,
+  filterConsultantsByAccess,
+  computeTeamAverage,
+  buildAnonymizedNames,
+  type ConsultantStat,
+} from '@/lib/consultant-report'
 import { Headset, Clock, AlertTriangle, CheckCircle2, Award, Users } from 'lucide-react'
-
-const LEADERSHIP_ROLES: UserRole[] = ['Gerentes', 'Supervisores', 'Líderes']
-
-interface ConsultantStat {
-  uid: string
-  user?: UserRecord
-  total: number
-  avgDuration: number
-  avoidableRate: number
-  resolutionRate: number
-}
-
-function computeStats(records: ServiceRecord[], users: UserRecord[]): ConsultantStat[] {
-  const userMap = new Map(users.map((u) => [u.id, u]))
-  const leadershipIds = new Set(
-    users.filter((u) => LEADERSHIP_ROLES.includes(u.role)).map((u) => u.id),
-  )
-  const map = new Map<string, ServiceRecord[]>()
-  for (const r of records) {
-    const uid = r.assigned_user || r.user_id
-    if (!uid) continue
-    if (leadershipIds.has(uid)) continue
-    if (!map.has(uid)) map.set(uid, [])
-    map.get(uid)!.push(r)
-  }
-  return Array.from(map.entries())
-    .map(([uid, recs]) => {
-      const total = recs.length
-      const avgDuration =
-        total > 0 ? Math.round(recs.reduce((a, r) => a + (r.duration || 0), 0) / total) : 0
-      const avoidable = recs.filter((r) => r.avoidable_contact).length
-      const avoidableRate = total > 0 ? Math.round((avoidable / total) * 100) : 0
-      const completed = recs.filter((r) => r.status === 'Concluído').length
-      const resolutionRate = total > 0 ? Math.round((completed / total) * 100) : 0
-      return { uid, user: userMap.get(uid), total, avgDuration, avoidableRate, resolutionRate }
-    })
-    .sort((a, b) => b.total - a.total)
-}
 
 export default function RelatorioConsultor() {
   const { user } = useAuth()
@@ -67,47 +36,36 @@ export default function RelatorioConsultor() {
   }, [loadData])
   useRealtime('service_records', () => loadData())
 
-  const allStats = useMemo(() => computeStats(records, users), [records, users])
+  const isLeadership = isManagerUser(user) || isMasterUser(user)
+  const shouldAnonymize = !isLeadership
 
-  const myStats = useMemo(() => allStats.find((s) => s.uid === user?.id), [allStats, user?.id])
-
-  const shouldAnonymize = !isManagerUser(user) && !isMasterUser(user)
-
-  const anonymizedNames = useMemo(() => {
-    const sorted = [...allStats].sort((a, b) => a.uid.localeCompare(b.uid))
-    const map = new Map<string, string>()
-    sorted.forEach((s, i) => {
-      map.set(s.uid, `Consultor ${i + 1}`)
-    })
-    return map
-  }, [allStats])
+  const allStats = useMemo(() => computeConsultantStats(records, users), [records, users])
+  const visibleStats = useMemo(() => filterConsultantsByAccess(allStats, user), [allStats, user])
+  const myStats = useMemo(
+    () => visibleStats.find((s) => s.uid === user?.id),
+    [visibleStats, user?.id],
+  )
+  const teamAvg = useMemo(() => computeTeamAverage(visibleStats), [visibleStats])
+  const anonymizedNames = useMemo(() => buildAnonymizedNames(visibleStats), [visibleStats])
 
   const displayName = (stat: ConsultantStat) => {
     if (!shouldAnonymize) return stat.user?.name || 'Consultor'
+    if (stat.uid === user?.id) return 'Você'
     return anonymizedNames.get(stat.uid) || 'Consultor'
   }
 
-  const teamAvg = useMemo(() => {
-    if (allStats.length === 0)
-      return { total: 0, avgDuration: 0, avoidableRate: 0, resolutionRate: 0 }
-    return {
-      total: Math.round(allStats.reduce((a, s) => a + s.total, 0) / allStats.length),
-      avgDuration: Math.round(allStats.reduce((a, s) => a + s.avgDuration, 0) / allStats.length),
-      avoidableRate: Math.round(
-        allStats.reduce((a, s) => a + s.avoidableRate, 0) / allStats.length,
-      ),
-      resolutionRate: Math.round(
-        allStats.reduce((a, s) => a + s.resolutionRate, 0) / allStats.length,
-      ),
-    }
-  }, [allStats])
-
-  if (!myStats) {
+  if (visibleStats.length === 0 || (!isLeadership && !myStats)) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-extrabold text-slate-900">Meu Relatório</h2>
+        <h2 className="text-2xl font-extrabold text-slate-900">
+          {isLeadership ? 'Relatório da Equipe' : 'Meu Relatório'}
+        </h2>
         <Card className="p-8 text-center">
-          <p className="text-sm text-slate-400">Nenhum atendimento registrado ainda.</p>
+          <p className="text-sm text-slate-400">
+            {isLeadership
+              ? 'Nenhum consultor encontrado no seu grupo de atendimento.'
+              : 'Nenhum atendimento registrado ainda.'}
+          </p>
         </Card>
       </div>
     )
@@ -127,13 +85,17 @@ export default function RelatorioConsultor() {
     )
   }
 
+  const cardStats = isLeadership ? teamAvg : myStats!
+  const title = isLeadership ? 'Relatório da Equipe' : 'Relatório Individual do Consultor'
+  const subtitle = isLeadership
+    ? 'Performance dos consultores do seu grupo de atendimento'
+    : 'Sua performance comparada com a equipe'
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-          Relatório Individual do Consultor
-        </h2>
-        <p className="text-xs text-slate-500">Sua performance comparada com a equipe</p>
+        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">{title}</h2>
+        <p className="text-xs text-slate-500">{subtitle}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -141,8 +103,8 @@ export default function RelatorioConsultor() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase">Volume Total</p>
-              <p className="text-2xl font-black text-slate-900">{myStats.total}</p>
-              {compareBadge(myStats.total, teamAvg.total)}
+              <p className="text-2xl font-black text-slate-900">{cardStats.total}</p>
+              {!isLeadership && compareBadge(myStats!.total, teamAvg.total)}
             </div>
             <Headset className="h-8 w-8 text-cyan-600" />
           </CardContent>
@@ -152,10 +114,10 @@ export default function RelatorioConsultor() {
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase">Tempo Médio</p>
               <p className="text-2xl font-black text-slate-900">
-                {myStats.avgDuration}
+                {cardStats.avgDuration}
                 <span className="text-sm">min</span>
               </p>
-              {compareBadge(myStats.avgDuration, teamAvg.avgDuration, true)}
+              {!isLeadership && compareBadge(myStats!.avgDuration, teamAvg.avgDuration, true)}
             </div>
             <Clock className="h-8 w-8 text-rose-500" />
           </CardContent>
@@ -164,8 +126,8 @@ export default function RelatorioConsultor() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold text-amber-700 uppercase">Evitáveis</p>
-              <p className="text-2xl font-black text-slate-900">{myStats.avoidableRate}%</p>
-              {compareBadge(myStats.avoidableRate, teamAvg.avoidableRate, true)}
+              <p className="text-2xl font-black text-slate-900">{cardStats.avoidableRate}%</p>
+              {!isLeadership && compareBadge(myStats!.avoidableRate, teamAvg.avoidableRate, true)}
             </div>
             <AlertTriangle className="h-8 w-8 text-amber-500" />
           </CardContent>
@@ -174,8 +136,8 @@ export default function RelatorioConsultor() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold text-emerald-700 uppercase">Resolução</p>
-              <p className="text-2xl font-black text-slate-900">{myStats.resolutionRate}%</p>
-              {compareBadge(myStats.resolutionRate, teamAvg.resolutionRate)}
+              <p className="text-2xl font-black text-slate-900">{cardStats.resolutionRate}%</p>
+              {!isLeadership && compareBadge(myStats!.resolutionRate, teamAvg.resolutionRate)}
             </div>
             <CheckCircle2 className="h-8 w-8 text-emerald-500" />
           </CardContent>
@@ -200,7 +162,7 @@ export default function RelatorioConsultor() {
                 </tr>
               </thead>
               <tbody>
-                {allStats.map((s) => (
+                {visibleStats.map((s) => (
                   <tr
                     key={s.uid}
                     className={`border-b ${s.uid === user?.id ? 'bg-indigo-50' : ''}`}
