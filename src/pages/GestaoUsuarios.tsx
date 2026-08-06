@@ -36,7 +36,13 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table'
-import { getUsers, updateUser, approveUser, rejectUser, deleteUser } from '@/services/users'
+import {
+  getUsersWithEmails,
+  updateUser,
+  approveUser,
+  rejectUser,
+  deleteUser,
+} from '@/services/users'
 import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 import { UserRecord, UserRole, ApprovalStatus } from '@/types/service_record'
 import { useAuth } from '@/hooks/use-auth'
@@ -107,10 +113,25 @@ export default function GestaoUsuarios() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const data = await getUsers()
+      const data = await getUsersWithEmails()
       setUsers(data)
-    } catch (e) {
+    } catch (e: any) {
       console.error(e)
+      if (e?.status === 403) {
+        toast({
+          variant: 'destructive',
+          title: 'Acesso negado',
+          description: 'Apenas usuários Master podem acessar esta página.',
+        })
+      } else if (e?.status === 401) {
+        toast({
+          variant: 'destructive',
+          title: 'Não autenticado',
+          description: 'Faça login novamente.',
+        })
+      } else {
+        toast({ variant: 'destructive', title: 'Erro ao carregar usuários' })
+      }
     } finally {
       setLoading(false)
     }

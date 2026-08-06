@@ -10,6 +10,10 @@ export const getUsers = () => {
   })
 }
 
+export const getUsersWithEmails = () => {
+  return pb.send('/backend/v1/users-with-emails', { method: 'GET' }) as Promise<UserRecord[]>
+}
+
 export const getUser = (id: string) => {
   return pb.collection('users').getOne<UserRecord>(id)
 }
