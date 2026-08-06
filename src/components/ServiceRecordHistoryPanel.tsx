@@ -8,18 +8,23 @@ import { ptBR } from 'date-fns/locale'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 const FIELD_LABELS: Record<string, string> = {
-  status: 'Status',
-  channel: 'Canal',
-  priority: 'Prioridade',
   description: 'Descrição',
-  contact_reason: 'Motivo do Contato',
+  status: 'Status',
+  priority: 'Prioridade',
+  contact_reason: 'Motivo de contato',
+  channel: 'Canal',
+  client: 'Cliente',
+  account_executive: 'Executivo de contas',
   assigned_agent: 'Agente',
-  assigned_user: 'Consultor',
-  duration: 'Duração',
-  avoidable_contact: 'Contato Evitável',
-  avoidable_contact_explanation: 'Explicação',
-  avoidable_contact_reason: 'Motivo Evitável',
+  assigned_user: 'Responsável',
+  avoidable_contact: 'Contato evitável',
+  avoidable_contact_reason: 'Motivo do contato evitável',
+  avoidable_contact_explanation: 'Justificativa do contato evitável',
   tasks: 'Tarefas',
+  start_time: 'Início',
+  end_time: 'Fim',
+  duration: 'Duração',
+  reopen_justification: 'Justificativa de reabertura',
 }
 
 interface Props {
@@ -63,7 +68,7 @@ export function ServiceRecordHistoryPanel({ serviceRecordId }: Props) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <History className="h-8 w-8 text-slate-300 mb-2" />
-        <p className="text-xs text-slate-400">Nenhum histórico de alterações registrado.</p>
+        <p className="text-xs text-slate-400">Nenhuma alteração registrada neste atendimento.</p>
       </div>
     )
   }
@@ -81,24 +86,22 @@ export function ServiceRecordHistoryPanel({ serviceRecordId }: Props) {
                 {FIELD_LABELS[h.field] || h.field}
               </span>
               <span className="text-[10px] text-slate-400">
-                {format(new Date(h.created), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                Em: {format(new Date(h.created), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[11px]">
-              <span className="text-slate-500 line-through max-w-[140px] truncate">
-                {h.old_value || '—'}
+            <div className="flex items-center gap-2 text-[11px] flex-wrap">
+              <span className="text-slate-500">
+                De: <span className="line-through break-all">{h.old_value || '—'}</span>
               </span>
               <span className="text-slate-400">→</span>
-              <span className="text-slate-800 font-medium max-w-[140px] truncate">
-                {h.new_value || '—'}
+              <span className="text-slate-800 font-medium break-all">
+                Para: {h.new_value || '—'}
               </span>
             </div>
             <div className="flex items-center gap-1 text-[10px] text-slate-400">
-              {h.expand?.user?.name && (
-                <span className="flex items-center gap-0.5">
-                  <User className="h-2.5 w-2.5" /> {h.expand.user.name}
-                </span>
-              )}
+              <span className="flex items-center gap-0.5">
+                <User className="h-2.5 w-2.5" /> Alterado por: {h.expand?.user?.name || '—'}
+              </span>
             </div>
             {h.justification && (
               <p className="text-[10px] text-amber-700 bg-amber-50 px-2 py-1 rounded mt-0.5">

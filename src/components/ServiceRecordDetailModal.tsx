@@ -35,6 +35,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { ServiceRecordHistoryPanel } from './ServiceRecordHistoryPanel'
 import { ReopenAtendimentoDialog } from './ReopenAtendimentoDialog'
 import { ServiceTimer } from './ServiceTimer'
+import { extractFieldErrors, getErrorMessage, type FieldErrors } from '@/lib/pocketbase/errors'
 import {
   User,
   Phone,
@@ -101,6 +102,8 @@ export function ServiceRecordDetailModal({
   const [timerRunning, setTimerRunning] = useState(false)
   const [accumulatedMs, setAccumulatedMs] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [description, setDescription] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
   const isEditable = record ? EDITABLE_STATUSES.includes(record.status) : false
   const canReopen = record ? REOPENABLE_STATUSES.includes(record.status) : false
@@ -120,6 +123,8 @@ export function ServiceRecordDetailModal({
       setTimerRunning(record.timer_running || false)
       setAccumulatedMs(record.duration ? record.duration * 60000 : 0)
       setDuration(record.duration || 0)
+      setDescription(record.description || '')
+      setFieldErrors({})
       setActiveTab('details')
     }
   }, [record])
@@ -225,9 +230,14 @@ export function ServiceRecordDetailModal({
     setDuration(0)
   }
 
-  const handleSave = async (overrideStatus?: ServiceStatus) => {
+  const handleSave = async (overrideStatus?: ServiceStatus | unknown) => {
     if (!isEditable) return
-    const effectiveStatus = overrideStatus || status
+    const validStatuses: ServiceStatus[] = ['Aberto', 'Em Andamento', 'Concluído', 'Cancelado']
+    const effectiveStatus: ServiceStatus =
+      typeof overrideStatus === 'string' && validStatuses.includes(overrideStatus as ServiceStatus)
+        ? (overrideStatus as ServiceStatus)
+        : status
+
     if (avoidableContact && !avoidableContactReason) {
       toast({ variant: 'destructive', title: 'Selecione o motivo do contato evitável' })
       return
@@ -242,6 +252,7 @@ export function ServiceRecordDetailModal({
     }
     setLoading(true)
     try {
+      setFieldErrors({})
       const isCompletedNow = effectiveStatus === 'Concluído' && record.status !== 'Concluído'
       let finalDuration = duration
       let finalTimerStart = timerStart
@@ -252,12 +263,32 @@ export function ServiceRecordDetailModal({
         finalTimerRunning = false
         finalTimerStart = null
       }
+
+      const assignedUserId =
+        (typeof record.assigned_user === 'string' && record.assigned_user) ||
+        record.expand?.assigned_user?.id ||
+        user?.id ||
+        ''
+
+      const cleanTasks = Array.isArray(tasks)
+        ? tasks.map((t) => ({
+            id: t.id,
+            title: typeof t.title === 'string' ? t.title : '',
+            done: Boolean(t.done),
+            due_date: t.due_date || undefined,
+            responsible: t.responsible || undefined,
+            done_at: t.done_at || undefined,
+            done_by: t.done_by || undefined,
+          }))
+        : []
+
       await updateServiceRecordWithHistory(
         record.id,
         {
           status: effectiveStatus,
           channel: channel || undefined,
-          tasks,
+          description: description.trim(),
+          tasks: cleanTasks,
           end_time: isCompletedNow ? new Date().toISOString() : record.end_time,
           duration: finalDuration || undefined,
           timer_start: finalTimerStart || undefined,
@@ -270,7 +301,7 @@ export function ServiceRecordDetailModal({
             avoidableContact && avoidableContactReason === 'Outros'
               ? avoidableContactExplanation.trim()
               : '',
-          assigned_user: user?.id,
+          assigned_user: assignedUserId,
         },
         user?.id || '',
       )
@@ -280,11 +311,15 @@ export function ServiceRecordDetailModal({
       })
       onOpenChange(false)
       onUpdateSuccess?.()
-    } catch {
+    } catch (err) {
+      const fieldErrs = extractFieldErrors(err)
+      setFieldErrors(fieldErrs)
+      const msg = getErrorMessage(err)
+      const fieldCount = Object.keys(fieldErrs).length
       toast({
         variant: 'destructive',
         title: 'Erro ao atualizar',
-        description: 'Não foi possível salvar as alterações.',
+        description: fieldCount > 0 ? `${fieldCount} campo(s) com erro: ${msg}` : msg,
       })
     } finally {
       setLoading(false)
@@ -368,6 +403,18 @@ export function ServiceRecordDetailModal({
           </TabsList>
 
           <TabsContent value="details" className="space-y-5 py-3 text-slate-700">
+            {Object.keys(fieldErrors).length > 0 && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg space-y-1">
+                <span className="text-xs font-bold text-red-700">
+                  Corrija os campos destacados abaixo:
+                </span>
+                {Object.entries(fieldErrors).map(([field, msg]) => (
+                  <p key={field} className="text-xs text-red-600">
+                    <strong>{field}:</strong> {msg}
+                  </p>
+                ))}
+              </div>
+            )}
             <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-100 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-indigo-950 text-base">
@@ -435,21 +482,26 @@ export function ServiceRecordDetailModal({
               <div>
                 <span className="text-xs font-medium text-slate-500 block mb-1">Canal</span>
                 {isEditable ? (
-                  <Select
-                    value={channel}
-                    onValueChange={(val) => setChannel(val as ServiceChannel)}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Selecione um canal" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Telefone">Telefone</SelectItem>
-                      <SelectItem value="e-mail">e-mail</SelectItem>
-                      <SelectItem value="whatsapp">whatsapp</SelectItem>
-                      <SelectItem value="comercial">comercial</SelectItem>
-                      <SelectItem value="outros">outros</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Select
+                      value={channel}
+                      onValueChange={(val) => setChannel(val as ServiceChannel)}
+                    >
+                      <SelectTrigger className={cn('h-9', fieldErrors.channel && 'border-red-400')}>
+                        <SelectValue placeholder="Selecione um canal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Telefone">Telefone</SelectItem>
+                        <SelectItem value="e-mail">e-mail</SelectItem>
+                        <SelectItem value="whatsapp">whatsapp</SelectItem>
+                        <SelectItem value="comercial">comercial</SelectItem>
+                        <SelectItem value="outros">outros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {fieldErrors.channel && (
+                      <p className="text-xs text-red-500 mt-1">{fieldErrors.channel}</p>
+                    )}
+                  </div>
                 ) : (
                   <div className="h-9 flex items-center text-sm text-slate-700 px-3 bg-slate-50 rounded-md border border-slate-200">
                     {channel || '—'}
@@ -459,17 +511,22 @@ export function ServiceRecordDetailModal({
               <div>
                 <span className="text-xs font-medium text-slate-500 block mb-1">Status</span>
                 {isEditable ? (
-                  <Select value={status} onValueChange={(val) => setStatus(val as ServiceStatus)}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Aberto">Aberto</SelectItem>
-                      <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                      <SelectItem value="Concluído">Concluído</SelectItem>
-                      <SelectItem value="Cancelado">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Select value={status} onValueChange={(val) => setStatus(val as ServiceStatus)}>
+                      <SelectTrigger className={cn('h-9', fieldErrors.status && 'border-red-400')}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Aberto">Aberto</SelectItem>
+                        <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                        <SelectItem value="Concluído">Concluído</SelectItem>
+                        <SelectItem value="Cancelado">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {fieldErrors.status && (
+                      <p className="text-xs text-red-500 mt-1">{fieldErrors.status}</p>
+                    )}
+                  </div>
                 ) : (
                   <div className="h-9 flex items-center text-sm text-slate-700 px-3 bg-slate-50 rounded-md border border-slate-200">
                     {status}
@@ -497,9 +554,29 @@ export function ServiceRecordDetailModal({
               <span className="text-xs font-medium text-slate-500 block mb-1">
                 Descrição do Atendimento
               </span>
-              <div className="p-3 bg-white border rounded-md text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
-                {record.description}
-              </div>
+              {isEditable ? (
+                <div>
+                  <textarea
+                    rows={4}
+                    className={cn(
+                      'w-full text-sm p-3 border rounded-md resize-y',
+                      fieldErrors.description
+                        ? 'border-red-400 focus:border-red-500'
+                        : 'border-slate-200 focus:border-indigo-400',
+                    )}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Descreva o atendimento..."
+                  />
+                  {fieldErrors.description && (
+                    <p className="text-xs text-red-500 mt-1">{fieldErrors.description}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="p-3 bg-white border rounded-md text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+                  {description || record.description}
+                </div>
+              )}
             </div>
 
             <div>
