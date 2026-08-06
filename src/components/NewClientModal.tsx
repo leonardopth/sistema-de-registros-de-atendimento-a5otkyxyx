@@ -50,6 +50,9 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
   const [serviceGroupError, setServiceGroupError] = useState('')
   const { toast } = useToast()
 
+  const autoAtendimentoExec = executives.find((ex) => ex.name === 'Auto-Atendimento')
+  const regularExecutives = executives.filter((ex) => ex.name !== 'Auto-Atendimento')
+
   useEffect(() => {
     if (open) {
       getAccountExecutives()
@@ -218,7 +221,12 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
           <div className="space-y-1.5">
             <Label>Executivo de Contas RA *</Label>
             <SearchableSelect
-              options={executives.map((ex) => ({ value: ex.id, label: ex.name }))}
+              pinnedOptions={
+                autoAtendimentoExec
+                  ? [{ value: autoAtendimentoExec.id, label: autoAtendimentoExec.name }]
+                  : []
+              }
+              options={regularExecutives.map((ex) => ({ value: ex.id, label: ex.name }))}
               value={selectedExecutiveId}
               onValueChange={(v) => {
                 setSelectedExecutiveId(v)

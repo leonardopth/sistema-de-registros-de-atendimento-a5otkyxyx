@@ -108,6 +108,9 @@ export default function Clientes() {
   const canDeleteClient =
     user?.role === 'Gerentes' || user?.role === 'Master' || user?.master_access === true
 
+  const autoAtendimentoExec = executives.find((ex) => ex.name === 'Auto-Atendimento')
+  const regularExecutives = executives.filter((ex) => ex.name !== 'Auto-Atendimento')
+
   const loadClients = async () => {
     try {
       setClients(await getClients())
@@ -348,7 +351,12 @@ export default function Clientes() {
                   Executivo de Contas RA *
                 </label>
                 <SearchableSelect
-                  options={executives.map((ex) => ({ value: ex.id, label: ex.name }))}
+                  pinnedOptions={
+                    autoAtendimentoExec
+                      ? [{ value: autoAtendimentoExec.id, label: autoAtendimentoExec.name }]
+                      : []
+                  }
+                  options={regularExecutives.map((ex) => ({ value: ex.id, label: ex.name }))}
                   value={editExecutiveId}
                   onValueChange={(v) => {
                     setEditExecutiveId(v)

@@ -7,6 +7,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from '@/components/ui/command'
 import { Button } from '@/components/ui/button'
 import { Check, ChevronsUpDown } from 'lucide-react'
@@ -19,6 +20,7 @@ interface SearchableSelectOption {
 
 interface SearchableSelectProps {
   options: SearchableSelectOption[]
+  pinnedOptions?: SearchableSelectOption[]
   value: string
   onValueChange: (value: string) => void
   placeholder?: string
@@ -29,6 +31,7 @@ interface SearchableSelectProps {
 
 export function SearchableSelect({
   options,
+  pinnedOptions,
   value,
   onValueChange,
   placeholder = 'Selecione...',
@@ -68,6 +71,29 @@ export function SearchableSelect({
           <CommandInput placeholder="Buscar..." className="h-9" />
           <CommandList className="max-h-[200px]">
             <CommandEmpty>{emptyText}</CommandEmpty>
+            {pinnedOptions && pinnedOptions.length > 0 && (
+              <CommandGroup>
+                {pinnedOptions.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label}
+                    onSelect={() => {
+                      onValueChange(option.value === value ? '' : option.value)
+                      setOpen(false)
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 h-4 w-4',
+                        value === option.value ? 'opacity-100' : 'opacity-0',
+                      )}
+                    />
+                    {option.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {pinnedOptions && pinnedOptions.length > 0 && <CommandSeparator />}
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
