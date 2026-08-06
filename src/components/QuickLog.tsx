@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { VoiceInputButton } from '@/components/VoiceInputButton'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
@@ -48,6 +49,11 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
     } finally {
       setAnalyzing(false)
     }
+  }
+
+  const handleVoiceTranscript = (text: string) => {
+    form.setDescription(text)
+    toast({ title: 'Transcrição concluída', description: 'Reveja o texto transcrito.' })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,21 +120,28 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">O que aconteceu? *</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-xs text-indigo-600 h-7"
-                onClick={handleAIAnalysis}
-                disabled={analyzing}
-              >
-                {analyzing ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3 w-3 mr-1" />
-                )}
-                Preencher com IA
-              </Button>
+              <div className="flex items-center gap-2">
+                <VoiceInputButton
+                  onTranscript={handleVoiceTranscript}
+                  disabled={analyzing}
+                  className="h-7"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-indigo-600 h-7"
+                  onClick={handleAIAnalysis}
+                  disabled={analyzing}
+                >
+                  {analyzing ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3 w-3 mr-1" />
+                  )}
+                  Preencher com IA
+                </Button>
+              </div>
             </div>
             <Textarea
               rows={3}
@@ -138,6 +151,9 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
               placeholder="Ex: Agência XYZ ligou perguntando sobre reembolso de bagagem..."
               className="text-sm"
             />
+            <p className="text-xs text-amber-600">
+              ⚠️ Transcrição automática por voz — revise o texto, pois pode conter erros.
+            </p>
           </div>
           {form.contactReason && (
             <div className="flex items-center gap-2 text-xs flex-wrap">

@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { VoiceInputButton } from '@/components/VoiceInputButton'
 import { SERVICE_TEMPLATES } from '@/lib/service-templates'
 import { suggestArticles } from '@/lib/knowledge-base'
 import type {
@@ -110,6 +111,11 @@ export default function NovoAtendimento() {
     } finally {
       setAnalyzing(false)
     }
+  }
+
+  const handleVoiceTranscript = (text: string) => {
+    form.setDescription(text)
+    toast({ title: 'Transcrição concluída', description: 'Reveja o texto transcrito.' })
   }
 
   return (
@@ -389,21 +395,24 @@ export default function NovoAtendimento() {
               <div className="space-y-1.5 sm:col-span-2">
                 <div className="flex items-center justify-between">
                   <Label>Descrição Detalhada do Atendimento</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs text-indigo-600"
-                    onClick={handleAIAnalysis}
-                    disabled={analyzing}
-                  >
-                    {analyzing ? (
-                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3.5 w-3.5 mr-1" />
-                    )}
-                    Analisar com IA
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <VoiceInputButton onTranscript={handleVoiceTranscript} disabled={analyzing} />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs text-indigo-600"
+                      onClick={handleAIAnalysis}
+                      disabled={analyzing}
+                    >
+                      {analyzing ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5 mr-1" />
+                      )}
+                      Analisar com IA
+                    </Button>
+                  </div>
                 </div>
                 <Textarea
                   rows={4}
@@ -411,6 +420,9 @@ export default function NovoAtendimento() {
                   onChange={(e) => form.setDescription(e.target.value)}
                   placeholder="Relate detalhadamente o problema, dúvida ou solicitação do cliente..."
                 />
+                <p className="text-xs text-amber-600">
+                  ⚠️ Transcrição automática por voz — revise o texto, pois pode conter erros.
+                </p>
               </div>
             </div>
           </div>
