@@ -6,7 +6,13 @@ interface AuthContextType {
   user: any
   isAuthenticated: boolean
   isMaster: boolean
-  signUp: (email: string, password: string, name: string, role: UserRole) => Promise<{ error: any }>
+  signUp: (
+    email: string,
+    password: string,
+    name: string,
+    role: UserRole,
+    serviceGroups: string[],
+  ) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any; approvalStatus?: string }>
   signOut: () => void
   requestPasswordReset: (email: string) => Promise<{ error: any }>
@@ -54,7 +60,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
-  const signUp = async (email: string, password: string, name: string, role: UserRole) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    name: string,
+    role: UserRole,
+    serviceGroups: string[],
+  ) => {
     try {
       await pb.collection('users').create({
         email,
@@ -63,6 +75,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         name,
         role,
         approval_status: 'Pendente',
+        service_groups: ['Gerentes', 'Supervisores', 'Líderes', 'Consultores'].includes(role)
+          ? serviceGroups
+          : [],
       })
       return { error: null }
     } catch (error) {

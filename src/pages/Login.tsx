@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast'
 import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 import { UserRole } from '@/types/service_record'
 import { PasswordRecoveryForm } from '@/components/PasswordRecoveryForm'
+import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import logoImg from '../assets/image-b4a05.png'
 
 const REMEMBER_EMAIL_KEY = 'rememberEmail'
@@ -48,6 +49,7 @@ export default function Login() {
   } | null>(null)
   const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [signupServiceGroups, setSignupServiceGroups] = useState<string[]>([])
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -110,7 +112,13 @@ export default function Login() {
     }
 
     setLoading(true)
-    const { error } = await signUp(email, password, name.trim(), role as UserRole)
+    const { error } = await signUp(
+      email,
+      password,
+      name.trim(),
+      role as UserRole,
+      signupServiceGroups,
+    )
     setLoading(false)
 
     if (error) {
@@ -137,6 +145,7 @@ export default function Login() {
     setShowPassword(false)
     setEmail('')
     setPassword('')
+    setSignupServiceGroups([])
   }
 
   const goToRecovery = () => {
@@ -439,6 +448,43 @@ export default function Login() {
                       <p className="text-xs text-rose-400">{fieldErrors.role}</p>
                     )}
                   </div>
+
+                  {['Gerentes', 'Supervisores', 'Líderes', 'Consultores'].includes(role) && (
+                    <div className="space-y-2">
+                      <Label className="text-slate-300 text-xs font-medium">
+                        Grupo de Atendimento
+                      </Label>
+                      <p className="text-[11px] text-slate-500">
+                        Selecione um ou mais grupos para restringir o acesso do usuário.
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {SERVICE_GROUP_OPTIONS.map((option) => (
+                          <div key={option.value} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`signup-sg-${option.value}`}
+                              checked={signupServiceGroups.includes(option.value)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSignupServiceGroups([...signupServiceGroups, option.value])
+                                } else {
+                                  setSignupServiceGroups(
+                                    signupServiceGroups.filter((g) => g !== option.value),
+                                  )
+                                }
+                              }}
+                              className="border-slate-700 data-[state=checked]:bg-cyan-600 data-[state=checked]:border-cyan-600"
+                            />
+                            <Label
+                              htmlFor={`signup-sg-${option.value}`}
+                              className="cursor-pointer text-xs font-normal text-slate-300"
+                            >
+                              {option.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="p-2.5 bg-amber-950/40 border border-amber-900/50 rounded-lg">
                     <p className="text-[11px] text-amber-300 text-center">
