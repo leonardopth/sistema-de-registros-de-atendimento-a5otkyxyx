@@ -5,6 +5,11 @@ onRecordViewRequest((e) => {
     return
   }
 
+  if (e.hasSuperuserAuth && e.hasSuperuserAuth()) {
+    e.next()
+    return
+  }
+
   var authRole = ''
   try {
     authRole = e.auth.getString('role')

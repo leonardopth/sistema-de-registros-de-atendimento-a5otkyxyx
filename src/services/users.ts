@@ -7,7 +7,7 @@ export { extractFieldErrors, type FieldErrors }
 export const getUsers = () => {
   return pb.collection('users').getFullList<UserRecord>({
     sort: 'name',
-    fields: '*',
+    fields: '*,email',
   })
 }
 
