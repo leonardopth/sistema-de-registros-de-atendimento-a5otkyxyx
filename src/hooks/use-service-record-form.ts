@@ -275,6 +275,10 @@ export function useServiceRecordForm(enabled: boolean = true) {
       toast({ variant: 'destructive', title: 'Informe a explicação do contato evitável' })
       return false
     }
+    if (registerClient && !useExisting && !selectedExecutiveId) {
+      toast({ variant: 'destructive', title: 'Selecione um executivo de contas' })
+      return false
+    }
     setLoading(true)
     try {
       const selectedClient = clients.find((c) => c.id === selectedClientId)
@@ -294,7 +298,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
       if (registerClient && !useExisting) {
         try {
           const newClient = await createClient({
-            name: clientName.trim(),
+            name: assignedAgent,
             email: clientEmail.trim() || undefined,
             phone: clientPhone.trim() || undefined,
             company: clientCompany.trim() || undefined,
