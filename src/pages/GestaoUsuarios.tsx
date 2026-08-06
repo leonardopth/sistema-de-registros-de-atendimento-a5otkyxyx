@@ -49,7 +49,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import { UserCheck, Check, X, Pencil, Loader2, Trash2, Clock } from 'lucide-react'
+import { UserCheck, Check, X, Pencil, Loader2, Trash2, Clock, ShieldX } from 'lucide-react'
 import { Mail } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
@@ -109,20 +109,18 @@ export default function GestaoUsuarios() {
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [editServiceGroups, setEditServiceGroups] = useState<string[]>([])
+  const [accessDenied, setAccessDenied] = useState(false)
 
   const loadData = async () => {
     setLoading(true)
+    setAccessDenied(false)
     try {
       const data = await getUsersWithEmails()
       setUsers(data)
     } catch (e: any) {
       console.error(e)
       if (e?.status === 403) {
-        toast({
-          variant: 'destructive',
-          title: 'Acesso negado',
-          description: 'Apenas usuários Master podem acessar esta página.',
-        })
+        setAccessDenied(true)
       } else if (e?.status === 401) {
         toast({
           variant: 'destructive',
@@ -143,6 +141,19 @@ export default function GestaoUsuarios() {
   useRealtime('users', () => {
     loadData()
   })
+
+  if (accessDenied) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <ShieldX className="h-12 w-12 text-rose-400 mb-4" />
+        <h2 className="text-xl font-bold text-slate-700">Acesso Negado</h2>
+        <p className="text-sm text-slate-500 mt-2 max-w-md text-center">
+          Você não tem permissão para acessar esta página. Apenas usuários Master e Gerentes podem
+          visualizar a gestão de usuários.
+        </p>
+      </div>
+    )
+  }
 
   const filtered = users.filter(
     (u) =>

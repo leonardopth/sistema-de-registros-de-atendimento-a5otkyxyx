@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { MasterRoute } from '@/components/MasterRoute'
+import { GestaoUsuariosRoute } from '@/components/GestaoUsuariosRoute'
 import { ExecutivoRoute } from '@/components/ExecutivoRoute'
 import { ManagerRoute } from '@/components/ManagerRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -69,9 +70,9 @@ const App = () => (
               <Route
                 path="/gestao-usuarios"
                 element={
-                  <MasterRoute>
+                  <GestaoUsuariosRoute>
                     <GestaoUsuarios />
-                  </MasterRoute>
+                  </GestaoUsuariosRoute>
                 }
               />
               <Route
