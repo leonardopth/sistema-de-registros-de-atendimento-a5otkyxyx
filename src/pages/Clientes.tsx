@@ -11,17 +11,8 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { getClients, updateClient } from '@/services/clients'
-import { getServiceRecords } from '@/services/service_records'
 import { getAccountExecutives } from '@/services/account_executives'
-import { getUsers } from '@/services/users'
-import { filterRecordsByUserAccess } from '@/lib/service-group-access'
-import {
-  AccountExecutiveRecord,
-  ClientRecord,
-  ServiceRecord,
-  ServiceGroup,
-  UserRecord,
-} from '@/types/service_record'
+import { AccountExecutiveRecord, ClientRecord, ServiceGroup } from '@/types/service_record'
 import { NewClientModal } from '@/components/NewClientModal'
 import { StateCitySelect } from '@/components/StateCitySelect'
 import { SearchableSelect } from '@/components/SearchableSelect'
@@ -31,20 +22,15 @@ import { useIbgeCities } from '@/hooks/use-ibge-cities'
 import { AgentManager } from '@/components/AgentManager'
 import { AgentStatsList } from '@/components/AgentStatsList'
 import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
-import { StatusBadge } from '@/components/StatusBadge'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
-import { UserPlus, Search, Headset, ArrowLeft, Loader2, Save, Pencil, FilterX } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { UserPlus, Search, ArrowLeft, Loader2, Save, Pencil, FilterX } from 'lucide-react'
 
 export default function Clientes() {
   const [clients, setClients] = useState<ClientRecord[]>([])
-  const [users, setUsers] = useState<UserRecord[]>([])
   const [search, setSearch] = useState('')
   const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(null)
-  const [clientRecords, setClientRecords] = useState<ServiceRecord[]>([])
   const [newModalOpen, setNewModalOpen] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [detailsCompany, setDetailsCompany] = useState('')
@@ -78,9 +64,7 @@ export default function Clientes() {
 
   const loadClients = async () => {
     try {
-      const [c, u] = await Promise.all([getClients(), getUsers()])
-      setClients(c)
-      setUsers(u)
+      setClients(await getClients())
     } catch (err) {
       console.error(err)
     }
@@ -98,7 +82,7 @@ export default function Clientes() {
     loadClients()
   })
 
-  const handleSelectClient = async (c: ClientRecord) => {
+  const handleSelectClient = (c: ClientRecord) => {
     setSelectedClient(c)
     setEditName(c.name)
     setEditExecutiveId(executives.find((ex) => ex.name === c.name)?.id || '')
@@ -109,23 +93,6 @@ export default function Clientes() {
     setEditState(c.state || '')
     setEditServiceGroup(c.service_group || '')
     setServiceGroupError('')
-    try {
-      const records = await getServiceRecords('', '-created')
-      const userGroupMap = new Map<string, { service_groups?: string[] }>()
-      users.forEach((u) => {
-        userGroupMap.set(u.id, { service_groups: u.service_groups as string[] | undefined })
-      })
-      const clientMap = new Map<string, { service_group?: string }>()
-      clientMap.set(c.id, { service_group: c.service_group })
-      const filtered = records.filter(
-        (r) =>
-          r.client_name.toLowerCase() === c.name.toLowerCase() ||
-          (c.email && r.client_email && r.client_email.toLowerCase() === c.email.toLowerCase()),
-      )
-      setClientRecords(filterRecordsByUserAccess(filtered, user, clientMap, userGroupMap))
-    } catch (err) {
-      console.error(err)
-    }
   }
 
   const handleSaveClient = async () => {
@@ -211,145 +178,104 @@ export default function Clientes() {
           >
             <ArrowLeft className="h-4 w-4 mr-1.5" /> Voltar para lista de clientes
           </Button>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-1 border-slate-200 p-5 space-y-4">
-              <div className="flex items-center gap-3 border-b pb-3">
-                <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">
-                  {(selectedClient.company || selectedClient.name).substring(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base">
-                    {selectedClient.company || 'Pessoa Física'}
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Executivo de Contas: {selectedClient.name}
-                  </p>
-                </div>
+          <Card className="border-slate-200 p-5 space-y-4">
+            <div className="flex items-center gap-3 border-b pb-3">
+              <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">
+                {(selectedClient.company || selectedClient.name).substring(0, 2).toUpperCase()}
               </div>
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">Agência</label>
-                  <Input
-                    className="h-9 text-xs"
-                    value={editCompany}
-                    onChange={(e) => setEditCompany(e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <StateCitySelect
-                    stateValue={editState}
-                    cityValue={editCity}
-                    onStateChange={setEditState}
-                    onCityChange={setEditCity}
-                    compact
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">Telefone / Celular</label>
-                  <Input
-                    className="h-9 text-xs"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">
-                    Executivo de Contas RA *
-                  </label>
-                  <SearchableSelect
-                    options={executives.map((ex) => ({ value: ex.id, label: ex.name }))}
-                    value={editExecutiveId}
-                    onValueChange={(v) => {
-                      setEditExecutiveId(v)
-                      setExecutiveError('')
-                    }}
-                    placeholder="Selecione um executivo de contas"
-                    emptyText="Nenhum executivo encontrado."
-                    className="h-9 text-xs"
-                  />
-                  {executiveError && <p className="text-xs text-red-500">{executiveError}</p>}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">
-                    Grupo de Atendimento *
-                  </label>
-                  <SearchableSelect
-                    options={SERVICE_GROUP_OPTIONS.map((o) => ({
-                      value: o.value,
-                      label: o.label,
-                    }))}
-                    value={editServiceGroup}
-                    onValueChange={(v) => {
-                      setEditServiceGroup(v)
-                      setServiceGroupError('')
-                    }}
-                    placeholder="Selecione um grupo de atendimento"
-                    emptyText="Nenhum grupo encontrado."
-                    className="h-9 text-xs"
-                  />
-                  {serviceGroupError && <p className="text-xs text-red-500">{serviceGroupError}</p>}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-600">Anotações Internas</label>
-                  <textarea
-                    rows={3}
-                    className="w-full text-xs p-2 border rounded-md"
-                    value={editNotes}
-                    onChange={(e) => setEditNotes(e.target.value)}
-                  />
-                </div>
-              </div>
-              <Button
-                onClick={handleSaveClient}
-                disabled={saving}
-                className="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-700 hover:to-indigo-700 text-xs font-bold text-white shadow-sm"
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                ) : (
-                  <Save className="h-4 w-4 mr-1.5" />
-                )}
-                Salvar Alterações
-              </Button>
-            </Card>
-            <Card className="lg:col-span-2 border-slate-200 p-5 space-y-4">
-              <div className="flex items-center justify-between border-b pb-3">
-                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                  <Headset className="h-4 w-4 text-indigo-600" /> Histórico de Atendimentos (
-                  {clientRecords.length})
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">
+                  {selectedClient.company || 'Pessoa Física'}
                 </h3>
+                <p className="text-xs text-slate-500">Executivo de Contas: {selectedClient.name}</p>
               </div>
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                {clientRecords.map((r) => (
-                  <div key={r.id} className="p-3.5 bg-slate-50 border rounded-lg space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-indigo-950">{r.contact_reason}</span>
-                      <StatusBadge status={r.status} />
-                    </div>
-                    <p className="text-xs text-slate-700">{r.description}</p>
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t">
-                      <div className="flex items-center gap-3">
-                        <span>Agente: {r.expand?.agent?.name || r.assigned_agent || '-'}</span>
-                        {r.expand?.assigned_user?.name && (
-                          <span>Consultor: {r.expand.assigned_user.name}</span>
-                        )}
-                      </div>
-                      <span>
-                        {r.created
-                          ? format(new Date(r.created), 'dd/MM/yyyy HH:mm', { locale: ptBR })
-                          : ''}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-                {clientRecords.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-8">
-                    Nenhum atendimento registrado para este cliente.
-                  </p>
-                )}
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">Agência</label>
+                <Input
+                  className="h-9 text-xs"
+                  value={editCompany}
+                  onChange={(e) => setEditCompany(e.target.value)}
+                />
               </div>
-            </Card>
-          </div>
+              <div className="grid grid-cols-2 gap-2">
+                <StateCitySelect
+                  stateValue={editState}
+                  cityValue={editCity}
+                  onStateChange={setEditState}
+                  onCityChange={setEditCity}
+                  compact
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">Telefone / Celular</label>
+                <Input
+                  className="h-9 text-xs"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">
+                  Executivo de Contas RA *
+                </label>
+                <SearchableSelect
+                  options={executives.map((ex) => ({ value: ex.id, label: ex.name }))}
+                  value={editExecutiveId}
+                  onValueChange={(v) => {
+                    setEditExecutiveId(v)
+                    setExecutiveError('')
+                  }}
+                  placeholder="Selecione um executivo de contas"
+                  emptyText="Nenhum executivo encontrado."
+                  className="h-9 text-xs"
+                />
+                {executiveError && <p className="text-xs text-red-500">{executiveError}</p>}
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">
+                  Grupo de Atendimento *
+                </label>
+                <SearchableSelect
+                  options={SERVICE_GROUP_OPTIONS.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                  }))}
+                  value={editServiceGroup}
+                  onValueChange={(v) => {
+                    setEditServiceGroup(v)
+                    setServiceGroupError('')
+                  }}
+                  placeholder="Selecione um grupo de atendimento"
+                  emptyText="Nenhum grupo encontrado."
+                  className="h-9 text-xs"
+                />
+                {serviceGroupError && <p className="text-xs text-red-500">{serviceGroupError}</p>}
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600">Anotações Internas</label>
+                <textarea
+                  rows={3}
+                  className="w-full text-xs p-2 border rounded-md"
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button
+              onClick={handleSaveClient}
+              disabled={saving}
+              className="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-700 hover:to-indigo-700 text-xs font-bold text-white shadow-sm"
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+              ) : (
+                <Save className="h-4 w-4 mr-1.5" />
+              )}
+              Salvar Alterações
+            </Button>
+          </Card>
           <Card className="border-slate-200 p-5">
             <AgentManager clientId={selectedClient.id} />
           </Card>
