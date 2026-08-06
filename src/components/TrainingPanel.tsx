@@ -1,141 +1,86 @@
-import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ServiceRecord, ClientRecord } from '@/types/service_record'
+import { GraduationCap, ArrowRight, Lightbulb } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { ServiceRecord } from '@/types/service_record'
-import { generateTrainingPlan } from '@/services/training-plan'
-import { useToast } from '@/hooks/use-toast'
-import { GraduationCap, Loader2, FileText } from 'lucide-react'
 
 interface TrainingPanelProps {
-  records: ServiceRecord[]
+  records?: ServiceRecord[]
+  clients?: ClientRecord[]
 }
 
-export function TrainingPanel({ records }: TrainingPanelProps) {
-  const { toast } = useToast()
-  const [selectedCompany, setSelectedCompany] = useState('')
-  const [plan, setPlan] = useState('')
-  const [loading, setLoading] = useState(false)
+export function TrainingPanel({ records = [] }: TrainingPanelProps) {
+  const navigate = useNavigate()
+  const safeRecords = Array.isArray(records) ? records : []
 
-  const companies = useMemo(() => {
-    const set = new Set<string>()
-    for (const r of records) {
-      if (r.client_company) set.add(r.client_company)
-      if (r.expand?.client?.company) set.add(r.expand.client.company)
+  const clientAvoidableMap: Record<string, { name: string; count: number }> = {}
+
+  safeRecords.forEach((r) => {
+    if (r && r.avoidable_contact && (r.client_name || r.client_company)) {
+      const name = r.client_company || r.client_name
+      if (!clientAvoidableMap[name]) {
+        clientAvoidableMap[name] = { name, count: 0 }
+      }
+      clientAvoidableMap[name].count += 1
     }
-    return Array.from(set).sort()
-  }, [records])
+  })
 
-  const companyStats = useMemo(() => {
-    if (!selectedCompany) return null
-    const recs = records.filter(
-      (r) => r.client_company === selectedCompany || r.expand?.client?.company === selectedCompany,
-    )
-    const reasonCount: Record<string, number> = {}
-    for (const r of recs) reasonCount[r.contact_reason] = (reasonCount[r.contact_reason] || 0) + 1
-    const topReasons = Object.entries(reasonCount)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
-      .map(([reason, count]) => ({ reason, count }))
-    const avoidable = recs.filter((r) => r.avoidable_contact).length
-    const rate = recs.length > 0 ? Math.round((avoidable / recs.length) * 100) : 0
-    return { total: recs.length, topReasons, avoidableRate: rate }
-  }, [selectedCompany, records])
-
-  const handleGeneratePlan = async () => {
-    if (!selectedCompany || !companyStats) return
-    setLoading(true)
-    setPlan('')
-    try {
-      const result = await generateTrainingPlan({
-        company: selectedCompany,
-        totalRecords: companyStats.total,
-        topReasons: companyStats.topReasons,
-        avoidableRate: companyStats.avoidableRate,
-      })
-      setPlan(result.plan)
-      toast({ title: 'Plano de treinamento gerado!' })
-    } catch {
-      toast({ variant: 'destructive', title: 'Erro ao gerar plano' })
-    } finally {
-      setLoading(false)
-    }
-  }
+  const topClientsNeedingTraining = Object.values(clientAvoidableMap)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
 
   return (
     <Card className="border-slate-200 shadow-subtle">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <GraduationCap className="h-4 w-4 text-indigo-600" /> Painel de Treinamento
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <GraduationCap className="h-4 w-4 text-indigo-600" /> Treinamentos Sugeridos
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/painel-treinamento')}
+            className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
+          >
+            Ver todos <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Select
-          value={selectedCompany}
-          onValueChange={(v) => {
-            setSelectedCompany(v)
-            setPlan('')
-          }}
-        >
-          <SelectTrigger className="h-9 text-xs">
-            <SelectValue placeholder="Selecione uma agência..." />
-          </SelectTrigger>
-          <SelectContent>
-            {companies.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {companyStats && (
+        {topClientsNeedingTraining.length > 0 ? (
           <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg bg-slate-50 p-2 text-center">
-                <p className="text-[10px] font-bold text-slate-500 uppercase">Total</p>
-                <p className="text-lg font-black text-slate-900">{companyStats.total}</p>
-              </div>
-              <div className="rounded-lg bg-amber-50 p-2 text-center">
-                <p className="text-[10px] font-bold text-amber-700 uppercase">Evitáveis</p>
-                <p className="text-lg font-black text-slate-900">{companyStats.avoidableRate}%</p>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-500 uppercase">Top 5 Motivos</p>
-              {companyStats.topReasons.map((r) => (
-                <div key={r.reason} className="flex items-center justify-between text-xs">
-                  <span className="text-slate-700">{r.reason}</span>
-                  <span className="font-bold text-slate-900">{r.count}</span>
-                </div>
-              ))}
-            </div>
-            <Button
-              onClick={handleGeneratePlan}
-              disabled={loading}
-              size="sm"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-xs font-bold"
-            >
-              {loading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-              ) : (
-                <FileText className="h-3.5 w-3.5 mr-1.5" />
-              )}
-              Gerar Plano com IA
-            </Button>
-          </div>
-        )}
-        {plan && (
-          <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-            <p className="text-[10px] font-bold text-indigo-700 uppercase mb-1">
-              Plano de Treinamento
+            <p className="text-[11px] text-slate-500">
+              Clientes com maior volume de chamados evitáveis (candidatos a reciclagem/treinamento):
             </p>
-            <p className="text-xs text-slate-700 whitespace-pre-wrap">{plan}</p>
+            {topClientsNeedingTraining.map((item, idx) => (
+              <div
+                key={`train-client-${idx}`}
+                className="flex items-center justify-between p-2 bg-indigo-50/50 rounded-lg border border-indigo-100"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-slate-900 truncate">{item.name}</p>
+                  <p className="text-[10px] text-slate-500">
+                    {item.count} chamados evitáveis registrados
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate('/painel-treinamento')}
+                  className="text-[11px] h-7 bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50 shrink-0 ml-2"
+                >
+                  <Lightbulb className="h-3 w-3 mr-1" /> Plano
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 bg-slate-50 rounded-lg text-center">
+            <GraduationCap className="h-6 w-6 text-slate-400 mx-auto mb-1.5" />
+            <p className="text-xs text-slate-600 font-medium">Nenhum cliente em estado de alerta</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Sistemas e processos dos clientes estão com boa autonomia.
+            </p>
           </div>
         )}
       </CardContent>

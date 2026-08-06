@@ -1,117 +1,78 @@
-import { ServiceRecord } from '@/types/service_record'
+import { ServiceRecord, ClientRecord } from '@/types/service_record'
 
 export interface DashboardFilters {
-  dateFrom: string
-  dateTo: string
-  status: string
-  priority: string
-  serviceGroup: string
-  contactReason: string
-  channel: string
-  avoidableOnly: boolean
+  searchTerm?: string
+  contactReason?: string
+  status?: string
+  priority?: string
+  channel?: string
+  avoidableOnly?: boolean
+  startDate?: string
+  endDate?: string
+  serviceGroup?: string
+  commercialBase?: string
 }
 
-export const DEFAULT_FILTERS: DashboardFilters = {
-  dateFrom: '',
-  dateTo: '',
-  status: 'Todos',
-  priority: 'Todas',
-  serviceGroup: 'Todos',
-  contactReason: 'Todos',
-  channel: 'Todos',
-  avoidableOnly: false,
-}
+export const DEFAULT_FILTERS: DashboardFilters = {}
 
-export function hasActiveFilters(f: DashboardFilters): boolean {
-  return (
-    f.dateFrom !== '' ||
-    f.dateTo !== '' ||
-    f.status !== 'Todos' ||
-    f.priority !== 'Todas' ||
-    f.serviceGroup !== 'Todos' ||
-    f.contactReason !== 'Todos' ||
-    f.channel !== 'Todos' ||
-    f.avoidableOnly
+export function hasActiveFilters(filters: DashboardFilters): boolean {
+  if (!filters) return false
+  return Boolean(
+    filters.searchTerm ||
+    filters.contactReason ||
+    filters.status ||
+    filters.priority ||
+    filters.channel ||
+    filters.avoidableOnly ||
+    filters.startDate ||
+    filters.endDate ||
+    filters.serviceGroup ||
+    filters.commercialBase,
   )
 }
 
 export function filterRecords(
-  records: ServiceRecord[],
-  f: DashboardFilters,
-  clientMap?: Map<string, { service_group?: string }>,
+  records: ServiceRecord[] | undefined | null,
+  filters: DashboardFilters,
+  clients?: ClientRecord[] | undefined | null,
 ): ServiceRecord[] {
+  if (!Array.isArray(records)) return []
+  const safeClients = Array.isArray(clients) ? clients : []
+
   return records.filter((r) => {
-    if (f.dateFrom && r.created && r.created.substring(0, 10) < f.dateFrom) return false
-    if (f.dateTo && r.created && r.created.substring(0, 10) > f.dateTo) return false
-    if (f.status !== 'Todos' && r.status !== f.status) return false
-    if (f.priority !== 'Todas' && r.priority !== f.priority) return false
-    if (f.contactReason !== 'Todos' && r.contact_reason !== f.contactReason) return false
-    if (f.channel !== 'Todos' && r.channel !== f.channel) return false
-    if (f.avoidableOnly && !r.avoidable_contact) return false
-    if (f.serviceGroup !== 'Todos') {
-      const clientId = r.client || r.expand?.client?.id
-      if (clientId && clientMap) {
-        const client = clientMap.get(clientId)
-        if (client?.service_group !== f.serviceGroup) return false
-      } else {
-        return false
-      }
+    if (!r) return false
+
+    if (filters.searchTerm) {
+      const term = filters.searchTerm.toLowerCase()
+      const matchName = r.client_name?.toLowerCase().includes(term)
+      const matchCompany = r.client_company?.toLowerCase().includes(term)
+      const matchDesc = r.description?.toLowerCase().includes(term)
+      const matchReason = r.contact_reason?.toLowerCase().includes(term)
+      if (!matchName && !matchCompany && !matchDesc && !matchReason) return false
     }
+
+    if (filters.contactReason && r.contact_reason !== filters.contactReason) return false
+    if (filters.status && r.status !== filters.status) return false
+    if (filters.priority && r.priority !== filters.priority) return false
+    if (filters.channel && r.channel !== filters.channel) return false
+    if (filters.avoidableOnly && !r.avoidable_contact) return false
+
+    if (filters.startDate && r.created) {
+      if (r.created.substring(0, 10) < filters.startDate) return false
+    }
+
+    if (filters.endDate && r.created) {
+      if (r.created.substring(0, 10) > filters.endDate) return false
+    }
+
+    if (filters.serviceGroup && safeClients.length > 0) {
+      const matchingClient = safeClients.find(
+        (c) =>
+          c && (c.id === r.client || c.name === r.client_name || c.company === r.client_company),
+      )
+      if (matchingClient && matchingClient.service_group !== filters.serviceGroup) return false
+    }
+
     return true
-  })
-}
-
-export function getPreviousPeriodCount(
-  records: ServiceRecord[],
-  dateFrom: string,
-  dateTo: string,
-): number {
-  if (!dateFrom || !dateTo) return 0
-  const from = new Date(dateFrom + 'T00:00:00')
-  const to = new Date(dateTo + 'T23:59:59')
-  const duration = to.getTime() - from.getTime()
-  const prevTo = new Date(from.getTime() - 1)
-  const prevFrom = new Date(prevTo.getTime() - duration)
-  const prevFromStr = prevFrom.toISOString().substring(0, 10)
-  const prevToStr = prevTo.toISOString().substring(0, 10)
-  return records.filter((r) => {
-    if (!r.created) return false
-    const d = r.created.substring(0, 10)
-    return d >= prevFromStr && d <= prevToStr
-  }).length
-}
-
-export function filterByUserAccess(
-  records: ServiceRecord[],
-  user: { id: string; role: string; service_groups?: string[] } | null | undefined,
-  clientMap?: Map<string, { service_group?: string }>,
-  userMap?: Map<string, { service_groups?: string[] }>,
-): ServiceRecord[] {
-  if (!user) return []
-  if (user.role === 'Master') return records
-  const userGroups = user.service_groups || []
-  if (userGroups.length === 0) return records
-
-  const MANAGER_ROLES = ['Gerentes', 'Supervisores', 'Líderes']
-  const isManager = MANAGER_ROLES.includes(user.role)
-
-  return records.filter((r) => {
-    if (r.user_id === user.id || r.assigned_user === user.id) return true
-
-    const sg = r.expand?.client?.service_group || clientMap?.get(r.client || '')?.service_group
-    if (sg && userGroups.includes(sg)) return true
-
-    if (isManager) {
-      const creatorId = r.assigned_user || r.user_id
-      if (creatorId) {
-        const creatorGroups =
-          r.expand?.assigned_user?.service_groups ||
-          r.expand?.user_id?.service_groups ||
-          userMap?.get(creatorId)?.service_groups
-        if (creatorGroups && creatorGroups.some((g) => userGroups.includes(g))) return true
-      }
-    }
-
-    return false
   })
 }

@@ -1,35 +1,53 @@
 import pb from '@/lib/pocketbase/client'
 import { ClientRecord } from '@/types/service_record'
 
-export const getClients = (filter?: string) => {
-  const params: { sort: string; filter?: string; expand: string } = {
-    sort: 'name',
-    expand: 'account_executive_rel,blocked_by',
+export const getClients = async (): Promise<ClientRecord[]> => {
+  try {
+    const list = await pb.collection('clients').getFullList<ClientRecord>({
+      sort: '-created',
+      expand: 'account_executive_rel',
+    })
+    return Array.isArray(list) ? list : []
+  } catch (error) {
+    console.error('Error fetching clients list:', error)
+    return []
   }
-  if (filter) params.filter = filter
-  return pb.collection('clients').getFullList<ClientRecord>(params)
 }
 
-export const getClient = (id: string) => {
-  return pb.collection('clients').getOne<ClientRecord>(id, {
-    expand: 'account_executive_rel,blocked_by',
-  })
+export const getClient = async (id: string): Promise<ClientRecord | null> => {
+  try {
+    if (!id) return null
+    return await pb.collection('clients').getOne<ClientRecord>(id, {
+      expand: 'account_executive_rel',
+    })
+  } catch (error) {
+    console.error(`Error fetching client ${id}:`, error)
+    return null
+  }
 }
 
-export const createClient = (data: Partial<ClientRecord>) => {
-  return pb.collection('clients').create<ClientRecord>(data)
+export const createClient = async (data: Partial<ClientRecord>): Promise<ClientRecord> => {
+  return await pb.collection('clients').create<ClientRecord>(data)
 }
 
-export const updateClient = (id: string, data: Partial<ClientRecord>) => {
-  return pb.collection('clients').update<ClientRecord>(id, data)
+export const updateClient = async (
+  id: string,
+  data: Partial<ClientRecord>,
+): Promise<ClientRecord> => {
+  return await pb.collection('clients').update<ClientRecord>(id, data)
 }
 
-export const deleteClient = (id: string) => {
-  return pb.collection('clients').delete(id)
+export const deleteClient = async (id: string): Promise<boolean> => {
+  await pb.collection('clients').delete(id)
+  return true
 }
 
-export const blockClient = (id: string, reason: string, userId: string) => {
-  return pb.collection('clients').update<ClientRecord>(id, {
+export const blockClient = async (
+  id: string,
+  reason: string,
+  userId: string,
+): Promise<ClientRecord> => {
+  return await pb.collection('clients').update<ClientRecord>(id, {
     blocked: true,
     block_reason: reason,
     blocked_by: userId,
@@ -37,8 +55,8 @@ export const blockClient = (id: string, reason: string, userId: string) => {
   })
 }
 
-export const unblockClient = (id: string) => {
-  return pb.collection('clients').update<ClientRecord>(id, {
+export const unblockClient = async (id: string): Promise<ClientRecord> => {
+  return await pb.collection('clients').update<ClientRecord>(id, {
     blocked: false,
     block_reason: '',
     blocked_by: null,

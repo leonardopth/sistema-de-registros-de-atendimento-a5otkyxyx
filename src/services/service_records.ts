@@ -1,223 +1,159 @@
 import pb from '@/lib/pocketbase/client'
-import { createAuditLog } from '@/services/audit-log'
-import type { ServiceRecord } from '@/types/service_record'
+import { ServiceRecord } from '@/types/service_record'
 
-function sortRecords(records: ServiceRecord[], sort: string): ServiceRecord[] {
-  const desc = sort.startsWith('-')
-  const field = desc ? sort.slice(1) : sort
-  return [...records].sort((a, b) => {
-    let aVal: string | number
-    let bVal: string | number
-    if (field === 'assigned_user') {
-      aVal = (a.expand?.assigned_user?.name || a.assigned_agent || '').toLowerCase()
-      bVal = (b.expand?.assigned_user?.name || b.assigned_agent || '').toLowerCase()
-    } else {
-      const av = (a as Record<string, unknown>)[field]
-      const bv = (b as Record<string, unknown>)[field]
-      aVal = typeof av === 'number' ? av : ((av as string) ?? '')
-      bVal = typeof bv === 'number' ? bv : ((bv as string) ?? '')
-    }
-    let cmp = 0
-    if (typeof aVal === 'number' && typeof bVal === 'number') {
-      cmp = aVal - bVal
-    } else {
-      cmp = String(aVal).localeCompare(String(bVal))
-    }
-    return desc ? -cmp : cmp
-  })
-}
-
-export async function getServiceRecords(sort: string = '-created'): Promise<ServiceRecord> {
-  const currentUser = pb.authStore.record
-  const isMaster = currentUser?.role === 'Master' || currentUser?.master_access === true
-
-  if (isMaster) {
-    return await pb.collection('service_records').getFullList<ServiceRecord>({
-      sort,
+export const getServiceRecords = async (): Promise<ServiceRecord[]> => {
+  try {
+    const records = await pb.collection('service_records').getFullList<ServiceRecord>({
+      sort: '-created',
       expand: 'account_executive,client,agent,assigned_user,user_id',
     })
+    return Array.isArray(records) ? records : []
+  } catch (error) {
+    console.error('Error fetching service records:', error)
+    return []
   }
-
-  const userId = currentUser?.id
-  if (!userId) return []
-
-  const [ownedRecords, shares] = await Promise.all([
-    pb
-      .collection('service_records')
-      .getFullList<ServiceRecord>({
-        filter: `user_id = "${userId}" || assigned_user = "${userId}"`,
-        sort,
-        expand: 'account_executive,client,agent,assigned_user,user_id',
-      })
-      .catch(() => []),
-    pb
-      .collection('service_record_shares')
-      .getFullList({
-        filter: `user = "${userId}"`,
-        expand: 'service_record',
-      })
-      .catch(() => []),
-  ])
-
-  const sharedRecordIds = shares
-    .map((s: { service_record?: string }) => s.service_record)
-    .filter(Boolean) as string[]
-
-  let sharedRecords: ServiceRecord[] = []
-  if (sharedRecordIds.length > 0) {
-    const idFilter = sharedRecordIds.map((id) => `id = "${id}"`).join(' || ')
-    sharedRecords = await pb
-      .collection('service_records')
-      .getFullList<ServiceRecord>({
-        filter: idFilter,
-        sort,
-        expand: 'account_executive,client,agent,assigned_user,user_id',
-      })
-      .catch(() => [])
-  }
-
-  const recordMap = new Map<string, ServiceRecord>()
-  ownedRecords.forEach((r) => recordMap.set(r.id, r))
-  sharedRecords.forEach((r) => recordMap.set(r.id, r))
-
-  return sortRecords(Array.from(recordMap.values()), sort)
 }
 
-export async function getMyServiceRecords(userId: string): Promise<ServiceRecord[]> {
-  return await pb.collection('service_records').getFullList<ServiceRecord>({
-    filter: `user_id = "${userId}" || assigned_user = "${userId}"`,
-    sort: '-created',
-    expand: 'account_executive,client,agent,assigned_user,user_id',
-  })
-}
-
-export async function getServiceRecord(id: string): Promise<ServiceRecord> {
-  return await pb.collection('service_records').getOne<ServiceRecord>(id, {
-    expand: 'account_executive,client,agent,assigned_user,user_id',
-  })
-}
-
-export async function createServiceRecord(data: Partial<ServiceRecord>) {
-  const currentUserId = pb.authStore.record?.id
-  const payload = {
-    ...data,
-    user_id: data.user_id || currentUserId,
-    assigned_user: data.assigned_user || currentUserId,
-  }
-
-  const record = await pb.collection('service_records').create(payload)
-
+export const getMyServiceRecords = async (userId: string): Promise<ServiceRecord[]> => {
   try {
-    await createAuditLog({
-      action: 'Created Record',
-      entity: 'service_records',
-      entity_id: record.id,
-      details: {
-        client_name: record.client_name,
-        contact_reason: record.contact_reason,
-        status: record.status,
-        priority: record.priority,
-        channel: record.channel,
-      },
+    if (!userId) return []
+    const records = await pb.collection('service_records').getFullList<ServiceRecord>({
+      filter: `user_id = "${userId}" || assigned_user = "${userId}"`,
+      sort: '-created',
+      expand: 'account_executive,client,agent,assigned_user,user_id',
     })
-  } catch (err) {
-    console.error('Audit log error on creation:', err)
+    return Array.isArray(records) ? records : []
+  } catch (error) {
+    console.error('Error fetching my service records:', error)
+    return []
   }
-
-  return record
 }
 
-export async function updateServiceRecord(id: string, data: Partial<ServiceRecord>) {
-  const updated = await pb.collection('service_records').update(id, data)
-
+export const getServiceRecord = async (id: string): Promise<ServiceRecord | null> => {
   try {
-    await createAuditLog({
-      action: 'Updated Record',
-      entity: 'service_records',
-      entity_id: id,
-      details: data as Record<string, unknown>,
+    if (!id) return null
+    return await pb.collection('service_records').getOne<ServiceRecord>(id, {
+      expand: 'account_executive,client,agent,assigned_user,user_id',
     })
-  } catch (err) {
-    console.error('Audit log error on update:', err)
+  } catch (error) {
+    console.error(`Error fetching service record ${id}:`, error)
+    return null
   }
-
-  return updated
 }
 
-export async function updateServiceRecordWithHistory(
+export const createServiceRecord = async (data: Partial<ServiceRecord>): Promise<ServiceRecord> => {
+  return await pb.collection('service_records').create<ServiceRecord>(data)
+}
+
+export const updateServiceRecord = async (
   id: string,
   data: Partial<ServiceRecord>,
-  userId: string,
-) {
-  const updated = await pb.collection('service_records').update(id, data)
+): Promise<ServiceRecord> => {
+  return await pb.collection('service_records').update<ServiceRecord>(id, data)
+}
 
-  try {
-    await createAuditLog({
-      user: userId || pb.authStore.record?.id,
-      action: 'Updated Record',
-      entity: 'service_records',
-      entity_id: id,
-      details: data as Record<string, unknown>,
-    })
-  } catch (err) {
-    console.error('Audit log error on update with history:', err)
+export const updateServiceRecordWithHistory = async (
+  id: string,
+  data: Partial<ServiceRecord>,
+  justification?: string,
+): Promise<ServiceRecord> => {
+  const current = await getServiceRecord(id)
+  const updated = await pb.collection('service_records').update<ServiceRecord>(id, data)
+
+  if (current && justification) {
+    try {
+      const changedFields: string[] = []
+      if (data.status && data.status !== current.status) {
+        changedFields.push(`status: ${current.status} -> ${data.status}`)
+      }
+      if (data.description && data.description !== current.description) {
+        changedFields.push('descrição')
+      }
+      if (data.priority && data.priority !== current.priority) {
+        changedFields.push(`prioridade: ${current.priority} -> ${data.priority}`)
+      }
+
+      await pb.collection('service_record_history').create({
+        service_record: id,
+        user: pb.authStore.record?.id || '',
+        field: changedFields.join(', ') || 'alteração geral',
+        old_value: current.status,
+        new_value: data.status || current.status,
+        justification,
+      })
+    } catch (e) {
+      console.warn('Failed to record history entry:', e)
+    }
   }
 
   return updated
 }
 
-export async function deleteServiceRecord(id: string) {
-  try {
-    await createAuditLog({
-      action: 'Deleted Record',
-      entity: 'service_records',
-      entity_id: id,
-    })
-  } catch (err) {
-    console.error('Audit log error on deletion:', err)
+export const deleteServiceRecord = async (id: string): Promise<boolean> => {
+  await pb.collection('service_records').delete(id)
+  return true
+}
+
+export const batchUpdateStatus = async (
+  ids: string[],
+  status: string,
+  justification?: string,
+): Promise<void> => {
+  if (!Array.isArray(ids)) return
+  for (const id of ids) {
+    await updateServiceRecordWithHistory(id, { status: status as any }, justification)
   }
-
-  return await pb.collection('service_records').delete(id)
 }
 
-export async function batchUpdateStatus(ids: string[], status: string) {
-  return await Promise.all(
-    ids.map((id) => updateServiceRecord(id, { status: status as ServiceRecord['status'] })),
-  )
+export const batchDeleteServiceRecords = async (ids: string[]): Promise<void> => {
+  if (!Array.isArray(ids)) return
+  for (const id of ids) {
+    await deleteServiceRecord(id)
+  }
 }
 
-export async function batchDeleteServiceRecords(ids: string[]) {
-  return await Promise.all(ids.map((id) => deleteServiceRecord(id)))
+export const getSharedRecordIds = async (userId: string): Promise<string[]> => {
+  try {
+    if (!userId) return []
+    const shares = await pb.collection('service_record_shares').getFullList({
+      filter: `user = "${userId}"`,
+    })
+    return Array.isArray(shares) ? shares.map((s: any) => s.service_record).filter(Boolean) : []
+  } catch (error) {
+    console.error('Error fetching shared record ids:', error)
+    return []
+  }
 }
 
-export async function getSharedRecordIds(userId: string): Promise<string[]> {
-  const shares = await pb
-    .collection('service_record_shares')
-    .getFullList({ filter: `user = "${userId}"` })
-  return shares
-    .map((s: { service_record?: string }) => s.service_record)
-    .filter(Boolean) as string[]
+export const getSharedServiceRecords = async (userId: string): Promise<ServiceRecord[]> => {
+  try {
+    const ids = await getSharedRecordIds(userId)
+    if (!Array.isArray(ids) || ids.length === 0) return []
+    const filter = ids.map((id) => `id = "${id}"`).join(' || ')
+    const records = await pb.collection('service_records').getFullList<ServiceRecord>({
+      filter,
+      sort: '-created',
+      expand: 'account_executive,client,agent,assigned_user,user_id',
+    })
+    return Array.isArray(records) ? records : []
+  } catch (error) {
+    console.error('Error fetching shared service records:', error)
+    return []
+  }
 }
 
-export async function getSharedServiceRecords(userId: string): Promise<ServiceRecord[]> {
-  const sharedIds = await getSharedRecordIds(userId)
-  if (sharedIds.length === 0) return []
-  const filter = sharedIds.map((id) => `id = "${id}"`).join(' || ')
-  return await pb.collection('service_records').getFullList<ServiceRecord>({
-    filter,
-    sort: '-created',
-    expand: 'account_executive,client,agent,assigned_user,user_id',
-  })
-}
-
-export function mergeSharedRecords(
-  owned: ServiceRecord[],
-  shared: ServiceRecord[],
-): ServiceRecord[] {
+export const mergeSharedRecords = (
+  ownRecords: ServiceRecord[],
+  sharedRecords: ServiceRecord[],
+): ServiceRecord[] => {
+  const own = Array.isArray(ownRecords) ? ownRecords : []
+  const shared = Array.isArray(sharedRecords) ? sharedRecords : []
   const map = new Map<string, ServiceRecord>()
-  owned.forEach((r) => map.set(r.id, r))
-  shared.forEach((r) => map.set(r.id, r))
-  return Array.from(map.values()).sort(
-    (a, b) => new Date(b.created).getTime() - new Date(a.created).getTime(),
-  )
+  for (const r of own) {
+    if (r && r.id) map.set(r.id, r)
+  }
+  for (const r of shared) {
+    if (r && r.id && !map.has(r.id)) map.set(r.id, r)
+  }
+  return Array.from(map.values())
 }

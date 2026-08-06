@@ -12,7 +12,8 @@ import { ConsultantGamification } from '@/components/ConsultantGamification'
 import { AutonomyScorecard } from '@/components/AutonomyScorecard'
 import { TrainingPanel } from '@/components/TrainingPanel'
 import { StatusBadge } from '@/components/StatusBadge'
-import { Zap, PlusCircle, Headset, Keyboard } from 'lucide-react'
+import { filterClientsByUserAccess, filterRecordsByUserAccess } from '@/lib/service-group-access'
+import { Zap, PlusCircle, Headset, Keyboard, AlertCircle, RefreshCw } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -21,9 +22,11 @@ export default function Index() {
   const navigate = useNavigate()
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [clients, setClients] = useState<ClientRecord[]>([])
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const loadData = async () => {
     try {
+      setLoadError(null)
       const [r, c] = await Promise.all([
         getServiceRecords().catch((err: any) => {
           console.warn('Non-blocking error fetching service records:', err)
@@ -36,8 +39,9 @@ export default function Index() {
       ])
       setRecords(Array.isArray(r) ? r : [])
       setClients(Array.isArray(c) ? c : [])
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading index data:', err)
+      setLoadError('Não foi possível sincronizar todos os dados. Exibindo informações locais.')
       setRecords([])
       setClients([])
     }
@@ -61,28 +65,35 @@ export default function Index() {
     }
   }
 
+  // Guaranteed defensive array checks
   const safeRecords = Array.isArray(records) ? records : []
+  const safeClients = Array.isArray(clients) ? clients : []
+
+  const accessibleRecords = filterRecordsByUserAccess(safeRecords, user)
+  const accessibleClients = filterClientsByUserAccess(safeClients, user)
+
   const todayStr = new Date().toISOString().substring(0, 10)
-  const todayRecords = safeRecords.filter(
+  const todayRecords = accessibleRecords.filter(
     (r) => r && typeof r.created === 'string' && r.created.startsWith(todayStr),
   )
-  const myRecords = safeRecords.filter(
+  const myRecords = accessibleRecords.filter(
     (r) => r && (r.assigned_user === user?.id || r.user_id === user?.id),
   )
-  const recentRecords = safeRecords.slice(0, 6)
+  const recentRecords = accessibleRecords.slice(0, 6)
 
   const stats = {
     todayCount: todayRecords.length,
-    totalCount: safeRecords.length,
-    inProgressCount: safeRecords.filter((r) => r?.status === 'Em Andamento').length,
+    totalCount: accessibleRecords.length,
+    inProgressCount: accessibleRecords.filter((r) => r?.status === 'Em Andamento').length,
     completedTodayCount: todayRecords.filter((r) => r?.status === 'Concluído').length,
     avgDuration:
-      safeRecords.length > 0
+      accessibleRecords.length > 0
         ? Math.round(
-            safeRecords.reduce((a, r) => a + (Number(r?.duration) || 0), 0) / safeRecords.length,
+            accessibleRecords.reduce((a, r) => a + (Number(r?.duration) || 0), 0) /
+              accessibleRecords.length,
           )
         : 0,
-    wrongDeptCount: safeRecords.filter((r) => Boolean(r?.avoidable_contact)).length,
+    wrongDeptCount: accessibleRecords.filter((r) => Boolean(r?.avoidable_contact)).length,
   }
 
   const firstName = user?.name ? user.name.split(' ')[0] : 'Consultor'
@@ -108,6 +119,23 @@ export default function Index() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="flex items-center justify-between p-3 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+            <span>{loadError}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={loadData}
+            className="h-7 text-xs text-amber-800 hover:bg-amber-100"
+          >
+            <RefreshCw className="h-3 w-3 mr-1" /> Tentar novamente
+          </Button>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 text-xs text-slate-400">
         <Keyboard className="h-3.5 w-3.5" />
@@ -158,8 +186,8 @@ export default function Index() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <AutonomyScorecard records={safeRecords} />
-        <TrainingPanel records={safeRecords} />
+        <AutonomyScorecard records={accessibleRecords} clients={accessibleClients} />
+        <TrainingPanel records={accessibleRecords} clients={accessibleClients} />
       </div>
     </div>
   )
