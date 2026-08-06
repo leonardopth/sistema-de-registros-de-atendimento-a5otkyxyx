@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-06T13:45:13.089Z",
+  "generatedAt": "2026-08-06T14:01:52.264Z",
   "collections": [
     {
       "name": "users",
@@ -127,7 +127,7 @@
         "view": "@request.auth.id != ''",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
       },
       "fields": [
         {
@@ -211,11 +211,37 @@
           "type": "number",
           "required": false,
           "system": false
+        },
+        {
+          "name": "blocked",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "block_reason",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "blocked_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "blocked_at",
+          "type": "date",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
         "CREATE INDEX idx_clients_name ON clients (name)",
-        "CREATE INDEX `idx_clients_exec_rel` ON `clients` (account_executive_rel)"
+        "CREATE INDEX `idx_clients_exec_rel` ON `clients` (account_executive_rel)",
+        "CREATE INDEX `idx_clients_blocked` ON `clients` (blocked)"
       ]
     },
     {

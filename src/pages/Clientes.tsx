@@ -10,7 +10,13 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table'
-import { getClients, updateClient } from '@/services/clients'
+import {
+  getClients,
+  updateClient,
+  blockClient,
+  unblockClient,
+  deleteClient,
+} from '@/services/clients'
 import { getAccountExecutives } from '@/services/account_executives'
 import { AccountExecutiveRecord, ClientRecord, ServiceGroup } from '@/types/service_record'
 import { NewClientModal } from '@/components/NewClientModal'
@@ -25,7 +31,37 @@ import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
-import { UserPlus, Search, ArrowLeft, Loader2, Save, Pencil, FilterX } from 'lucide-react'
+import {
+  UserPlus,
+  Search,
+  ArrowLeft,
+  Loader2,
+  Save,
+  Pencil,
+  FilterX,
+  Ban,
+  ShieldCheck,
+  Trash2,
+  AlertTriangle,
+} from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default function Clientes() {
   const [clients, setClients] = useState<ClientRecord[]>([])
@@ -47,6 +83,14 @@ export default function Clientes() {
   const [editServiceGroup, setEditServiceGroup] = useState('')
   const [serviceGroupError, setServiceGroupError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false)
+  const [blockTargetClient, setBlockTargetClient] = useState<ClientRecord | null>(null)
+  const [blockReason, setBlockReason] = useState('')
+  const [blockError, setBlockError] = useState('')
+  const [blockSaving, setBlockSaving] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteTargetClient, setDeleteTargetClient] = useState<ClientRecord | null>(null)
+  const [deleteSaving, setDeleteSaving] = useState(false)
   const [filterState, setFilterState] = useState('')
   const [filterCity, setFilterCity] = useState('')
   const [filterServiceGroup, setFilterServiceGroup] = useState('')
@@ -61,6 +105,8 @@ export default function Clientes() {
 
   const userServiceGroups = (user?.service_groups as string[] | undefined) || []
   const hasGroupRestriction = userServiceGroups.length > 0 && user?.role !== 'Master'
+  const canDeleteClient =
+    user?.role === 'Gerentes' || user?.role === 'Master' || user?.master_access === true
 
   const loadClients = async () => {
     try {
@@ -127,6 +173,65 @@ export default function Clientes() {
     }
   }
 
+  const handleBlockClick = (c: ClientRecord) => {
+    setBlockTargetClient(c)
+    setBlockReason('')
+    setBlockError('')
+    setBlockDialogOpen(true)
+  }
+
+  const handleBlockConfirm = async () => {
+    if (!blockTargetClient) return
+    if (!blockReason.trim()) {
+      setBlockError('Motivo é obrigatório')
+      return
+    }
+    setBlockSaving(true)
+    try {
+      await blockClient(blockTargetClient.id, blockReason.trim(), user?.id || '')
+      toast({ title: 'Cliente bloqueado com sucesso' })
+      setBlockDialogOpen(false)
+      loadClients()
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao bloquear cliente' })
+    } finally {
+      setBlockSaving(false)
+    }
+  }
+
+  const handleUnblock = async (c: ClientRecord) => {
+    try {
+      await unblockClient(c.id)
+      toast({ title: 'Cliente desbloqueado com sucesso' })
+      loadClients()
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao desbloquear cliente' })
+    }
+  }
+
+  const handleDeleteClick = (c: ClientRecord) => {
+    setDeleteTargetClient(c)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTargetClient) return
+    setDeleteSaving(true)
+    try {
+      await deleteClient(deleteTargetClient.id)
+      toast({ title: 'Cliente excluído com sucesso' })
+      setDeleteDialogOpen(false)
+      if (selectedClient?.id === deleteTargetClient.id) {
+        setSelectedClient(null)
+      }
+      loadClients()
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao excluir cliente' })
+    } finally {
+      setDeleteSaving(false)
+    }
+  }
+
   const openDetails = (c: ClientRecord) => {
     setDetailsCompany(c.company || c.name)
     setDetailsClientId(c.id)
@@ -190,6 +295,28 @@ export default function Clientes() {
                 <p className="text-xs text-slate-500">Executivo de Contas: {selectedClient.name}</p>
               </div>
             </div>
+            {selectedClient.blocked && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Ban className="h-4 w-4 text-red-600" />
+                  <span className="text-sm font-bold text-red-700">Cliente Bloqueado</span>
+                </div>
+                <p className="text-xs text-red-600">
+                  <strong>Motivo:</strong> {selectedClient.block_reason}
+                </p>
+                {selectedClient.expand?.blocked_by && (
+                  <p className="text-xs text-red-600">
+                    <strong>Bloqueado por:</strong> {selectedClient.expand.blocked_by.name}
+                  </p>
+                )}
+                {selectedClient.blocked_at && (
+                  <p className="text-xs text-red-600">
+                    <strong>Data:</strong>{' '}
+                    {new Date(selectedClient.blocked_at).toLocaleString('pt-BR')}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-600">Agência</label>
@@ -364,12 +491,13 @@ export default function Clientes() {
                     Nome da Empresa
                   </TableHead>
                   <TableHead className="text-xs font-bold text-slate-600">Grupo</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-600">Status</TableHead>
                   <TableHead className="text-xs font-bold text-slate-600">Cidade</TableHead>
                   <TableHead className="text-xs font-bold text-slate-600">Estado</TableHead>
                   <TableHead className="text-xs font-bold text-slate-600">
                     Executivo de Contas
                   </TableHead>
-                  <TableHead className="text-xs font-bold text-slate-600 text-right w-[80px]">
+                  <TableHead className="text-xs font-bold text-slate-600 text-right w-[260px]">
                     Ações
                   </TableHead>
                 </TableRow>
@@ -393,27 +521,78 @@ export default function Clientes() {
                         <span className="text-slate-400">—</span>
                       )}
                     </TableCell>
+                    <TableCell className="text-xs">
+                      {c.blocked ? (
+                        <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+                          <Ban className="h-3 w-3 mr-1" /> Bloqueado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-700">
+                          Ativo
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-xs text-slate-600">{c.city || '—'}</TableCell>
                     <TableCell className="text-xs text-slate-600">{c.state || '—'}</TableCell>
                     <TableCell className="text-xs text-slate-600">{c.name || '—'}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs h-7 text-indigo-600"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleSelectClient(c)
-                        }}
-                      >
-                        <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-7 text-indigo-600"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleSelectClient(c)
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
+                        </Button>
+                        {c.blocked ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 text-green-600"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleUnblock(c)
+                            }}
+                          >
+                            <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Desbloquear
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 text-amber-600"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleBlockClick(c)
+                            }}
+                          >
+                            <Ban className="h-3.5 w-3.5 mr-1" /> Bloquear
+                          </Button>
+                        )}
+                        {canDeleteClient && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 text-red-600"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteClick(c)
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
                 {filteredClients.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-xs text-slate-400 py-8">
+                    <TableCell colSpan={7} className="text-center text-xs text-slate-400 py-8">
                       Nenhum cliente encontrado.
                     </TableCell>
                   </TableRow>
@@ -431,6 +610,81 @@ export default function Clientes() {
         companyName={detailsCompany}
         clientId={detailsClientId}
       />
+      <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <Ban className="h-5 w-5" />
+              Bloquear Cliente
+            </DialogTitle>
+            <DialogDescription>
+              {blockTargetClient && (
+                <span>
+                  Tem certeza que deseja bloquear{' '}
+                  <strong>{blockTargetClient.company || blockTargetClient.name}</strong>?
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label className="text-sm font-semibold text-slate-700">Motivo do bloqueio *</label>
+            <textarea
+              rows={3}
+              className="w-full text-sm p-2 border rounded-md resize-none"
+              placeholder="Descreva o motivo do bloqueio..."
+              value={blockReason}
+              onChange={(e) => {
+                setBlockReason(e.target.value)
+                if (e.target.value.trim()) setBlockError('')
+              }}
+            />
+            {blockError && <p className="text-xs text-red-500">{blockError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBlockDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleBlockConfirm}
+              disabled={blockSaving}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {blockSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar Bloqueio
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="sm:max-w-[440px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-700">
+              <AlertTriangle className="h-5 w-5" />
+              Excluir Cliente
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTargetClient && (
+                <span>
+                  Tem certeza que deseja excluir{' '}
+                  <strong>{deleteTargetClient.company || deleteTargetClient.name}</strong>? Esta
+                  ação não pode ser desfeita.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleteSaving}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleteSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
