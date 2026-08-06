@@ -80,3 +80,19 @@ export function getPreviousPeriodCount(
     return d >= prevFromStr && d <= prevToStr
   }).length
 }
+
+export function filterByUserAccess(
+  records: ServiceRecord[],
+  user: { id: string; role: string; service_groups?: string[] } | null | undefined,
+  clientMap?: Map<string, { service_group?: string }>,
+): ServiceRecord[] {
+  if (!user) return []
+  if (user.role === 'Master') return records
+  const userGroups = user.service_groups || []
+  if (userGroups.length === 0) return records
+  return records.filter((r) => {
+    if (r.user_id === user.id || r.assigned_user === user.id) return true
+    const sg = r.expand?.client?.service_group || clientMap?.get(r.client || '')?.service_group
+    return sg ? userGroups.includes(sg) : false
+  })
+}

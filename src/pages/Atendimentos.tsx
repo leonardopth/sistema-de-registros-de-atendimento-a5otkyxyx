@@ -123,18 +123,33 @@ export default function Atendimentos() {
     loadData()
   })
 
-  const isConsultor = user?.role === 'Consultores'
+  const isMasterUser = user?.role === 'Master'
+  const userServiceGroups = (user?.service_groups as string[] | undefined) || []
+  const hasGroupRestriction = !isMasterUser && userServiceGroups.length > 0
 
   const companyToServiceGroup = new Map<string, string>()
+  const clientIdToServiceGroup = new Map<string, string>()
   clients.forEach((c) => {
     if (c.company && c.service_group) {
       companyToServiceGroup.set(c.company.toLowerCase(), c.service_group)
     }
+    if (c.id && c.service_group) {
+      clientIdToServiceGroup.set(c.id, c.service_group)
+    }
   })
 
   const filteredRecords = records.filter((r) => {
-    if (isConsultor && r.assigned_user !== user?.id && r.user_id !== user?.id) {
-      return false
+    if (hasGroupRestriction) {
+      const isCreator = r.user_id === user?.id || r.assigned_user === user?.id
+      if (!isCreator) {
+        const recordServiceGroup =
+          r.expand?.client?.service_group ||
+          (r.client ? clientIdToServiceGroup.get(r.client) : undefined) ||
+          (r.client_company ? companyToServiceGroup.get(r.client_company.toLowerCase()) : undefined)
+        if (!recordServiceGroup || !userServiceGroups.includes(recordServiceGroup)) {
+          return false
+        }
+      }
     }
 
     const matchesSearch =

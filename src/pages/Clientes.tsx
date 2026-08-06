@@ -69,7 +69,7 @@ export default function Clientes() {
   const { user } = useAuth()
 
   const userServiceGroups = (user?.service_groups as string[] | undefined) || []
-  const hasGroupRestriction = userServiceGroups.length > 0
+  const hasGroupRestriction = userServiceGroups.length > 0 && user?.role !== 'Master'
 
   const loadClients = async () => {
     try {
