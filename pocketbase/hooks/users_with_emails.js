@@ -54,6 +54,7 @@ routerAdd(
           telegram_id: r.getString('telegram_id'),
           telegram_alerts: r.get('telegram_alerts'),
           service_groups: r.get('service_groups'),
+          bases: r.get('bases'),
           created: r.getString('created'),
           updated: r.getString('updated'),
         })

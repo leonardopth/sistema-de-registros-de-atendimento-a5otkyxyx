@@ -60,3 +60,10 @@ export const updateUserServiceGroups = (id: string, service_groups: string[]) =>
     body: JSON.stringify({ service_groups }),
     headers: { 'Content-Type': 'application/json' },
   })
+
+export const updateUserBases = (id: string, bases: string[]) =>
+  pb.send(`/backend/v1/users/${id}/bases`, {
+    method: 'PATCH',
+    body: JSON.stringify({ bases }),
+    headers: { 'Content-Type': 'application/json' },
+  })

@@ -35,6 +35,17 @@ export type UserRole =
   | 'Consultores'
   | 'Executivo de contas'
   | 'Master'
+  | 'Gestor Comercial'
+
+export type CommercialBase =
+  | 'NO/NE'
+  | 'CO'
+  | 'RJ/ES/MG'
+  | 'SAO'
+  | 'SPI'
+  | 'SUL'
+  | 'LOT'
+  | 'INSIDE SALES'
 
 export type ApprovalStatus = 'Pendente' | 'Aprovado' | 'Rejeitado'
 
@@ -90,6 +101,7 @@ export interface UserRecord {
   approved_by_id?: string
   approved_at?: string
   service_groups?: ServiceGroup[]
+  bases?: CommercialBase[]
 }
 
 export interface ClientRecord {
@@ -117,6 +129,7 @@ export interface AccountExecutiveRecord {
   name: string
   email?: string
   phone?: string
+  bases?: CommercialBase[]
   created: string
   updated: string
 }

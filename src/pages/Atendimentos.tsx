@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -133,6 +133,27 @@ export default function Atendimentos() {
   const userServiceGroups = (user?.service_groups as string[] | undefined) || []
   const hasGroupRestriction = !isMasterUser && userServiceGroups.length > 0
 
+  const isExecutivo = user?.role === 'Executivo de contas'
+  const isGestorComercial = user?.role === 'Gestor Comercial'
+  const userBases = (user?.bases as string[] | undefined) || []
+
+  const executiveAccessIds = useMemo(() => {
+    if (isExecutivo) {
+      return executives
+        .filter((e) => e.email === user?.email || e.name === user?.name)
+        .map((e) => e.id)
+    }
+    if (isGestorComercial) {
+      return executives
+        .filter((e) => {
+          const execBases = (e.bases as string[] | undefined) || []
+          return execBases.some((b) => userBases.includes(b))
+        })
+        .map((e) => e.id)
+    }
+    return null
+  }, [executives, isExecutivo, isGestorComercial, user, userBases])
+
   const companyToServiceGroup = new Map<string, string>()
   const clientIdToServiceGroup = new Map<string, string>()
   clients.forEach((c) => {
@@ -150,6 +171,13 @@ export default function Atendimentos() {
   })
 
   const filteredRecords = records.filter((r) => {
+    if (executiveAccessIds !== null) {
+      const isOwner = r.user_id === user?.id || r.assigned_user === user?.id
+      if (!executiveAccessIds.includes(r.account_executive || '') && !isOwner) {
+        return false
+      }
+    }
+
     if (hasGroupRestriction) {
       const isCreator = r.user_id === user?.id || r.assigned_user === user?.id
       if (!isCreator) {

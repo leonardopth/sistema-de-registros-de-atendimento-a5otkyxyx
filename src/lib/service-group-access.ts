@@ -91,6 +91,48 @@ export function filterRecordsByUserAccess(
   })
 }
 
+export function isExecutivoContas(user: any): boolean {
+  return user?.role === 'Executivo de contas'
+}
+
+export function isGestorComercial(user: any): boolean {
+  return user?.role === 'Gestor Comercial'
+}
+
+export function getUserBases(user: any): string[] {
+  if (!user) return []
+  return (user.bases as string[]) || []
+}
+
+export function hasBaseRestriction(user: any): boolean {
+  return isExecutivoContas(user) || isGestorComercial(user)
+}
+
+export function getAccessibleExecutiveIds(
+  user: any,
+  executives: Array<{ id: string; email?: string; name: string; bases?: string[] }>,
+): string[] {
+  if (!user) return []
+  if (isMasterUser(user)) return executives.map((e) => e.id)
+
+  if (isExecutivoContas(user)) {
+    return executives.filter((e) => e.email === user.email || e.name === user.name).map((e) => e.id)
+  }
+
+  if (isGestorComercial(user)) {
+    const userBases = getUserBases(user)
+    if (userBases.length === 0) return []
+    return executives
+      .filter((e) => {
+        const execBases = (e.bases as string[]) || []
+        return execBases.some((b) => userBases.includes(b))
+      })
+      .map((e) => e.id)
+  }
+
+  return []
+}
+
 export function filterClientsByUserAccess(clients: ClientRecord[], user: any): ClientRecord[] {
   if (!user) return []
   if (isMasterUser(user)) return clients

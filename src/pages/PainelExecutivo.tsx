@@ -30,6 +30,20 @@ export default function PainelExecutivo() {
       if (user?.role === 'Master') {
         setExecutive(null)
         setClients(allClients)
+      } else if (user?.role === 'Gestor Comercial') {
+        setExecutive(null)
+        const userBases = (user?.bases as string[] | undefined) || []
+        const baseExecIds = execs
+          .filter((e) => {
+            const execBases = (e.bases as string[] | undefined) || []
+            return execBases.some((b) => userBases.includes(b))
+          })
+          .map((e) => e.id)
+        setClients(
+          allClients.filter(
+            (c) => c.account_executive_rel && baseExecIds.includes(c.account_executive_rel),
+          ),
+        )
       } else {
         const exec = execs.find((e) => e.email === user?.email || e.name === user?.name) || null
         setExecutive(exec)
@@ -88,7 +102,7 @@ export default function PainelExecutivo() {
     exportExecutivePanelCSV(clientStats)
   }
 
-  if (!executive && user?.role !== 'Master') {
+  if (!executive && user?.role !== 'Master' && user?.role !== 'Gestor Comercial') {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">

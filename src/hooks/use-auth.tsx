@@ -12,6 +12,7 @@ interface AuthContextType {
     name: string,
     role: UserRole,
     serviceGroups: string[],
+    bases?: string[],
   ) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any; approvalStatus?: string }>
   signOut: () => void
@@ -66,6 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     name: string,
     role: UserRole,
     serviceGroups: string[],
+    bases: string[] = [],
   ) => {
     try {
       await pb.collection('users').create({
@@ -78,6 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         service_groups: ['Gerentes', 'Supervisores', 'Líderes', 'Consultores'].includes(role)
           ? serviceGroups
           : [],
+        bases: ['Gestor Comercial', 'Executivo de contas'].includes(role) ? bases : [],
       })
       return { error: null }
     } catch (error) {

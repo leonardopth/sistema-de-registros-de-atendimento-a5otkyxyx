@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { getClients, createClient } from '@/services/clients'
 import { filterClientsByUserAccess, isMasterUser } from '@/lib/service-group-access'
 import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
-import { getAgents } from '@/services/agents'
+import { getAgents, createAgent } from '@/services/agents'
 import { getAccountExecutives } from '@/services/account_executives'
 import { getUsers } from '@/services/users'
 import { createServiceRecord } from '@/services/service_records'
@@ -303,6 +303,12 @@ export function useServiceRecordForm(enabled: boolean = true) {
             account_executive: assignedAgent || undefined,
           })
           clientId = newClient.id
+          await createAgent({
+            name: clientName.trim(),
+            email: clientEmail.trim() || undefined,
+            phone: clientPhone.trim() || undefined,
+            client_id: newClient.id,
+          })
         } catch (err) {
           setClientFieldErrors(extractFieldErrors(err))
           toast({ variant: 'destructive', title: 'Erro ao cadastrar cliente' })

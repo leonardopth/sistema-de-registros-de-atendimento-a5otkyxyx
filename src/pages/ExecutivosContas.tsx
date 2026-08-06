@@ -30,6 +30,8 @@ import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { extractFieldErrors, getErrorMessage, type FieldErrors } from '@/lib/pocketbase/errors'
 import { UserCog, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { COMMERCIAL_BASE_OPTIONS } from '@/lib/commercial-bases'
 
 export default function ExecutivosContas() {
   const { user } = useAuth()
@@ -42,6 +44,7 @@ export default function ExecutivosContas() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [selectedBases, setSelectedBases] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const canManage = ['Gerentes', 'Supervisores', 'Líderes', 'Master'].includes(user?.role)
@@ -76,6 +79,7 @@ export default function ExecutivosContas() {
     setName('')
     setEmail('')
     setPhone('')
+    setSelectedBases([])
     setEditingId(null)
     setFieldErrors({})
   }
@@ -85,6 +89,7 @@ export default function ExecutivosContas() {
     setName(a.name)
     setEmail(a.email || '')
     setPhone(a.phone || '')
+    setSelectedBases((a.bases as string[] | undefined) || [])
     setFieldErrors({})
     setDialogOpen(true)
   }
@@ -109,6 +114,7 @@ export default function ExecutivosContas() {
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        bases: selectedBases,
       }
       if (editingId) {
         await updateAccountExecutive(editingId, data)
@@ -186,6 +192,7 @@ export default function ExecutivosContas() {
                   <TableHead className="text-xs font-bold">Nome</TableHead>
                   <TableHead className="text-xs font-bold">E-mail</TableHead>
                   <TableHead className="text-xs font-bold">Telefone</TableHead>
+                  <TableHead className="text-xs font-bold">Bases</TableHead>
                   {canManage && (
                     <TableHead className="text-xs font-bold text-right">Ações</TableHead>
                   )}
@@ -197,6 +204,11 @@ export default function ExecutivosContas() {
                     <TableCell className="text-xs font-semibold text-slate-900">{a.name}</TableCell>
                     <TableCell className="text-xs text-slate-600">{a.email || '—'}</TableCell>
                     <TableCell className="text-xs text-slate-600">{a.phone || '—'}</TableCell>
+                    <TableCell className="text-xs text-slate-600">
+                      {a.bases && (a.bases as string[]).length > 0
+                        ? (a.bases as string[]).join(', ')
+                        : '—'}
+                    </TableCell>
                     {canManage && (
                       <TableCell className="text-right">
                         <Button
@@ -223,7 +235,7 @@ export default function ExecutivosContas() {
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={canManage ? 4 : 3}
+                      colSpan={canManage ? 5 : 4}
                       className="text-center text-xs text-slate-400 py-8"
                     >
                       Nenhum executivo de contas encontrado.
@@ -278,6 +290,29 @@ export default function ExecutivosContas() {
                 placeholder="(00) 00000-0000"
               />
               {fieldErrors.phone && <p className="text-xs text-red-500">{fieldErrors.phone}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Bases</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {COMMERCIAL_BASE_OPTIONS.map((opt) => (
+                  <div key={opt.value} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`exec-base-${opt.value}`}
+                      checked={selectedBases.includes(opt.value)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelectedBases([...selectedBases, opt.value])
+                        else setSelectedBases(selectedBases.filter((b) => b !== opt.value))
+                      }}
+                    />
+                    <Label
+                      htmlFor={`exec-base-${opt.value}`}
+                      className="cursor-pointer text-xs font-normal"
+                    >
+                      {opt.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>

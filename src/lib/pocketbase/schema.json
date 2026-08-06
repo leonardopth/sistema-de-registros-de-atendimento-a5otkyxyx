@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-06T02:50:07.181Z",
+  "generatedAt": "2026-08-06T03:00:54.000Z",
   "collections": [
     {
       "name": "users",
@@ -37,20 +37,6 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
-        },
-        {
-          "name": "role",
-          "type": "select",
-          "required": true,
-          "system": false,
-          "selectValues": [
-            "Gerentes",
-            "Supervisores",
-            "Líderes",
-            "Consultores",
-            "Executivo de contas",
-            "Master"
-          ]
         },
         {
           "name": "approval_status",
@@ -95,6 +81,28 @@
           "required": false,
           "system": false,
           "selectValues": ["Concierge", "Exclusivo", "LOT", "BR1", "BR2", "SAO", "SPI", "SUL"]
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Gerentes",
+            "Supervisores",
+            "Líderes",
+            "Consultores",
+            "Executivo de contas",
+            "Master",
+            "Gestor Comercial"
+          ]
+        },
+        {
+          "name": "bases",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["NO/NE", "CO", "RJ/ES/MG", "SAO", "SPI", "SUL", "LOT", "INSIDE SALES"]
         }
       ],
       "indexes": [
@@ -508,6 +516,13 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "bases",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["NO/NE", "CO", "RJ/ES/MG", "SAO", "SPI", "SUL", "LOT", "INSIDE SALES"]
         }
       ],
       "indexes": ["CREATE INDEX idx_account_executives_name ON account_executives (name)"]
