@@ -3,10 +3,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getServiceRecords } from '@/services/service_records'
 import { getUsers } from '@/services/users'
-import { ServiceRecord, UserRecord } from '@/types/service_record'
+import { ServiceRecord, UserRecord, UserRole } from '@/types/service_record'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
+import { isManagerUser, isMasterUser } from '@/lib/service-group-access'
 import { Headset, Clock, AlertTriangle, CheckCircle2, Award, Users } from 'lucide-react'
+
+const LEADERSHIP_ROLES: UserRole[] = ['Gerentes', 'Supervisores', 'Líderes']
 
 interface ConsultantStat {
   uid: string
@@ -19,10 +22,14 @@ interface ConsultantStat {
 
 function computeStats(records: ServiceRecord[], users: UserRecord[]): ConsultantStat[] {
   const userMap = new Map(users.map((u) => [u.id, u]))
+  const leadershipIds = new Set(
+    users.filter((u) => LEADERSHIP_ROLES.includes(u.role)).map((u) => u.id),
+  )
   const map = new Map<string, ServiceRecord[]>()
   for (const r of records) {
     const uid = r.assigned_user || r.user_id
     if (!uid) continue
+    if (leadershipIds.has(uid)) continue
     if (!map.has(uid)) map.set(uid, [])
     map.get(uid)!.push(r)
   }
@@ -64,6 +71,8 @@ export default function RelatorioConsultor() {
 
   const myStats = useMemo(() => allStats.find((s) => s.uid === user?.id), [allStats, user?.id])
 
+  const shouldAnonymize = !isManagerUser(user) && !isMasterUser(user)
+
   const anonymizedNames = useMemo(() => {
     const sorted = [...allStats].sort((a, b) => a.uid.localeCompare(b.uid))
     const map = new Map<string, string>()
@@ -72,6 +81,11 @@ export default function RelatorioConsultor() {
     })
     return map
   }, [allStats])
+
+  const displayName = (stat: ConsultantStat) => {
+    if (!shouldAnonymize) return stat.user?.name || 'Consultor'
+    return anonymizedNames.get(stat.uid) || 'Consultor'
+  }
 
   const teamAvg = useMemo(() => {
     if (allStats.length === 0)
@@ -195,7 +209,7 @@ export default function RelatorioConsultor() {
                       {s.uid === user?.id && (
                         <Award className="inline h-3 w-3 text-indigo-600 mr-1" />
                       )}
-                      {anonymizedNames.get(s.uid) || 'Consultor'}
+                      {displayName(s)}
                     </td>
                     <td className="py-2 text-center text-slate-700">{s.total}</td>
                     <td className="py-2 text-center text-slate-700">{s.avgDuration}min</td>
