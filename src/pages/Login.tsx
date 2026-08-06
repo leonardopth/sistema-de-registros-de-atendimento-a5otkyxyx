@@ -26,7 +26,7 @@ import {
   EyeOff,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
+import { extractFieldErrors, getErrorMessage, type FieldErrors } from '@/lib/pocketbase/errors'
 import { UserRole } from '@/types/service_record'
 import { PasswordRecoveryForm } from '@/components/PasswordRecoveryForm'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
@@ -68,7 +68,8 @@ export default function Login() {
     e.preventDefault()
     setLoginMessage(null)
     setLoading(true)
-    const { error, approvalStatus } = await signIn(email, password)
+    const cleanEmail = email.trim().toLowerCase()
+    const { error, approvalStatus } = await signIn(cleanEmail, password)
 
     if (error) {
       setLoading(false)
@@ -83,20 +84,21 @@ export default function Login() {
           text: 'Seu cadastro foi rejeitado. Entre em contato com o gestor do sistema para mais informações.',
         })
       } else {
+        const errorText = getErrorMessage(error)
         toast({
           variant: 'destructive',
           title: 'Falha no login',
-          description: 'E-mail ou senha incorretos. Verifique as credenciais.',
+          description: errorText || 'E-mail ou senha incorretos. Verifique as credenciais.',
         })
       }
     } else {
       if (rememberMe) {
-        localStorage.setItem(REMEMBER_EMAIL_KEY, email)
+        localStorage.setItem(REMEMBER_EMAIL_KEY, cleanEmail)
       } else {
         localStorage.removeItem(REMEMBER_EMAIL_KEY)
       }
       toast({ title: 'Bem-vindo ao Sistema', description: 'Login realizado com sucesso.' })
-      navigate('/')
+      navigate('/', { replace: true })
     }
   }
 
@@ -114,8 +116,9 @@ export default function Login() {
     }
 
     setLoading(true)
+    const cleanEmail = email.trim().toLowerCase()
     const { error } = await signUp(
-      email,
+      cleanEmail,
       password,
       name.trim(),
       role as UserRole,
@@ -132,7 +135,7 @@ export default function Login() {
         toast({
           variant: 'destructive',
           title: 'Falha no cadastro',
-          description: 'Não foi possível criar a conta.',
+          description: getErrorMessage(error) || 'Não foi possível criar a conta.',
         })
       }
     } else {

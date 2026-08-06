@@ -11,7 +11,6 @@ import { DashboardStats } from '@/components/DashboardStats'
 import { ConsultantGamification } from '@/components/ConsultantGamification'
 import { AutonomyScorecard } from '@/components/AutonomyScorecard'
 import { TrainingPanel } from '@/components/TrainingPanel'
-
 import { StatusBadge } from '@/components/StatusBadge'
 import { Zap, PlusCircle, Headset, Keyboard } from 'lucide-react'
 import { format } from 'date-fns'
@@ -22,45 +21,78 @@ export default function Index() {
   const navigate = useNavigate()
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [clients, setClients] = useState<ClientRecord[]>([])
+
   const loadData = async () => {
     try {
-      const [r, c] = await Promise.all([getServiceRecords(), getClients()])
-      setRecords(r)
-      setClients(c)
+      const [r, c] = await Promise.all([
+        getServiceRecords().catch((err: any) => {
+          console.warn('Non-blocking error fetching service records:', err)
+          return []
+        }),
+        getClients().catch((err: any) => {
+          console.warn('Non-blocking error fetching clients:', err)
+          return []
+        }),
+      ])
+      setRecords(Array.isArray(r) ? r : [])
+      setClients(Array.isArray(c) ? c : [])
     } catch (err) {
-      console.error(err)
+      console.error('Error loading index data:', err)
+      setRecords([])
+      setClients([])
     }
   }
 
   useEffect(() => {
     loadData()
   }, [])
+
   useRealtime('service_records', () => loadData())
   useRealtime('clients', () => loadData())
 
+  const safeFormatDate = (dateStr?: string) => {
+    if (!dateStr) return ''
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return ''
+      return format(d, 'dd/MM HH:mm', { locale: ptBR })
+    } catch {
+      return ''
+    }
+  }
+
+  const safeRecords = Array.isArray(records) ? records : []
   const todayStr = new Date().toISOString().substring(0, 10)
-  const todayRecords = records.filter((r) => r.created?.startsWith(todayStr))
-  const myRecords = records.filter((r) => r.assigned_user === user?.id || r.user_id === user?.id)
-  const recentRecords = records.slice(0, 6)
+  const todayRecords = safeRecords.filter(
+    (r) => r && typeof r.created === 'string' && r.created.startsWith(todayStr),
+  )
+  const myRecords = safeRecords.filter(
+    (r) => r && (r.assigned_user === user?.id || r.user_id === user?.id),
+  )
+  const recentRecords = safeRecords.slice(0, 6)
 
   const stats = {
     todayCount: todayRecords.length,
-    totalCount: records.length,
-    inProgressCount: records.filter((r) => r.status === 'Em Andamento').length,
-    completedTodayCount: todayRecords.filter((r) => r.status === 'Concluído').length,
+    totalCount: safeRecords.length,
+    inProgressCount: safeRecords.filter((r) => r?.status === 'Em Andamento').length,
+    completedTodayCount: todayRecords.filter((r) => r?.status === 'Concluído').length,
     avgDuration:
-      records.length > 0
-        ? Math.round(records.reduce((a, r) => a + (r.duration || 0), 0) / records.length)
+      safeRecords.length > 0
+        ? Math.round(
+            safeRecords.reduce((a, r) => a + (Number(r?.duration) || 0), 0) / safeRecords.length,
+          )
         : 0,
-    wrongDeptCount: records.filter((r) => r.avoidable_contact).length,
+    wrongDeptCount: safeRecords.filter((r) => Boolean(r?.avoidable_contact)).length,
   }
+
+  const firstName = user?.name ? user.name.split(' ')[0] : 'Consultor'
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-            Olá, {user?.name?.split(' ')[0] || 'Consultor'}! 👋
+            Olá, {firstName}! 👋
           </h2>
           <p className="text-xs text-slate-500">Acompanhe seus atendimentos e desempenho</p>
         </div>
@@ -102,24 +134,22 @@ export default function Index() {
             {recentRecords.length === 0 && (
               <p className="text-xs text-slate-400 text-center py-4">Nenhum atendimento recente.</p>
             )}
-            {recentRecords.map((r) => (
+            {recentRecords.map((r, idx) => (
               <div
-                key={r.id}
+                key={r?.id || `recent-${idx}`}
                 className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg"
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-bold text-slate-900 truncate">
-                    {r.client_company || r.client_name}
+                    {r.client_company || r.client_name || 'Cliente'}
                   </p>
                   <p className="text-[10px] text-slate-500 truncate">
-                    {r.contact_reason} — {r.description.substring(0, 60)}
+                    {r.contact_reason || 'Atendimento'} — {(r.description || '').substring(0, 60)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <StatusBadge status={r.status} />
-                  <span className="text-[10px] text-slate-400">
-                    {r.created ? format(new Date(r.created), 'dd/MM HH:mm', { locale: ptBR }) : ''}
-                  </span>
+                  <StatusBadge status={r.status || 'Aberto'} />
+                  <span className="text-[10px] text-slate-400">{safeFormatDate(r.created)}</span>
                 </div>
               </div>
             ))}
@@ -128,8 +158,8 @@ export default function Index() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <AutonomyScorecard records={records} />
-        <TrainingPanel records={records} />
+        <AutonomyScorecard records={safeRecords} />
+        <TrainingPanel records={safeRecords} />
       </div>
     </div>
   )
