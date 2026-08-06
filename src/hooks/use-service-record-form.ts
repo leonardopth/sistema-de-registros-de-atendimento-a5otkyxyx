@@ -6,6 +6,7 @@ import { getAgents, createAgent } from '@/services/agents'
 import { getAccountExecutives } from '@/services/account_executives'
 import { getUsers } from '@/services/users'
 import { createServiceRecord } from '@/services/service_records'
+import { createShare } from '@/services/service_record_shares'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
@@ -64,6 +65,8 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<UserRecord[]>([])
   const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
+  const [selectedShareUserIds, setSelectedShareUserIds] = useState<string[]>([])
+  const [channelError, setChannelError] = useState('')
   const [timerStart, setTimerStart] = useState<string | null>(null)
   const [timerRunning, setTimerRunning] = useState(false)
   const [accumulatedMs, setAccumulatedMs] = useState(0)
@@ -228,6 +231,11 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     setDurationManuallySet(true)
   }
 
+  const handleChannelChange = (v: ServiceChannel | '') => {
+    setChannel(v)
+    if (v) setChannelError('')
+  }
+
   const filteredClients = useMemo(() => {
     if (showAllClients || isMasterUser(user)) return clients
     return filterClientsByUserAccess(clients, user)
@@ -273,6 +281,8 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     setRegisterClient(false)
     setClientFieldErrors({})
     setAssignedUserId(user?.id || '')
+    setSelectedShareUserIds([])
+    setChannelError('')
   }
 
   const handleSubmit = async (
@@ -288,6 +298,12 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
       toast({ variant: 'destructive', title: 'Selecione o motivo do contato' })
       return false
     }
+    if (!channel) {
+      setChannelError('Canal é obrigatório')
+      toast({ variant: 'destructive', title: 'Canal é obrigatório' })
+      return false
+    }
+    setChannelError('')
     let assignedAgent = autoExecutive
     if (!useExisting) {
       const exec = allExecutives.find((ex) => ex.id === selectedExecutiveId)
@@ -351,7 +367,7 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
           return false
         }
       }
-      await createServiceRecord({
+      const createdRecord = await createServiceRecord({
         client_name: clientName.trim(),
         client_email: clientEmail.trim(),
         client_phone: clientPhone.trim(),
@@ -380,6 +396,18 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
         timer_start: finalTimerStart || undefined,
         timer_running: finalTimerRunning,
       })
+      if (selectedShareUserIds.length > 0 && createdRecord?.id) {
+        await Promise.all(
+          selectedShareUserIds.map((userId) =>
+            createShare({
+              service_record: createdRecord.id,
+              user: userId,
+              shared_by: user?.id || '',
+              permission: 'Visualizar',
+            }),
+          ),
+        )
+      }
       toast({ title: 'Atendimento registrado com sucesso!' })
       return true
     } catch {
@@ -413,7 +441,8 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     contactReason,
     setContactReason: handleContactReasonChange,
     channel,
-    setChannel,
+    setChannel: handleChannelChange,
+    channelError,
     description,
     setDescription,
     priority,
@@ -447,6 +476,9 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     users,
     assignedUserId,
     setAssignedUserId,
+    selectedShareUserIds,
+    setSelectedShareUserIds,
+    channelError,
     timerStart,
     timerRunning,
     accumulatedMs,

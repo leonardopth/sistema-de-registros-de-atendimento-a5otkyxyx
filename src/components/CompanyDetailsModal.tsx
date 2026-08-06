@@ -10,9 +10,8 @@ import { AgentStatsList } from '@/components/AgentStatsList'
 import { getClients } from '@/services/clients'
 import { getAgents } from '@/services/agents'
 import { getServiceRecords } from '@/services/service_records'
-import { getUsers } from '@/services/users'
 import { filterRecordsByUserAccess } from '@/lib/service-group-access'
-import { ClientRecord, AgentRecord, ServiceRecord, UserRecord } from '@/types/service_record'
+import { ClientRecord, AgentRecord, ServiceRecord } from '@/types/service_record'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { Building, Mail, Phone, Loader2, Pencil, Headset } from 'lucide-react'
@@ -35,19 +34,17 @@ export function CompanyDetailsModal({
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [agents, setAgents] = useState<AgentRecord[]>([])
   const [records, setRecords] = useState<ServiceRecord[]>([])
-  const [users, setUsers] = useState<UserRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null)
   const { user } = useAuth()
 
   const loadData = useCallback(() => {
     setLoading(true)
-    Promise.all([getClients(), getAgents(), getServiceRecords('', '-created'), getUsers()])
-      .then(([c, a, r, u]) => {
+    Promise.all([getClients(), getAgents(), getServiceRecords('', '-created')])
+      .then(([c, a, r]) => {
         setClients(c)
         setAgents(a)
         setRecords(r)
-        setUsers(u)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -104,16 +101,8 @@ export function CompanyDetailsModal({
           r.client_email &&
           r.client_email.toLowerCase() === matchingClient.email.toLowerCase()),
     )
-    const userGroupMap = new Map<string, { service_groups?: string[] }>()
-    users.forEach((u) => {
-      userGroupMap.set(u.id, { service_groups: u.service_groups as string[] | undefined })
-    })
-    const clientMap = new Map<string, { service_group?: string }>()
-    if (matchingClient) {
-      clientMap.set(matchingClient.id, { service_group: matchingClient.service_group })
-    }
-    return filterRecordsByUserAccess(filtered, user, clientMap, userGroupMap)
-  }, [records, clientId, companyName, matchingClient, users, user])
+    return filterRecordsByUserAccess(user, filtered)
+  }, [records, clientId, companyName, matchingClient, user])
 
   const getAgentRecords = (agent: AgentRecord): ServiceRecord[] =>
     clientRecords.filter(

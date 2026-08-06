@@ -15,8 +15,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { UserPlus, Check, X, Trash2, Loader2, Crown } from 'lucide-react'
+import { UserPlus, Check, X, Trash2, Loader2, Crown, History } from 'lucide-react'
 import { NewUserDialog } from '@/components/NewUserDialog'
+import { MasterAccessHistoryDialog } from '@/components/MasterAccessHistoryDialog'
 import type { UserRecord, ApprovalStatus } from '@/types/service_record'
 
 function StatusBadge({ status }: { status?: ApprovalStatus }) {
@@ -27,11 +28,13 @@ function StatusBadge({ status }: { status?: ApprovalStatus }) {
 }
 
 export default function GestaoUsuarios() {
-  const { user } = useAuth()
+  const { user, isMaster } = useAuth()
   const { toast } = useToast()
   const [users, setUsers] = useState<UserRecord[]>([])
   const [search, setSearch] = useState('')
   const [showNewUser, setShowNewUser] = useState(false)
+  const [showMasterOnly, setShowMasterOnly] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const loadUsers = useCallback(async () => {
@@ -91,14 +94,35 @@ export default function GestaoUsuarios() {
       u.name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()),
   )
+  const visibleUsers = showMasterOnly ? filtered.filter((u) => u.master_access) : filtered
 
   return (
     <div className="space-y-4 p-4 md:p-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-indigo-950">Gestão de Usuários</h1>
-        <Button onClick={() => setShowNewUser(true)} className="bg-indigo-600 hover:bg-indigo-700">
-          <UserPlus className="h-4 w-4 mr-2" /> Novo Usuário
-        </Button>
+        <div className="flex items-center gap-2">
+          {isMaster && (
+            <>
+              <Button
+                variant={showMasterOnly ? 'default' : 'outline'}
+                onClick={() => setShowMasterOnly((v) => !v)}
+                className={cn(showMasterOnly && 'bg-amber-500 hover:bg-amber-600 border-amber-500')}
+              >
+                <Crown className="h-4 w-4 mr-2" />
+                {showMasterOnly ? 'Mostrando Masters' : 'Somente Masters'}
+              </Button>
+              <Button variant="outline" onClick={() => setShowHistory(true)}>
+                <History className="h-4 w-4 mr-2" /> Histórico
+              </Button>
+            </>
+          )}
+          <Button
+            onClick={() => setShowNewUser(true)}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
+            <UserPlus className="h-4 w-4 mr-2" /> Novo Usuário
+          </Button>
+        </div>
       </div>
       <Input
         placeholder="Buscar por nome ou e-mail..."
@@ -124,7 +148,7 @@ export default function GestaoUsuarios() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((u) => (
+              {visibleUsers.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.name || '-'}</TableCell>
                   <TableCell className="text-sm text-slate-600">{u.email || '-'}</TableCell>
@@ -158,7 +182,7 @@ export default function GestaoUsuarios() {
                           </Button>
                         </>
                       )}
-                      {user?.role === 'Master' && u.id !== user?.id && u.role !== 'Master' && (
+                      {isMaster && u.id !== user?.id && u.role !== 'Master' && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -182,7 +206,7 @@ export default function GestaoUsuarios() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
+              {visibleUsers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-slate-400 py-8">
                     Nenhum usuário encontrado.
@@ -194,6 +218,7 @@ export default function GestaoUsuarios() {
         </div>
       )}
       <NewUserDialog open={showNewUser} onOpenChange={setShowNewUser} onSuccess={loadUsers} />
+      <MasterAccessHistoryDialog open={showHistory} onOpenChange={setShowHistory} />
     </div>
   )
 }

@@ -23,6 +23,7 @@ import DashboardGeral from '@/pages/DashboardGeral'
 import PainelTreinamento from '@/pages/PainelTreinamento'
 import EvolucaoPosTreinamento from '@/pages/EvolucaoPosTreinamento'
 import RelatorioConsultor from '@/pages/RelatorioConsultor'
+import Auditoria from '@/pages/Auditoria'
 import Login from '@/pages/Login'
 import NotFound from '@/pages/NotFound'
 
@@ -72,6 +73,14 @@ const App = () => (
                 element={
                   <GestaoUsuariosRoute>
                     <GestaoUsuarios />
+                  </GestaoUsuariosRoute>
+                }
+              />
+              <Route
+                path="/auditoria"
+                element={
+                  <GestaoUsuariosRoute>
+                    <Auditoria />
                   </GestaoUsuariosRoute>
                 }
               />

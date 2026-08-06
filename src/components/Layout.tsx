@@ -24,6 +24,8 @@ import {
   UserCog,
   LogOut,
   Menu,
+  Crown,
+  ShieldCheck,
 } from 'lucide-react'
 
 const MANAGER_ROLES = ['Gerentes', 'Supervisores', 'Líderes']
@@ -32,7 +34,7 @@ interface NavItem {
   label: string
   to: string
   icon: typeof LayoutDashboard
-  visible: (role: string) => boolean
+  visible: (role: string, masterAccess?: boolean) => boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -81,7 +83,13 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Gestão de Usuários',
     to: '/gestao-usuarios',
     icon: UserCog,
-    visible: (r) => r === 'Master',
+    visible: (r, masterAccess) => r === 'Master' || masterAccess === true,
+  },
+  {
+    label: 'Auditoria',
+    to: '/auditoria',
+    icon: ShieldCheck,
+    visible: (r, masterAccess) => r === 'Master' || masterAccess === true,
   },
 ]
 
@@ -99,7 +107,9 @@ export default function Layout() {
     return () => window.removeEventListener('open-quick-log', handler)
   }, [])
 
-  const visibleItems = NAV_ITEMS.filter((item) => user && item.visible(user.role))
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => user && item.visible(user.role, user.master_access),
+  )
   const initials =
     user?.name
       ?.split(' ')
@@ -150,7 +160,14 @@ export default function Layout() {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-slate-900 truncate">{user?.name}</p>
-              <p className="text-[10px] text-slate-500 truncate">{user?.role}</p>
+              <div className="flex items-center gap-1">
+                <p className="text-[10px] text-slate-500 truncate">{user?.role}</p>
+                {user?.master_access && user?.role !== 'Master' && (
+                  <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1 text-[9px] font-bold text-amber-700 shrink-0">
+                    <Crown className="h-2.5 w-2.5" /> Master
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <Button variant="outline" size="sm" className="w-full" onClick={signOut}>

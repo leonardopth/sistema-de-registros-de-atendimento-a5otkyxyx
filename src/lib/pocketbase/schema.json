@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-06T13:04:05.313Z",
+  "generatedAt": "2026-08-06T13:35:20.400Z",
   "collections": [
     {
       "name": "users",
@@ -932,6 +932,123 @@
         "CREATE INDEX idx_srs_service_record ON service_record_shares (service_record)",
         "CREATE INDEX idx_srs_user ON service_record_shares (user)",
         "CREATE UNIQUE INDEX idx_srs_record_user ON service_record_shares (service_record, user)"
+      ]
+    },
+    {
+      "name": "master_access_history",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "create": "@request.auth.id != ''",
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "actioned_by",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "action",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Concedido", "Revogado"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_mah_user ON master_access_history (user)",
+        "CREATE INDEX idx_mah_actioned_by ON master_access_history (actioned_by)",
+        "CREATE INDEX idx_mah_created ON master_access_history (created DESC)"
+      ]
+    },
+    {
+      "name": "audit_log",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "create": "@request.auth.id != ''",
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "entity",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "entity_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "details",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_audit_user ON audit_log (user)",
+        "CREATE INDEX idx_audit_action ON audit_log (action)",
+        "CREATE INDEX idx_audit_entity ON audit_log (entity)",
+        "CREATE INDEX idx_audit_created ON audit_log (created DESC)"
       ]
     }
   ]

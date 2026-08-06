@@ -3,8 +3,6 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { Loader2 } from 'lucide-react'
 
-const ALLOWED_ROLES = ['Master', 'Gerentes']
-
 export function GestaoUsuariosRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
 
@@ -16,7 +14,7 @@ export function GestaoUsuariosRoute({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!user || (!ALLOWED_ROLES.includes(user.role) && !user.master_access)) {
+  if (!user || (user.role !== 'Master' && !user.master_access)) {
     return <Navigate to="/" replace />
   }
 

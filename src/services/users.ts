@@ -38,7 +38,11 @@ export const updateUser = (
 }
 
 export const toggleMasterAccess = (id: string, master_access: boolean) =>
-  pb.collection('users').update<UserRecord>(id, { master_access })
+  pb.send(`/backend/v1/users/${id}/master-access`, {
+    method: 'PATCH',
+    body: JSON.stringify({ master_access }),
+    headers: { 'Content-Type': 'application/json' },
+  })
 
 export const approveUser = (id: string) => updateUser(id, { approval_status: 'Aprovado' })
 

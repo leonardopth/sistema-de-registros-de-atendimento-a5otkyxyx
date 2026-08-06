@@ -18,12 +18,14 @@ import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
-import { Headset, Plus, Trash2, Loader2, Sparkles, Calendar, User } from 'lucide-react'
+import { Headset, Plus, Trash2, Loader2, Sparkles, Calendar, User, Share2, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { VoiceInputButton } from '@/components/VoiceInputButton'
+import { ShareSelectDialog } from '@/components/ShareSelectDialog'
 import { SERVICE_TEMPLATES } from '@/lib/service-templates'
 import { suggestArticles } from '@/lib/knowledge-base'
+import { useAuth } from '@/hooks/use-auth'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import type {
   ContactReason,
@@ -59,8 +61,10 @@ interface NovoAtendimentoModalProps {
 export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAtendimentoModalProps) {
   const form = useServiceRecordForm(open)
   const { toast } = useToast()
+  const { user } = useAuth()
   const [analyzing, setAnalyzing] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState('')
+  const [shareOpen, setShareOpen] = useState(false)
 
   const handleTemplateSelect = (reason: string) => {
     setSelectedTemplate(reason)
@@ -291,7 +295,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Canal</Label>
+              <Label className="text-xs">Canal *</Label>
               <Select
                 value={form.channel}
                 onValueChange={(v) => form.setChannel(v as ServiceChannel)}
@@ -307,6 +311,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                   ))}
                 </SelectContent>
               </Select>
+              {form.channelError && <p className="text-xs text-red-500">{form.channelError}</p>}
             </div>
           </div>
 
@@ -353,6 +358,48 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setShareOpen(true)}
+              >
+                <Share2 className="h-3.5 w-3.5 mr-1" />
+                Compartilhar
+              </Button>
+              {form.selectedShareUserIds.length > 0 && (
+                <span className="text-xs text-slate-500">
+                  {form.selectedShareUserIds.length} usuário(s)
+                </span>
+              )}
+            </div>
+            {form.selectedShareUserIds.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {form.selectedShareUserIds.map((id) => {
+                  const u = form.users.find((u) => u.id === id)
+                  return (
+                    <span
+                      key={id}
+                      className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2 py-0.5 rounded-full"
+                    >
+                      {u?.name || 'Usuário'}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          form.setSelectedShareUserIds(
+                            form.selectedShareUserIds.filter((i) => i !== id),
+                          )
+                        }
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {form.showExecutiveSelect && (
@@ -626,6 +673,18 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
               ))}
             </div>
           )}
+
+          <ShareSelectDialog
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            users={form.users}
+            selectedIds={form.selectedShareUserIds}
+            currentUserId={user?.id}
+            onConfirm={(ids) => {
+              form.setSelectedShareUserIds(ids)
+              setShareOpen(false)
+            }}
+          />
 
           <div className="pt-2 flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
