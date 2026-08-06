@@ -478,7 +478,6 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     setAssignedUserId,
     selectedShareUserIds,
     setSelectedShareUserIds,
-    channelError,
     timerStart,
     timerRunning,
     accumulatedMs,

@@ -1,5 +1,5 @@
 import pb from '@/lib/pocketbase/client'
-import { ServiceRecord } from '@/types/service_record'
+import { ServiceRecord, ServiceRecordShare } from '@/types/service_record'
 
 export const getServiceRecords = (filter?: string, sort: string = '-created') => {
   const params: { sort: string; filter?: string; expand: string } = {
@@ -56,4 +56,35 @@ export const batchUpdateStatus = async (ids: string[], status: ServiceRecord['st
 export const batchDeleteServiceRecords = async (ids: string[]) => {
   const promises = ids.map((id) => pb.collection('service_records').delete(id))
   return Promise.all(promises)
+}
+
+export const getSharedRecordIds = async (userId: string): Promise<Set<string>> => {
+  const shares = await pb.collection('service_record_shares').getFullList<ServiceRecordShare>({
+    filter: `user = "${userId}"`,
+  })
+  return new Set(shares.map((s) => s.service_record))
+}
+
+export const getSharedServiceRecords = async (userId: string): Promise<ServiceRecord[]> => {
+  const shares = await pb.collection('service_record_shares').getFullList<ServiceRecordShare>({
+    filter: `user = "${userId}"`,
+    expand: 'service_record',
+  })
+  const recordIds = shares.map((s) => s.service_record)
+  if (recordIds.length === 0) return []
+  const filter = recordIds.map((id) => `id = "${id}"`).join(' || ')
+  return pb.collection('service_records').getFullList<ServiceRecord>({
+    filter,
+    expand: 'account_executive,client,agent,assigned_user,user_id',
+  })
+}
+
+export function mergeSharedRecords(
+  filteredRecords: ServiceRecord[],
+  allRecords: ServiceRecord[],
+  sharedIds: Set<string>,
+): ServiceRecord[] {
+  const visibleIds = new Set(filteredRecords.map((r) => r.id))
+  const shared = allRecords.filter((r) => sharedIds.has(r.id) && !visibleIds.has(r.id))
+  return [...filteredRecords, ...shared]
 }

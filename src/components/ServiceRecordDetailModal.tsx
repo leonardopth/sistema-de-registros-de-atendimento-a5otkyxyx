@@ -271,6 +271,11 @@ export function ServiceRecordDetailModal({
         ? (overrideStatus as ServiceStatus)
         : status
 
+    if (!channel) {
+      toast({ variant: 'destructive', title: 'Canal é obrigatório' })
+      return
+    }
+
     if (avoidableContact && !avoidableContactReason) {
       toast({ variant: 'destructive', title: 'Selecione o motivo do contato evitável' })
       return
