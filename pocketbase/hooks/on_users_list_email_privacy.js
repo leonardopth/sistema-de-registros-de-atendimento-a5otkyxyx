@@ -1,9 +1,28 @@
-// DIAGNOSTIC: Temporarily disabled for email visibility investigation.
-// Intended privacy policy (restore after diagnosis):
-// - Master users see ALL users' emails
-// - Superusers see ALL users' emails
-// - Other authenticated users only see their OWN email and Master users' emails
-// - All other emails are hidden (set to empty string in response)
 onRecordListRequest((e) => {
   e.next()
+
+  if (e.hasSuperuserAuth()) {
+    return
+  }
+
+  const authUser = e.auth
+  if (!authUser) {
+    return
+  }
+
+  const role = authUser.getString('role')
+  if (role === 'Master') {
+    return
+  }
+
+  const currentUserId = authUser.id
+  const records = e.records || []
+  for (let i = 0; i < records.length; i++) {
+    const rec = records[i]
+    const recId = rec.id
+    const recRole = rec.getString('role')
+    if (recId !== currentUserId && recRole !== 'Master') {
+      rec.setEmail('')
+    }
+  }
 }, 'users')
