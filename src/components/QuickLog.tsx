@@ -119,6 +119,7 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
           <ServiceTimer
             timerStart={form.timerStart}
             timerRunning={form.timerRunning}
+            accumulatedMs={form.accumulatedMs}
             duration={form.duration}
             onStart={form.handleTimerStart}
             onPause={form.handleTimerPause}
