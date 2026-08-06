@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { getClients, createClient } from '@/services/clients'
 import { filterClientsByUserAccess, isMasterUser } from '@/lib/service-group-access'
 import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
@@ -48,6 +48,8 @@ export function useServiceRecordForm(enabled: boolean = true) {
   const [priority, setPriority] = useState<ServicePriority>('Média')
   const [status, setStatus] = useState<ServiceStatus>('Aberto')
   const [duration, setDuration] = useState(0)
+  const [durationManuallySet, setDurationManuallySet] = useState(false)
+  const timerAutoStartedRef = useRef(false)
   const [allExecutives, setAllExecutives] = useState<AccountExecutiveRecord[]>([])
   const [selectedExecutiveId, setSelectedExecutiveId] = useState('')
   const [executiveError, setExecutiveError] = useState('')
@@ -98,6 +100,17 @@ export function useServiceRecordForm(enabled: boolean = true) {
   useEffect(() => {
     if (user?.id) setAssignedUserId(user.id)
   }, [user?.id])
+
+  useEffect(() => {
+    if (enabled && !timerAutoStartedRef.current) {
+      setTimerStart(new Date().toISOString())
+      setTimerRunning(true)
+      timerAutoStartedRef.current = true
+    }
+    if (!enabled) {
+      timerAutoStartedRef.current = false
+    }
+  }, [enabled])
 
   useRealtime('clients', () => loadClients(), enabled)
   useRealtime('account_executives', () => loadExecutives(), enabled)
@@ -198,13 +211,21 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setAccumulatedMs(totalElapsedMs)
     setTimerRunning(false)
     setTimerStart(null)
-    setDuration(Math.round((totalElapsedMs / 60000) * 100) / 100)
+    if (!durationManuallySet) {
+      setDuration(Math.round((totalElapsedMs / 60000) * 100) / 100)
+    }
   }
   const handleTimerReset = () => {
-    setTimerRunning(false)
-    setTimerStart(null)
     setAccumulatedMs(0)
+    setTimerStart(new Date().toISOString())
+    setTimerRunning(true)
     setDuration(0)
+    setDurationManuallySet(false)
+  }
+
+  const handleSetDuration = (val: number) => {
+    setDuration(val)
+    setDurationManuallySet(true)
   }
 
   const filteredClients = useMemo(() => {
@@ -237,9 +258,10 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setAvoidableContact(false)
     setAvoidableContactReason('')
     setAvoidableContactExplanation('')
-    setTimerStart(null)
-    setTimerRunning(false)
+    setTimerStart(new Date().toISOString())
+    setTimerRunning(true)
     setAccumulatedMs(0)
+    setDurationManuallySet(false)
     setNewTaskResponsible('')
     setNewTaskDueDate('')
     setManualServiceGroup('')
@@ -285,13 +307,15 @@ export function useServiceRecordForm(enabled: boolean = true) {
       const selectedAgent = agents.find((a) => a.id === selectedAgentId)
       const execRecord = allExecutives.find((e) => e.name === assignedAgent)
       let finalDuration = duration
-      let finalTimerStart = timerStart
-      let finalTimerRunning = timerRunning
-      if (timerRunning && timerStart) {
-        const currentElapsed = accumulatedMs + (Date.now() - new Date(timerStart).getTime())
-        finalDuration = Math.round((currentElapsed / 60000) * 100) / 100
-        finalTimerRunning = false
-        finalTimerStart = null
+      let finalTimerStart: string | null = null
+      let finalTimerRunning = false
+      if (!durationManuallySet) {
+        if (timerRunning && timerStart) {
+          const currentElapsed = accumulatedMs + (Date.now() - new Date(timerStart).getTime())
+          finalDuration = Math.round((currentElapsed / 60000) * 100) / 100
+        } else {
+          finalDuration = Math.round((accumulatedMs / 60000) * 100) / 100
+        }
       }
       let clientId = selectedClient?.id
       setClientFieldErrors({})
@@ -390,6 +414,8 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setStatus,
     duration,
     setDuration,
+    handleSetDuration,
+    durationManuallySet,
     allExecutives,
     selectedExecutiveId,
     setSelectedExecutiveId,

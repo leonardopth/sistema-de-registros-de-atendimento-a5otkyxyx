@@ -14,7 +14,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import { ServiceTimer } from '@/components/ServiceTimer'
+import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
@@ -140,6 +140,14 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          <FloatingServiceTimer
+            timerStart={form.timerStart}
+            timerRunning={form.timerRunning}
+            accumulatedMs={form.accumulatedMs}
+            onStart={form.handleTimerStart}
+            onPause={form.handleTimerPause}
+            onReset={form.handleTimerReset}
+          />
           <div className="flex items-center gap-2">
             <Label className="text-xs font-semibold text-slate-700 whitespace-nowrap">
               Template:
@@ -324,7 +332,9 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 step="0.01"
                 className="h-9 text-xs"
                 value={form.duration || ''}
-                onChange={(e) => form.setDuration(e.target.value ? Number(e.target.value) : 0)}
+                onChange={(e) =>
+                  form.handleSetDuration(e.target.value ? Number(e.target.value) : 0)
+                }
               />
             </div>
           </div>
@@ -343,19 +353,6 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs">Cronômetro</Label>
-            <ServiceTimer
-              timerStart={form.timerStart}
-              timerRunning={form.timerRunning}
-              accumulatedMs={form.accumulatedMs}
-              duration={form.duration}
-              onStart={form.handleTimerStart}
-              onPause={form.handleTimerPause}
-              onReset={form.handleTimerReset}
-            />
           </div>
 
           {form.showExecutiveSelect && (

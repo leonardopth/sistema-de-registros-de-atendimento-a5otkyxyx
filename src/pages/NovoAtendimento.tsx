@@ -15,7 +15,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/SearchableSelect'
-import { ServiceTimer } from '@/components/ServiceTimer'
+import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
@@ -114,6 +114,14 @@ export default function NovoAtendimento() {
 
       <form onSubmit={handleSubmit}>
         <Card className="border-slate-200 shadow-subtle space-y-6 p-6">
+          <FloatingServiceTimer
+            timerStart={form.timerStart}
+            timerRunning={form.timerRunning}
+            accumulatedMs={form.accumulatedMs}
+            onStart={form.handleTimerStart}
+            onPause={form.handleTimerPause}
+            onReset={form.handleTimerReset}
+          />
           <div className="flex items-center gap-2 pb-2 border-b">
             <Label className="text-xs font-semibold text-slate-700 whitespace-nowrap">
               Template rápido:
@@ -421,7 +429,9 @@ export default function NovoAtendimento() {
                   min={0}
                   step="0.01"
                   value={form.duration || ''}
-                  onChange={(e) => form.setDuration(e.target.value ? Number(e.target.value) : 0)}
+                  onChange={(e) =>
+                    form.handleSetDuration(e.target.value ? Number(e.target.value) : 0)
+                  }
                 />
               </div>
               <div className="space-y-1.5">
@@ -439,18 +449,6 @@ export default function NovoAtendimento() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Cronômetro de Atendimento</Label>
-              <ServiceTimer
-                timerStart={form.timerStart}
-                timerRunning={form.timerRunning}
-                accumulatedMs={form.accumulatedMs}
-                duration={form.duration}
-                onStart={form.handleTimerStart}
-                onPause={form.handleTimerPause}
-                onReset={form.handleTimerReset}
-              />
             </div>
           </div>
 
