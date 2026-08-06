@@ -112,16 +112,16 @@ export default function NovoAtendimento() {
         </div>
       </div>
 
+      <FloatingServiceTimer
+        timerStart={form.timerStart}
+        timerRunning={form.timerRunning}
+        accumulatedMs={form.accumulatedMs}
+        onStart={form.handleTimerStart}
+        onPause={form.handleTimerPause}
+        onReset={form.handleTimerReset}
+      />
       <form onSubmit={handleSubmit}>
         <Card className="border-slate-200 shadow-subtle space-y-6 p-6">
-          <FloatingServiceTimer
-            timerStart={form.timerStart}
-            timerRunning={form.timerRunning}
-            accumulatedMs={form.accumulatedMs}
-            onStart={form.handleTimerStart}
-            onPause={form.handleTimerPause}
-            onReset={form.handleTimerReset}
-          />
           <div className="flex items-center gap-2 pb-2 border-b">
             <Label className="text-xs font-semibold text-slate-700 whitespace-nowrap">
               Template rápido:

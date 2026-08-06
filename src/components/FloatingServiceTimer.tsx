@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Pause, Play, RotateCcw, Clock } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface FloatingServiceTimerProps {
   timerStart: string | null
@@ -52,45 +53,51 @@ export function FloatingServiceTimer({
   }
 
   return (
-    <div className="sticky top-0 z-50 flex items-center justify-between gap-3 rounded-lg bg-indigo-950 px-4 py-2.5 shadow-md">
-      <div className="flex items-center gap-2">
-        <Clock className="h-4 w-4 text-indigo-300 animate-pulse" />
-        <span className="text-xs font-medium uppercase tracking-wider text-indigo-200">
-          Cronômetro
-        </span>
-        <span className="font-mono text-lg font-bold tabular-nums text-white">{display}</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        {timerRunning ? (
+    <div className="fixed top-20 right-4 z-50 animate-fade-in">
+      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 shadow-sm backdrop-blur-sm">
+        <div className="flex items-center gap-1.5">
+          <Clock
+            className={cn(
+              'h-3 w-3 transition-colors',
+              timerRunning ? 'text-emerald-500' : 'text-slate-400',
+            )}
+          />
+          <span className="font-mono text-sm font-semibold tabular-nums text-slate-700">
+            {display}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          {timerRunning ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={handlePause}
+              className="h-6 px-2 text-[11px] text-slate-500 hover:text-slate-700"
+            >
+              <Pause className="h-2.5 w-2.5" /> Pausar
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={onStart}
+              className="h-6 px-2 text-[11px] text-slate-500 hover:text-slate-700"
+            >
+              <Play className="h-2.5 w-2.5" /> Continuar
+            </Button>
+          )}
           <Button
             type="button"
             size="sm"
-            variant="secondary"
-            onClick={handlePause}
-            className="h-7 text-xs"
+            variant="ghost"
+            onClick={onReset}
+            className="h-6 px-2 text-[11px] text-slate-400 hover:text-slate-600"
           >
-            <Pause className="h-3 w-3 mr-1" /> Pausar
+            <RotateCcw className="h-2.5 w-2.5" />
           </Button>
-        ) : (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={onStart}
-            className="h-7 text-xs"
-          >
-            <Play className="h-3 w-3 mr-1" /> Continuar
-          </Button>
-        )}
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={onReset}
-          className="h-7 text-xs text-indigo-200 hover:bg-indigo-800 hover:text-white"
-        >
-          <RotateCcw className="h-3 w-3 mr-1" /> Reiniciar
-        </Button>
+        </div>
       </div>
     </div>
   )
