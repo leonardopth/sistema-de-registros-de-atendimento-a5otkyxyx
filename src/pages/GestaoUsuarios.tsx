@@ -276,7 +276,14 @@ export default function GestaoUsuarios() {
                       className="text-xs text-slate-600 truncate max-w-[260px]"
                       title={u.email || ''}
                     >
-                      {u.email || '—'}
+                      {u.email ? (
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3 w-3 text-slate-400 shrink-0" />
+                          {u.email}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
                     </TableCell>
                     <TableCell className="text-xs text-slate-600">{u.role}</TableCell>
                     <TableCell>
