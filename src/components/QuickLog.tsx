@@ -7,7 +7,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
-import { Zap, Loader2, Sparkles } from 'lucide-react'
+import { Zap, Loader2, Sparkles, CheckCircle2 } from 'lucide-react'
 import type { ContactReason, AvoidableContactReason } from '@/types/service_record'
 
 interface QuickLogProps {
@@ -55,6 +55,18 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
       form.setClientName(form.clientCompany)
     }
     if (await form.handleSubmit(e)) {
+      form.resetForm()
+      onOpenChange(false)
+      onSuccess?.()
+    }
+  }
+
+  const handleSubmitAndFinalize = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (!form.clientName.trim() && form.clientCompany) {
+      form.setClientName(form.clientCompany)
+    }
+    if (await form.handleSubmit(e as unknown as React.FormEvent, 'Concluído')) {
       form.resetForm()
       onOpenChange(false)
       onSuccess?.()
@@ -145,18 +157,33 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
               )}
             </div>
           )}
-          <Button
-            type="submit"
-            disabled={form.loading}
-            className="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-700 hover:to-indigo-700 font-bold"
-          >
-            {form.loading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Zap className="h-4 w-4 mr-2" />
-            )}
-            Salvar Registro
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              disabled={form.loading}
+              className="flex-1 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-700 hover:to-indigo-700 font-bold"
+            >
+              {form.loading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Zap className="h-4 w-4 mr-2" />
+              )}
+              Salvar Registro
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmitAndFinalize}
+              disabled={form.loading}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold"
+            >
+              {form.loading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              Salvar e Concluir
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

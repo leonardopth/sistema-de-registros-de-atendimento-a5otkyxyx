@@ -19,7 +19,17 @@ import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Plus, Trash2, Save, Loader2, Sparkles, User, Calendar } from 'lucide-react'
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Save,
+  Loader2,
+  Sparkles,
+  User,
+  Calendar,
+  CheckCircle2,
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { SERVICE_TEMPLATES } from '@/lib/service-templates'
@@ -71,6 +81,12 @@ export default function NovoAtendimento() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     if (await form.handleSubmit(e)) navigate('/atendimentos')
+  }
+
+  const handleSubmitAndFinalize = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (await form.handleSubmit(e as unknown as React.FormEvent, 'Concluído'))
+      navigate('/atendimentos')
   }
 
   const handleAIAnalysis = async () => {
@@ -610,6 +626,19 @@ export default function NovoAtendimento() {
                 <Save className="h-4 w-4 mr-2" />
               )}
               Salvar Atendimento
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmitAndFinalize}
+              disabled={form.loading}
+              className="bg-emerald-600 hover:bg-emerald-700 font-semibold px-6"
+            >
+              {form.loading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              Salvar e Concluir
             </Button>
           </div>
         </Card>

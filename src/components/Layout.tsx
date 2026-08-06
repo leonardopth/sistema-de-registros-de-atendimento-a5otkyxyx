@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { NotificationBell } from '@/components/NotificationBell'
 import { FeedbackButton } from '@/components/FeedbackButton'
@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { QuickLog } from '@/components/QuickLog'
 import {
   LayoutDashboard,
   Headset,
@@ -87,6 +89,15 @@ export default function Layout() {
   const { user, signOut } = useAuth()
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [quickLogOpen, setQuickLogOpen] = useState(false)
+
+  useKeyboardShortcuts([{ key: 'e', altKey: true, handler: () => setQuickLogOpen(true) }])
+
+  useEffect(() => {
+    const handler = () => setQuickLogOpen(true)
+    window.addEventListener('open-quick-log', handler)
+    return () => window.removeEventListener('open-quick-log', handler)
+  }, [])
 
   const visibleItems = NAV_ITEMS.filter((item) => user && item.visible(user.role))
   const initials =
@@ -177,6 +188,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      <QuickLog open={quickLogOpen} onOpenChange={setQuickLogOpen} />
     </div>
   )
 }

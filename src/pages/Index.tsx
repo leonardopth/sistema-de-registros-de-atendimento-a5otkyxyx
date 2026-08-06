@@ -11,22 +11,17 @@ import { DashboardStats } from '@/components/DashboardStats'
 import { ConsultantGamification } from '@/components/ConsultantGamification'
 import { AutonomyScorecard } from '@/components/AutonomyScorecard'
 import { TrainingPanel } from '@/components/TrainingPanel'
-import { QuickLog } from '@/components/QuickLog'
+
 import { StatusBadge } from '@/components/StatusBadge'
 import { Zap, PlusCircle, Headset, Keyboard } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 
 export default function Index() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [clients, setClients] = useState<ClientRecord[]>([])
-  const [quickLogOpen, setQuickLogOpen] = useState(false)
-
-  useKeyboardShortcuts([{ key: 'e', altKey: true, handler: () => setQuickLogOpen(true) }])
-
   const loadData = async () => {
     try {
       const [r, c] = await Promise.all([getServiceRecords(), getClients()])
@@ -71,7 +66,7 @@ export default function Index() {
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={() => setQuickLogOpen(true)}
+            onClick={() => window.dispatchEvent(new CustomEvent('open-quick-log'))}
             className="bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-700 hover:to-indigo-700 font-bold"
           >
             <Zap className="h-4 w-4 mr-1.5" /> Registro Expresso
@@ -136,8 +131,6 @@ export default function Index() {
         <AutonomyScorecard records={records} />
         <TrainingPanel records={records} />
       </div>
-
-      <QuickLog open={quickLogOpen} onOpenChange={setQuickLogOpen} onSuccess={loadData} />
     </div>
   )
 }

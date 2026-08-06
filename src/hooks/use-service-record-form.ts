@@ -275,7 +275,10 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     setAssignedUserId(user?.id || '')
   }
 
-  const handleSubmit = async (e: React.FormEvent): Promise<boolean> => {
+  const handleSubmit = async (
+    e: React.FormEvent,
+    overrideStatus?: ServiceStatus,
+  ): Promise<boolean> => {
     e.preventDefault()
     if (!clientName.trim()) {
       toast({ variant: 'destructive', title: 'Preencha o nome do agente' })
@@ -357,7 +360,7 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
         channel: channel || undefined,
         description: description.trim(),
         priority,
-        status,
+        status: overrideStatus || status,
         start_time: new Date().toISOString(),
         duration: finalDuration || undefined,
         assigned_agent: assignedAgent,

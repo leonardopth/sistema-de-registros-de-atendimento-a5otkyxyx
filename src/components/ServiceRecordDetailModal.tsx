@@ -225,8 +225,9 @@ export function ServiceRecordDetailModal({
     setDuration(0)
   }
 
-  const handleSave = async () => {
+  const handleSave = async (overrideStatus?: ServiceStatus) => {
     if (!isEditable) return
+    const effectiveStatus = overrideStatus || status
     if (avoidableContact && !avoidableContactReason) {
       toast({ variant: 'destructive', title: 'Selecione o motivo do contato evitável' })
       return
@@ -241,7 +242,7 @@ export function ServiceRecordDetailModal({
     }
     setLoading(true)
     try {
-      const isCompletedNow = status === 'Concluído' && record.status !== 'Concluído'
+      const isCompletedNow = effectiveStatus === 'Concluído' && record.status !== 'Concluído'
       let finalDuration = duration
       let finalTimerStart = timerStart
       let finalTimerRunning = timerRunning
@@ -254,7 +255,7 @@ export function ServiceRecordDetailModal({
       await updateServiceRecordWithHistory(
         record.id,
         {
-          status,
+          status: effectiveStatus,
           channel: channel || undefined,
           tasks,
           end_time: isCompletedNow ? new Date().toISOString() : record.end_time,
@@ -802,6 +803,21 @@ export function ServiceRecordDetailModal({
                   <Save className="h-4 w-4 mr-1.5" />
                 )}
                 Salvar Alterações
+              </Button>
+            )}
+            {isEditable && (
+              <Button
+                size="sm"
+                onClick={() => handleSave('Concluído')}
+                disabled={loading}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                )}
+                Salvar e Concluir
               </Button>
             )}
           </div>
