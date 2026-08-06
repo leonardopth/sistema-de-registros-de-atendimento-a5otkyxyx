@@ -24,12 +24,14 @@ import { ptBR } from 'date-fns/locale'
 import { VoiceInputButton } from '@/components/VoiceInputButton'
 import { SERVICE_TEMPLATES } from '@/lib/service-templates'
 import { suggestArticles } from '@/lib/knowledge-base'
+import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import type {
   ContactReason,
   ServiceChannel,
   ServiceStatus,
   ServicePriority,
   AvoidableContactReason,
+  ServiceGroup,
 } from '@/types/service_record'
 import { AVOIDABLE_CONTACT_REASONS } from '@/lib/constants'
 
@@ -357,21 +359,64 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
           </div>
 
           {form.showExecutiveSelect && (
-            <div className="space-y-1">
-              <Label className="text-xs">Executivo de Contas *</Label>
-              <Select value={form.selectedExecutiveId} onValueChange={form.setSelectedExecutiveId}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Selecione um executivo de contas" />
-                </SelectTrigger>
-                <SelectContent>
-                  {form.allExecutives.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Grupo de Atendimento</Label>
+                  <Select
+                    value={form.manualServiceGroup}
+                    onValueChange={(v) => form.setManualServiceGroup(v as ServiceGroup)}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Selecione o grupo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SERVICE_GROUP_OPTIONS.map((g) => (
+                        <SelectItem key={g.value} value={g.value}>
+                          {g.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Executivo de Contas</Label>
+                  <Select
+                    value={form.selectedExecutiveId}
+                    onValueChange={form.setSelectedExecutiveId}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Selecione um executivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {form.allExecutives.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="m-register-client"
+                  checked={form.registerClient}
+                  onCheckedChange={(c) => form.setRegisterClient(!!c)}
+                />
+                <Label htmlFor="m-register-client" className="text-xs cursor-pointer">
+                  Cadastrar cliente
+                </Label>
+              </div>
+              {Object.keys(form.clientFieldErrors).length > 0 && (
+                <div className="space-y-1">
+                  {Object.entries(form.clientFieldErrors).map(([field, msg]) => (
+                    <p key={field} className="text-xs text-red-500">
+                      {msg}
+                    </p>
                   ))}
-                </SelectContent>
-              </Select>
-              {form.executiveError && <p className="text-xs text-red-500">{form.executiveError}</p>}
+                </div>
+              )}
             </div>
           )}
 

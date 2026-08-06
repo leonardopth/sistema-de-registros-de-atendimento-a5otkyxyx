@@ -6,6 +6,7 @@ import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { MasterRoute } from '@/components/MasterRoute'
 import { ExecutivoRoute } from '@/components/ExecutivoRoute'
+import { ManagerRoute } from '@/components/ManagerRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
@@ -43,7 +44,14 @@ const App = () => (
               <Route path="/novo-atendimento" element={<NovoAtendimento />} />
               <Route path="/atendimentos" element={<Atendimentos />} />
               <Route path="/clientes" element={<Clientes />} />
-              <Route path="/relatorios-grupo" element={<RelatoriosGrupo />} />
+              <Route
+                path="/relatorios-grupo"
+                element={
+                  <ManagerRoute>
+                    <RelatoriosGrupo />
+                  </ManagerRoute>
+                }
+              />
               <Route path="/painel-treinamento" element={<PainelTreinamento />} />
               <Route path="/evolucao-treinamento" element={<EvolucaoPosTreinamento />} />
               <Route path="/relatorio-consultor" element={<RelatorioConsultor />} />

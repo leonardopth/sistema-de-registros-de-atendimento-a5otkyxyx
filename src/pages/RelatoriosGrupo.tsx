@@ -15,7 +15,7 @@ import { ClientRecord, ServiceRecord, AccountExecutiveRecord } from '@/types/ser
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
-import { ShieldAlert } from 'lucide-react'
+import { getUserServiceGroups } from '@/lib/service-group-access'
 import { ExportMenu } from '@/components/ExportMenu'
 import {
   downloadGroupReportCSV,
@@ -65,6 +65,8 @@ export default function RelatoriosGrupo() {
   useRealtime('service_records', () => loadData())
   useRealtime('clients', () => loadData())
 
+  const userGroups = useMemo(() => getUserServiceGroups(user), [user])
+
   const groupStats = useMemo(() => {
     const clientById = new Map(clients.map((c) => [c.id, c]))
     const companyToGroup = new Map<string, string>()
@@ -72,7 +74,12 @@ export default function RelatoriosGrupo() {
       if (c.company) companyToGroup.set(c.company, c.service_group || '')
     }
 
-    return SERVICE_GROUP_OPTIONS.map((group) => {
+    const groupsToShow =
+      userGroups.length > 0
+        ? SERVICE_GROUP_OPTIONS.filter((g) => userGroups.includes(g.value))
+        : SERVICE_GROUP_OPTIONS
+
+    return groupsToShow.map((group) => {
       const groupRecords = records.filter((r) => {
         const clientId = r.client || r.expand?.client?.id
         if (clientId) {
@@ -101,21 +108,7 @@ export default function RelatoriosGrupo() {
 
       return { group: group.value, label: group.label, total, avoidable, rate, reasonBreakdown }
     })
-  }, [clients, records])
-
-  if (user?.role === 'Consultores') {
-    return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-          Relatórios por Grupo de Atendimento
-        </h2>
-        <Card className="p-8 text-center">
-          <ShieldAlert className="h-12 w-12 text-amber-500 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">Você não tem permissão para acessar esta página.</p>
-        </Card>
-      </div>
-    )
-  }
+  }, [clients, records, userGroups])
 
   const grandTotal = groupStats.reduce((a, g) => a + g.total, 0)
   const grandAvoidable = groupStats.reduce((a, g) => a + g.avoidable, 0)

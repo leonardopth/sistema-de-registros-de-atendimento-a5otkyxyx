@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { getClients } from '@/services/clients'
+import { getClients, createClient } from '@/services/clients'
 import { filterClientsByUserAccess, isMasterUser } from '@/lib/service-group-access'
+import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 import { getAgents } from '@/services/agents'
 import { getAccountExecutives } from '@/services/account_executives'
 import { getUsers } from '@/services/users'
@@ -14,6 +15,7 @@ import type {
   ClientRecord,
   ContactReason,
   ServiceChannel,
+  ServiceGroup,
   ServicePriority,
   ServiceStatus,
   TaskItem,
@@ -65,6 +67,9 @@ export function useServiceRecordForm(enabled: boolean = true) {
   const [accumulatedMs, setAccumulatedMs] = useState(0)
   const [newTaskResponsible, setNewTaskResponsible] = useState('')
   const [newTaskDueDate, setNewTaskDueDate] = useState('')
+  const [manualServiceGroup, setManualServiceGroup] = useState<ServiceGroup | ''>('')
+  const [registerClient, setRegisterClient] = useState(false)
+  const [clientFieldErrors, setClientFieldErrors] = useState<FieldErrors>({})
 
   const loadClients = useCallback(() => {
     getClients()
@@ -237,6 +242,9 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setAccumulatedMs(0)
     setNewTaskResponsible('')
     setNewTaskDueDate('')
+    setManualServiceGroup('')
+    setRegisterClient(false)
+    setClientFieldErrors({})
     setAssignedUserId(user?.id || '')
   }
 
@@ -253,13 +261,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
     let assignedAgent = autoExecutive
     if (!useExisting) {
       const exec = allExecutives.find((ex) => ex.id === selectedExecutiveId)
-      if (!exec) {
-        setExecutiveError('Selecione um executivo de contas válido')
-        toast({ variant: 'destructive', title: 'Selecione um executivo de contas' })
-        return false
-      }
-      setExecutiveError('')
-      assignedAgent = exec.name
+      assignedAgent = exec?.name || ''
     }
     if (avoidableContact && !avoidableContactReason) {
       toast({ variant: 'destructive', title: 'Selecione o motivo do contato evitável' })
@@ -287,6 +289,26 @@ export function useServiceRecordForm(enabled: boolean = true) {
         finalTimerRunning = false
         finalTimerStart = null
       }
+      let clientId = selectedClient?.id
+      setClientFieldErrors({})
+      if (registerClient && !useExisting) {
+        try {
+          const newClient = await createClient({
+            name: clientName.trim(),
+            email: clientEmail.trim() || undefined,
+            phone: clientPhone.trim() || undefined,
+            company: clientCompany.trim() || undefined,
+            service_group: manualServiceGroup || undefined,
+            account_executive_rel: selectedExecutiveId || undefined,
+            account_executive: assignedAgent || undefined,
+          })
+          clientId = newClient.id
+        } catch (err) {
+          setClientFieldErrors(extractFieldErrors(err))
+          toast({ variant: 'destructive', title: 'Erro ao cadastrar cliente' })
+          return false
+        }
+      }
       await createServiceRecord({
         client_name: clientName.trim(),
         client_email: clientEmail.trim(),
@@ -310,7 +332,7 @@ export function useServiceRecordForm(enabled: boolean = true) {
           avoidableContact && avoidableContactReason === 'Outros'
             ? avoidableContactExplanation.trim()
             : '',
-        client: selectedClient?.id || undefined,
+        client: clientId || undefined,
         agent: selectedAgent?.id || undefined,
         account_executive: execRecord?.id || undefined,
         timer_start: finalTimerStart || undefined,
@@ -391,5 +413,10 @@ export function useServiceRecordForm(enabled: boolean = true) {
     setNewTaskResponsible,
     newTaskDueDate,
     setNewTaskDueDate,
+    manualServiceGroup,
+    setManualServiceGroup,
+    registerClient,
+    setRegisterClient,
+    clientFieldErrors,
   }
 }
