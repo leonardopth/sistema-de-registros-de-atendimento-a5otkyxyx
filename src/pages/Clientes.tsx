@@ -48,6 +48,7 @@ export default function Clientes() {
   const [newModalOpen, setNewModalOpen] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [detailsCompany, setDetailsCompany] = useState('')
+  const [detailsClientId, setDetailsClientId] = useState<string | undefined>(undefined)
   const [editName, setEditName] = useState('')
   const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
   const [editExecutiveId, setEditExecutiveId] = useState('')
@@ -161,6 +162,7 @@ export default function Clientes() {
 
   const openDetails = (c: ClientRecord) => {
     setDetailsCompany(c.company || c.name)
+    setDetailsClientId(c.id)
     setDetailsModalOpen(true)
   }
 
@@ -501,6 +503,7 @@ export default function Clientes() {
         open={detailsModalOpen}
         onOpenChange={setDetailsModalOpen}
         companyName={detailsCompany}
+        clientId={detailsClientId}
       />
     </div>
   )
