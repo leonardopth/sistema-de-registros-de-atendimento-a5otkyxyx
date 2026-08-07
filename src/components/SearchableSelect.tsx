@@ -21,6 +21,7 @@ interface SearchableSelectOption {
 interface SearchableSelectProps {
   options: SearchableSelectOption[]
   pinnedOptions?: SearchableSelectOption[]
+  pinnedHeading?: string
   value: string
   onValueChange: (value: string) => void
   placeholder?: string
@@ -32,6 +33,7 @@ interface SearchableSelectProps {
 export function SearchableSelect({
   options,
   pinnedOptions,
+  pinnedHeading,
   value,
   onValueChange,
   placeholder = 'Selecione...',
@@ -73,7 +75,7 @@ export function SearchableSelect({
           <CommandList className="max-h-[200px]">
             <CommandEmpty>{emptyText}</CommandEmpty>
             {pinnedOptions && pinnedOptions.length > 0 && (
-              <CommandGroup>
+              <CommandGroup heading={pinnedHeading}>
                 {pinnedOptions.map((option) => (
                   <CommandItem
                     key={option.value}

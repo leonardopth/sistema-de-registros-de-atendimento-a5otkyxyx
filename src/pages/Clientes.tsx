@@ -367,6 +367,7 @@ export default function Clientes() {
                       ? [{ value: autoAtendimentoExec.id, label: autoAtendimentoExec.name }]
                       : []
                   }
+                  pinnedHeading="Auto-Atendimento"
                   options={regularExecutives.map((ex) => ({ value: ex.id, label: ex.name }))}
                   value={editExecutiveId}
                   onValueChange={(v) => {

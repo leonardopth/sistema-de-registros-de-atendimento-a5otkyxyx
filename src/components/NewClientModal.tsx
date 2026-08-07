@@ -227,6 +227,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
                   ? [{ value: autoAtendimentoExec.id, label: autoAtendimentoExec.name }]
                   : []
               }
+              pinnedHeading="Auto-Atendimento"
               options={regularExecutives.map((ex) => ({ value: ex.id, label: ex.name }))}
               value={selectedExecutiveId}
               onValueChange={(v) => {

@@ -2,74 +2,32 @@ routerAdd(
   'GET',
   '/backend/v1/users-with-emails',
   (e) => {
-    const userId = e.auth ? e.auth.id : ''
-    if (!userId) return e.unauthorizedError('auth required')
-
-    const role = e.auth.getString('role')
-    const isMasterAccess = e.auth.getBool('master_access')
-    const allowedRoles = [
-      'Master',
-      'Gestor Comercial',
-      'Gerentes',
-      'Supervisores',
-      'Líderes',
-      'Executivo de contas',
-      'Consultores',
-    ]
-
-    if (!allowedRoles.includes(role) && !isMasterAccess) {
-      return e.forbiddenError('access denied')
-    }
-
     try {
-      const records = $app.findRecordsByFilter('_pb_users_auth_', "id != ''", 'name', 0, 0)
-
-      var managerGroups = []
-      if (role === 'Gerentes' && !isMasterAccess) {
-        managerGroups = e.auth.get('service_groups') || []
-      }
-
+      var users = $app.findRecordsByFilter('users', "id != ''", 'name', 0, 0)
       var result = []
-      for (var i = 0; i < records.length; i++) {
-        var r = records[i]
-
-        if (role === 'Gerentes' && !isMasterAccess && managerGroups.length > 0) {
-          var userGroups = r.get('service_groups') || []
-          if (userGroups && userGroups.length > 0) {
-            var hasOverlap = false
-            for (var j = 0; j < managerGroups.length; j++) {
-              for (var k = 0; k < userGroups.length; k++) {
-                if (managerGroups[j] === userGroups[k]) {
-                  hasOverlap = true
-                  break
-                }
-              }
-              if (hasOverlap) break
-            }
-            if (!hasOverlap) continue
-          }
-        }
-
+      for (var i = 0; i < users.length; i++) {
+        var u = users[i]
         result.push({
-          id: r.id,
-          name: r.getString('name'),
-          email: r.getString('email'),
-          role: r.getString('role'),
-          approval_status: r.getString('approval_status'),
-          approved_by: r.getString('approved_by'),
-          approved_by_id: r.getString('approved_by_id'),
-          approved_at: r.getString('approved_at'),
-          telegram_id: r.getString('telegram_id'),
-          telegram_alerts: r.get('telegram_alerts'),
-          service_groups: r.get('service_groups'),
-          bases: r.get('bases'),
-          created: r.getString('created'),
-          updated: r.getString('updated'),
+          id: u.id,
+          name: u.getString('name'),
+          email: u.getString('email'),
+          role: u.getString('role'),
+          master_access: u.getBool('master_access'),
+          approval_status: u.getString('approval_status'),
+          approved_by: u.getString('approved_by'),
+          approved_by_id: u.getString('approved_by_id'),
+          approved_at: u.getString('approved_at'),
+          telegram_id: u.getString('telegram_id'),
+          telegram_alerts: u.getBool('telegram_alerts'),
+          service_groups: u.get('service_groups') || [],
+          bases: u.get('bases') || [],
+          created: u.getString('created'),
+          updated: u.getString('updated'),
         })
       }
       return e.json(200, result)
     } catch (err) {
-      return e.json(500, { error: 'failed to fetch users' })
+      return e.json(500, { error: 'Failed to fetch users' })
     }
   },
   $apis.requireAuth(),
