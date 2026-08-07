@@ -2,23 +2,54 @@ import { useState, useEffect, useMemo } from 'react'
 import { AgentRecord, ServiceRecord } from '@/types/service_record'
 import { getAgents } from '@/services/agents'
 import { getServiceRecords } from '@/services/service_records'
+import { getClients } from '@/services/clients'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useAuth } from '@/hooks/use-auth'
+import { isRecordForClient, isRecordForAgent } from '@/lib/client-record-helpers'
+import { filterRecordsByUserAccess } from '@/lib/service-group-access'
 import { Headset, AlertTriangle, TrendingUp } from 'lucide-react'
 
 interface AgentStatsListProps {
-  clientId: string
+  clientId?: string
+  companyName?: string
+  clientRecords?: ServiceRecord[]
 }
 
-export function AgentStatsList({ clientId }: AgentStatsListProps) {
+export function AgentStatsList({ clientId, companyName, clientRecords }: AgentStatsListProps) {
   const [agents, setAgents] = useState<AgentRecord[]>([])
-  const [records, setRecords] = useState<ServiceRecord[]>([])
+  const [fetchedRecords, setFetchedRecords] = useState<ServiceRecord[]>([])
+  const { user } = useAuth()
 
   const loadData = async () => {
     try {
-      const [agentList, allRecords] = await Promise.all([getAgents(), getServiceRecords()])
-      const filtered = agentList.filter((a: AgentRecord) => a.client_id === clientId)
-      setAgents(filtered)
-      setRecords(allRecords)
+      const [agentList, allRecords, clientList] = await Promise.all([
+        getAgents(),
+        getServiceRecords(),
+        getClients(),
+      ])
+
+      const matchingClient = clientList.find(
+        (c) => (clientId && c.id === clientId) || (companyName && c.company === companyName),
+      )
+      const matchingClientIds = new Set(
+        clientList
+          .filter(
+            (c) => (clientId && c.id === clientId) || (companyName && c.company === companyName),
+          )
+          .map((c) => c.id),
+      )
+
+      const filteredAgents = agentList.filter((a: AgentRecord) =>
+        matchingClientIds.has(a.client_id),
+      )
+      setAgents(filteredAgents)
+
+      if (!clientRecords) {
+        const filteredRecs = allRecords.filter((r) =>
+          isRecordForClient(r, matchingClient, clientId, companyName),
+        )
+        setFetchedRecords(filterRecordsByUserAccess(user, filteredRecs))
+      }
     } catch (err) {
       console.error(err)
     }
@@ -26,17 +57,16 @@ export function AgentStatsList({ clientId }: AgentStatsListProps) {
 
   useEffect(() => {
     loadData()
-  }, [clientId])
+  }, [clientId, companyName])
+
   useRealtime('service_records', () => loadData())
+  useRealtime('agents', () => loadData())
+
+  const effectiveRecords = clientRecords || fetchedRecords
 
   const stats = useMemo(() => {
     return agents.map((agent) => {
-      const agentRecords = records.filter(
-        (r) =>
-          r.agent === agent.id ||
-          r.expand?.agent?.id === agent.id ||
-          (r.assigned_agent ?? '').toLowerCase() === agent.name.toLowerCase(),
-      )
+      const agentRecords = effectiveRecords.filter((r) => isRecordForAgent(r, agent))
       const total = agentRecords.length
       const avoidable = agentRecords.filter((r) => r.avoidable_contact).length
       const reasonCount: Record<string, number> = {}
@@ -48,7 +78,7 @@ export function AgentStatsList({ clientId }: AgentStatsListProps) {
       const mostFrequent = Object.entries(reasonCount).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'
       return { agent, total, avoidable, mostFrequent }
     })
-  }, [agents, records])
+  }, [agents, effectiveRecords])
 
   if (agents.length === 0) {
     return (

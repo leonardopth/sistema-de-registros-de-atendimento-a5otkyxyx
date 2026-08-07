@@ -11,6 +11,7 @@ import { getClients } from '@/services/clients'
 import { getAgents } from '@/services/agents'
 import { getServiceRecords } from '@/services/service_records'
 import { filterRecordsByUserAccess } from '@/lib/service-group-access'
+import { isRecordForClient, isRecordForAgent } from '@/lib/client-record-helpers'
 import { ClientRecord, AgentRecord, ServiceRecord } from '@/types/service_record'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
@@ -40,7 +41,7 @@ export function CompanyDetailsModal({
 
   const loadData = useCallback(() => {
     setLoading(true)
-    Promise.all([getClients(), getAgents(), getServiceRecords('', '-created')])
+    Promise.all([getClients(), getAgents(), getServiceRecords()])
       .then(([c, a, r]) => {
         setClients(c)
         setAgents(a)
@@ -84,32 +85,30 @@ export function CompanyDetailsModal({
     [clients, clientId, companyName],
   )
 
+  const effectiveClientId = clientId || matchingClient?.id
+
   const companyAgents = useMemo(() => {
     const matchingClientIds = new Set(
-      clients.filter((c) => c.company === companyName).map((c) => c.id),
+      clients
+        .filter((c) => (clientId ? c.id === clientId : c.company === companyName))
+        .map((c) => c.id),
     )
     return agents.filter((a) => matchingClientIds.has(a.client_id))
-  }, [clients, agents, companyName])
+  }, [clients, agents, clientId, companyName])
 
   const clientRecords = useMemo(() => {
-    const filtered = records.filter(
-      (r) =>
-        (clientId && r.client === clientId) ||
-        r.client_company === companyName ||
-        (matchingClient && r.client_name.toLowerCase() === matchingClient.name.toLowerCase()) ||
-        (matchingClient?.email &&
-          r.client_email &&
-          r.client_email.toLowerCase() === matchingClient.email.toLowerCase()),
+    const filtered = records.filter((r) =>
+      isRecordForClient(r, matchingClient, clientId, companyName),
     )
     return filterRecordsByUserAccess(user, filtered)
   }, [records, clientId, companyName, matchingClient, user])
 
-  const getAgentRecords = (agent: AgentRecord): ServiceRecord[] =>
-    clientRecords.filter(
-      (r) =>
-        r.client_company === companyName &&
-        (r.client_name === agent.name || (agent.email && r.client_email === agent.email)),
-    )
+  const getAgentRecords = useCallback(
+    (agent: AgentRecord): ServiceRecord[] => {
+      return clientRecords.filter((r) => isRecordForAgent(r, agent))
+    },
+    [clientRecords],
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,7 +164,7 @@ export function CompanyDetailsModal({
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="secondary" className="text-xs font-semibold">
                               {agentRecords.length} atendimento(s)
                             </Badge>
                             <Button
@@ -223,8 +222,8 @@ export function CompanyDetailsModal({
           </div>
         )}
 
-        {clientId && (
-          <>
+        {(effectiveClientId || clientRecords.length > 0) && (
+          <div className="space-y-4 pt-2">
             <Card className="border-slate-200 p-4 space-y-3">
               <div className="flex items-center justify-between border-b pb-2">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -264,9 +263,13 @@ export function CompanyDetailsModal({
             </Card>
 
             <Card className="border-slate-200 p-4">
-              <AgentStatsList clientId={clientId} />
+              <AgentStatsList
+                clientId={effectiveClientId || ''}
+                companyName={companyName}
+                clientRecords={clientRecords}
+              />
             </Card>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>
