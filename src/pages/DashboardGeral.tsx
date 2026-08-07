@@ -27,6 +27,9 @@ import { DashboardAdvancedFilters } from '@/components/DashboardAdvancedFilters'
 import { FeedbackReviewPanel } from '@/components/FeedbackReviewPanel'
 import { ScheduledExportDialog } from '@/components/ScheduledExportDialog'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
+import { isCreatedToday } from '@/lib/date-utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Info } from 'lucide-react'
 import {
   DashboardFilters,
   DEFAULT_FILTERS,
@@ -94,18 +97,32 @@ export default function DashboardGeral() {
   )
 
   const stats = useMemo(() => {
-    const todayStr = new Date().toISOString().substring(0, 10)
-    const todayR = filtered.filter((r) => r.created?.startsWith(todayStr))
+    const todayRecords = accessibleRecords.filter((r) => isCreatedToday(r.created))
+    const todayFiltered = filtered.filter((r) => isCreatedToday(r.created))
+    const isStatusFiltered = filters.status != null && filters.status !== 'Todos'
+    const todayCountSource = isStatusFiltered ? todayFiltered : todayRecords
     const totalDur = filtered.reduce((a, r) => a + (r.duration || 0), 0)
+
+    const statusBreakdown = {
+      Aberto: todayRecords.filter((r) => r.status === 'Aberto').length,
+      'Em Andamento': todayRecords.filter((r) => r.status === 'Em Andamento').length,
+      Concluído: todayRecords.filter((r) => r.status === 'Concluído').length,
+      Cancelado: todayRecords.filter((r) => r.status === 'Cancelado').length,
+    }
+
     return {
-      todayCount: todayR.length,
+      todayCount: todayCountSource.length,
+      todayCountTotal: todayRecords.length,
+      isStatusFiltered,
+      activeStatusFilter: isStatusFiltered ? filters.status : null,
       totalCount: filtered.length,
       inProgressCount: filtered.filter((r) => r.status === 'Em Andamento').length,
-      completedTodayCount: todayR.filter((r) => r.status === 'Concluído').length,
+      completedTodayCount: todayRecords.filter((r) => r.status === 'Concluído').length,
       avgDuration: filtered.length > 0 ? Math.round(totalDur / filtered.length) : 0,
       wrongDeptCount: filtered.filter((r) => r.avoidable_contact).length,
+      statusBreakdown,
     }
-  }, [filtered])
+  }, [filtered, accessibleRecords, filters.status])
 
   const groupStats = useMemo(() => {
     const coMap = new Map<string, string>()
@@ -198,7 +215,18 @@ export default function DashboardGeral() {
             <PeriodComparison currentCount={filtered.length} previousCount={prevCount} />
           )}
 
-          <DashboardStats {...stats} />
+          <DashboardStats
+            todayCount={stats.todayCount}
+            todayCountTotal={stats.todayCountTotal}
+            isStatusFiltered={stats.isStatusFiltered}
+            activeStatusFilter={stats.activeStatusFilter}
+            totalCount={stats.totalCount}
+            inProgressCount={stats.inProgressCount}
+            completedTodayCount={stats.completedTodayCount}
+            avgDuration={stats.avgDuration}
+            wrongDeptCount={stats.wrongDeptCount}
+            statusBreakdown={stats.statusBreakdown}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="border-slate-200 shadow-subtle">
