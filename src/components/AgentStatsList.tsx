@@ -1,16 +1,81 @@
-import { useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { AgentRecord, ServiceRecord } from '@/types/service_record'
 import { isRecordForAgent } from '@/lib/client-record-helpers'
+import { getServiceRecords } from '@/services/service_records'
+import { getAgents } from '@/services/agents'
+import { useRealtime } from '@/hooks/use-realtime'
 import { Headset, AlertTriangle, TrendingUp, User } from 'lucide-react'
 
 interface AgentStatsListProps {
   clientId?: string
   companyName?: string
-  clientRecords: ServiceRecord[]
+  clientRecords?: ServiceRecord[]
   agents?: AgentRecord[]
 }
 
-export function AgentStatsList({ clientRecords, agents = [] }: AgentStatsListProps) {
+export function AgentStatsList({
+  clientId,
+  companyName,
+  clientRecords: propClientRecords,
+  agents: propAgents,
+}: AgentStatsListProps) {
+  const [fetchedRecords, setFetchedRecords] = useState<ServiceRecord[]>([])
+  const [fetchedAgents, setFetchedAgents] = useState<AgentRecord[]>([])
+
+  useEffect(() => {
+    if (
+      clientId &&
+      (!propClientRecords || !Array.isArray(propClientRecords) || propClientRecords.length === 0)
+    ) {
+      Promise.all([getServiceRecords(), getAgents()])
+        .then(([r, a]) => {
+          const recordsArr = Array.isArray(r) ? r : []
+          const agentsArr = Array.isArray(a) ? a : []
+          setFetchedRecords(
+            recordsArr.filter(
+              (rec) => rec.client === clientId || rec.expand?.client?.id === clientId,
+            ),
+          )
+          setFetchedAgents(
+            agentsArr.filter(
+              (ag) => ag.client_id === clientId || ag.expand?.client_id?.id === clientId,
+            ),
+          )
+        })
+        .catch(() => {
+          setFetchedRecords([])
+          setFetchedAgents([])
+        })
+    }
+  }, [clientId, propClientRecords])
+
+  useRealtime('service_records', () => {
+    if (
+      clientId &&
+      (!propClientRecords || !Array.isArray(propClientRecords) || propClientRecords.length === 0)
+    ) {
+      getServiceRecords()
+        .then((r) => {
+          const recordsArr = Array.isArray(r) ? r : []
+          setFetchedRecords(
+            recordsArr.filter(
+              (rec) => rec.client === clientId || rec.expand?.client?.id === clientId,
+            ),
+          )
+        })
+        .catch(() => {})
+    }
+  })
+
+  const clientRecords =
+    Array.isArray(propClientRecords) && propClientRecords.length > 0
+      ? propClientRecords
+      : fetchedRecords
+  const agents = Array.isArray(propAgents) && propAgents.length > 0 ? propAgents : fetchedAgents
+
+  const safeClientRecords = Array.isArray(clientRecords) ? clientRecords : []
+  const safeAgents = Array.isArray(agents) ? agents : []
+
   const agentStats = useMemo(() => {
     const map = new Map<
       string,
@@ -21,7 +86,8 @@ export function AgentStatsList({ clientRecords, agents = [] }: AgentStatsListPro
       }
     >()
 
-    for (const agent of agents) {
+    for (const agent of safeAgents) {
+      if (!agent || !agent.id) continue
       map.set(agent.id, {
         agent,
         total: 0,
@@ -29,11 +95,12 @@ export function AgentStatsList({ clientRecords, agents = [] }: AgentStatsListPro
       })
     }
 
-    for (const record of clientRecords) {
+    for (const record of safeClientRecords) {
+      if (!record) continue
       let matchedAgentId: string | null = null
 
-      for (const agent of agents) {
-        if (isRecordForAgent(record, agent)) {
+      for (const agent of safeAgents) {
+        if (agent && isRecordForAgent(record, agent)) {
           matchedAgentId = agent.id
           break
         }
@@ -65,7 +132,7 @@ export function AgentStatsList({ clientRecords, agents = [] }: AgentStatsListPro
     }
 
     return Array.from(map.values())
-  }, [agents, clientRecords])
+  }, [safeAgents, safeClientRecords])
 
   if (agentStats.length === 0) {
     return (

@@ -15,8 +15,7 @@ import { ClientRecord, AgentRecord, ServiceRecord } from '@/types/service_record
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { Building, Mail, Phone, Loader2, Pencil, Headset } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatGMT3DateTime } from '@/lib/timezone'
 
 function cleanStr(str?: string | null): string {
   if (!str) return ''
@@ -47,11 +46,15 @@ export function CompanyDetailsModal({
     setLoading(true)
     Promise.all([getClients(), getAgents(), getServiceRecords()])
       .then(([c, a, r]) => {
-        setClients(c)
-        setAgents(a)
-        setRecords(r)
+        setClients(Array.isArray(c) ? c : [])
+        setAgents(Array.isArray(a) ? a : [])
+        setRecords(Array.isArray(r) ? r : [])
       })
-      .catch(() => {})
+      .catch(() => {
+        setClients([])
+        setAgents([])
+        setRecords([])
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -241,13 +244,7 @@ export function CompanyDetailsModal({
                                 </div>
                                 <p className="text-slate-700 leading-relaxed">{r.description}</p>
                                 <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-1 border-t border-slate-100">
-                                  <span>
-                                    {r.created
-                                      ? format(new Date(r.created), 'dd/MM/yyyy HH:mm', {
-                                          locale: ptBR,
-                                        })
-                                      : '-'}
-                                  </span>
+                                  <span>{r.created ? formatGMT3DateTime(r.created) : '-'}</span>
                                   {r.channel && <span>Canal: {r.channel}</span>}
                                 </div>
                               </div>
@@ -287,11 +284,7 @@ export function CompanyDetailsModal({
                           <span>Consultor: {r.expand.assigned_user.name}</span>
                         )}
                       </div>
-                      <span>
-                        {r.created
-                          ? format(new Date(r.created), 'dd/MM/yyyy HH:mm', { locale: ptBR })
-                          : ''}
-                      </span>
+                      <span>{r.created ? formatGMT3DateTime(r.created) : ''}</span>
                     </div>
                   </div>
                 ))}

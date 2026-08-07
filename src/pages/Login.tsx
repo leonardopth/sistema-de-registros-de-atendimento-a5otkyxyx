@@ -74,26 +74,37 @@ export default function Login() {
     if (error) {
       setLoading(false)
       if (approvalStatus === 'Pendente') {
+        const pendingMsg =
+          'Seu cadastro está aguardando aprovação do gestor. Você receberá acesso assim que for aprovado.'
         setLoginMessage({
           type: 'pending',
-          text: 'Seu cadastro está aguardando aprovação do gestor. Você receberá acesso assim que for aprovado.',
+          text: pendingMsg,
+        })
+        toast({
+          variant: 'default',
+          title: 'Conta pendente de aprovação',
+          description: pendingMsg,
         })
       } else if (approvalStatus === 'Rejeitado') {
+        const rejectedMsg =
+          'Seu cadastro foi rejeitado. Entre em contato com o gestor do sistema para mais informações.'
         setLoginMessage({
           type: 'rejected',
-          text: 'Seu cadastro foi rejeitado. Entre em contato com o gestor do sistema para mais informações.',
+          text: rejectedMsg,
+        })
+        toast({
+          variant: 'destructive',
+          title: 'Acesso negado',
+          description: rejectedMsg,
         })
       } else {
-        const errorText = getErrorMessage(error)
-        const fallback = 'E-mail ou senha incorretos. Verifique as credenciais.'
+        const invalidCredentialsText = 'E-mail ou senha inválidos'
+        setLoginMessage({ type: 'rejected', text: invalidCredentialsText })
         toast({
           variant: 'destructive',
           title: 'Falha no login',
-          description: errorText || fallback,
+          description: invalidCredentialsText,
         })
-        if (!errorText) {
-          setLoginMessage({ type: 'rejected', text: fallback })
-        }
       }
     } else {
       if (rememberMe) {

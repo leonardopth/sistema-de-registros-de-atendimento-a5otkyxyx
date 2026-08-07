@@ -31,6 +31,7 @@ import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
+import { formatGMT3DateTime } from '@/lib/timezone'
 import {
   UserPlus,
   Search,
@@ -113,14 +114,18 @@ export default function Clientes() {
 
   const loadClients = async () => {
     try {
-      setClients(await getClients())
+      const data = await getClients()
+      setClients(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error(err)
+      setClients([])
     }
     try {
-      setExecutives(await getAccountExecutives())
+      const execs = await getAccountExecutives()
+      setExecutives(Array.isArray(execs) ? execs : [])
     } catch (err) {
       console.error(err)
+      setExecutives([])
     }
   }
 
@@ -132,10 +137,12 @@ export default function Clientes() {
   })
 
   const handleSelectClient = (c: ClientRecord) => {
+    if (!c) return
     setSelectedClient(c)
-    setEditName(c.name)
+    setEditName(c.name || '')
+    const execsArr = Array.isArray(executives) ? executives : []
     setEditExecutiveId(
-      c.account_executive_rel || executives.find((ex) => ex.name === c.name)?.id || '',
+      c.account_executive_rel || execsArr.find((ex) => ex.name === c.name)?.id || '',
     )
     setExecutiveError('')
     setEditPhone(c.phone || '')
@@ -245,7 +252,8 @@ export default function Clientes() {
     setDetailsModalOpen(true)
   }
 
-  const filteredClients = clients.filter((c) => {
+  const safeClients = Array.isArray(clients) ? clients : []
+  const filteredClients = safeClients.filter((c) => {
     const matchesSearch =
       (c.company || '').toLowerCase().includes(search.toLowerCase()) ||
       c.name.toLowerCase().includes(search.toLowerCase())
@@ -318,8 +326,7 @@ export default function Clientes() {
                 )}
                 {selectedClient.blocked_at && (
                   <p className="text-xs text-red-600">
-                    <strong>Data:</strong>{' '}
-                    {new Date(selectedClient.blocked_at).toLocaleString('pt-BR')}
+                    <strong>Data:</strong> {formatGMT3DateTime(selectedClient.blocked_at)}
                   </p>
                 )}
               </div>
