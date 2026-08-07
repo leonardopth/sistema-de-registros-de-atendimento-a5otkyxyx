@@ -14,13 +14,22 @@ export function VoiceInputButton({ onTranscript, disabled, className }: VoiceInp
   const { isListening, interimTranscript, start, stop, supported } = useSpeechRecognition()
   const { toast } = useToast()
 
-  if (!supported) return null
-
-  const handleError = (error: string) => {
-    toast({ variant: 'destructive', title: 'Erro na transcrição', description: error })
+  const handleError = (error: { type: string; message: string }) => {
+    if (!error.message) return
+    toast({ variant: 'destructive', title: 'Erro na transcrição', description: error.message })
   }
 
   const handleClick = () => {
+    if (!supported) {
+      toast({
+        variant: 'destructive',
+        title: 'Navegador não suportado',
+        description:
+          'Seu navegador não suporta reconhecimento de voz. Use o Google Chrome ou Microsoft Edge.',
+      })
+      return
+    }
+
     if (isListening) {
       stop()
     } else {
