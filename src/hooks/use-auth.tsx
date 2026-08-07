@@ -1,24 +1,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import pb from '@/lib/pocketbase/client'
-import { useRealtime } from '@/hooks/use-realtime'
-import { UserRole } from '@/types/service_record'
 
 interface AuthContextType {
   user: any
   isAuthenticated: boolean
   isMaster: boolean
-  isActualMasterRole: boolean
-  signUp: (
-    email: string,
-    password: string,
-    name: string,
-    role: UserRole,
-    serviceGroups: string[],
-    bases?: string[],
-  ) => Promise<{ error: any }>
-  signIn: (email: string, password: string) => Promise<{ error: any; approvalStatus?: string }>
+  signUp: (email: string, password: string) => Promise<{ error: any }>
+  signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => void
-  requestPasswordReset: (email: string) => Promise<{ error: any }>
   loading: boolean
 }
 
@@ -31,182 +20,52 @@ export const useAuth = () => {
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const getInitialUser = () => {
-    if (pb.authStore.isValid && pb.authStore.record) {
-      const status = pb.authStore.record.approval_status
-      if (status === 'Pendente' || status === 'Rejeitado') return null
-      return pb.authStore.record
-    }
-    return null
-  }
-
-  const getInitialIsAuth = () => {
-    if (pb.authStore.isValid && pb.authStore.record) {
-      const status = pb.authStore.record.approval_status
-      return !status || status === 'Aprovado'
-    }
-    return false
-  }
-
-  const [user, setUser] = useState<any>(getInitialUser)
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(getInitialIsAuth)
-  const [loading, setLoading] = useState<boolean>(true)
+  const [user, setUser] = useState<any>(pb.authStore.isValid ? pb.authStore.record : null)
+  const [isAuthenticated, setIsAuthenticated] = useState(pb.authStore.isValid)
+  const [loading, setLoading] = useState(true)
 
   const isMaster = user?.role === 'Master' || user?.master_access === true
-  const isActualMasterRole = user?.role === 'Master'
 
   useEffect(() => {
     const unsubscribe = pb.authStore.onChange((_token, record) => {
-      if (pb.authStore.isValid && record) {
-        const status = record.approval_status
-        if (status === 'Pendente' || status === 'Rejeitado') {
-          setUser(null)
-          setIsAuthenticated(false)
-        } else {
-          setUser(record)
-          setIsAuthenticated(true)
-        }
-      } else {
-        setUser(null)
-        setIsAuthenticated(false)
-      }
+      setUser(pb.authStore.isValid ? record : null)
+      setIsAuthenticated(pb.authStore.isValid)
     })
-
     if (pb.authStore.isValid) {
       pb.collection('users')
         .authRefresh()
-        .then((authData: any) => {
-          const rec = authData?.record || pb.authStore.record
-          const approvalStatus = rec?.approval_status
-          if (approvalStatus === 'Pendente' || approvalStatus === 'Rejeitado') {
-            pb.authStore.clear()
-            setUser(null)
-            setIsAuthenticated(false)
-          } else {
-            setUser(rec)
-            setIsAuthenticated(true)
-          }
-        })
-        .catch(() => {
-          pb.authStore.clear()
-          setUser(null)
-          setIsAuthenticated(false)
-        })
+        .catch(() => pb.authStore.clear())
         .finally(() => setLoading(false))
     } else {
       if (pb.authStore.record) pb.authStore.clear()
-      setUser(null)
-      setIsAuthenticated(false)
       setLoading(false)
     }
-
     return () => {
       unsubscribe()
     }
   }, [])
 
-  useRealtime('users', (e) => {
-    if (e.action === 'update' && e.record?.id === pb.authStore.record?.id) {
-      pb.collection('users')
-        .authRefresh()
-        .then((authData: any) => {
-          if (authData?.record) {
-            const status = authData.record.approval_status
-            if (status === 'Pendente' || status === 'Rejeitado') {
-              pb.authStore.clear()
-              setUser(null)
-              setIsAuthenticated(false)
-            } else {
-              setUser(authData.record)
-              setIsAuthenticated(true)
-            }
-          }
-        })
-        .catch(() => {})
-    }
-  })
-
-  const signUp = async (
-    emailInput: string,
-    passwordInput: string,
-    name: string,
-    role: UserRole,
-    serviceGroups: string[],
-    bases: string[] = [],
-  ) => {
+  const signUp = async (email: string, password: string) => {
     try {
-      const cleanEmail = emailInput.trim().toLowerCase()
-      await pb.collection('users').create({
-        email: cleanEmail,
-        password: passwordInput,
-        passwordConfirm: passwordInput,
-        name: name.trim(),
-        role,
-        approval_status: 'Pendente',
-        service_groups: ['Gerentes', 'Supervisores', 'Líderes', 'Consultores'].includes(role)
-          ? serviceGroups
-          : [],
-        bases: ['Gestor Comercial', 'Executivo de contas'].includes(role) ? bases : [],
-      })
+      await pb.collection('users').create({ email, password, passwordConfirm: password })
+      await pb.collection('users').authWithPassword(email, password)
       return { error: null }
     } catch (error) {
       return { error }
     }
   }
 
-  const signIn = async (emailInput: string, passwordInput: string) => {
+  const signIn = async (email: string, password: string) => {
     try {
-      const cleanEmail = emailInput.trim().toLowerCase()
-      const authData = await pb.collection('users').authWithPassword(cleanEmail, passwordInput)
-      const approvalStatus = authData.record?.approval_status || 'Aprovado'
-
-      if (approvalStatus === 'Pendente') {
-        pb.authStore.clear()
-        setUser(null)
-        setIsAuthenticated(false)
-        return {
-          error: { message: 'Seu cadastro está aguardando aprovação do gestor.' },
-          approvalStatus: 'Pendente',
-        }
-      }
-
-      if (approvalStatus === 'Rejeitado') {
-        pb.authStore.clear()
-        setUser(null)
-        setIsAuthenticated(false)
-        return {
-          error: {
-            message: 'Seu cadastro foi rejeitado. Entre em contato com o gestor do sistema.',
-          },
-          approvalStatus: 'Rejeitado',
-        }
-      }
-
-      setUser(authData.record)
-      setIsAuthenticated(true)
+      await pb.collection('users').authWithPassword(email, password)
       return { error: null }
     } catch (error) {
-      pb.authStore.clear()
-      setUser(null)
-      setIsAuthenticated(false)
       return { error }
     }
   }
 
   const signOut = () => {
     pb.authStore.clear()
-    setUser(null)
-    setIsAuthenticated(false)
-  }
-
-  const requestPasswordReset = async (emailInput: string) => {
-    try {
-      const cleanEmail = emailInput.trim().toLowerCase()
-      await pb.collection('users').requestPasswordReset(cleanEmail)
-      return { error: null }
-    } catch (error) {
-      return { error }
-    }
   }
 
   return (
@@ -215,11 +74,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         isAuthenticated,
         isMaster,
-        isActualMasterRole,
         signUp,
         signIn,
         signOut,
-        requestPasswordReset,
         loading,
       }}
     >

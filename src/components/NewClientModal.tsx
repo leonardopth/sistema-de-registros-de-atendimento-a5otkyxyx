@@ -127,6 +127,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
         state: state.trim(),
         notes: notes.trim(),
         account_executive: selectedExec.name,
+        account_executive_rel: selectedExec.id,
         service_group: serviceGroup as ServiceGroup,
       })
       const validAgents = agents.filter((a) => a.name.trim() || a.email.trim() || a.phone.trim())

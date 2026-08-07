@@ -40,7 +40,8 @@ export function SearchableSelect({
   disabled = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false)
-  const selected = options.find((o) => o.value === value)
+  const allOptions = [...(pinnedOptions || []), ...options]
+  const selected = allOptions.find((o) => o.value === value)
 
   return (
     <Popover open={open && !disabled} onOpenChange={(v) => !disabled && setOpen(v)}>
