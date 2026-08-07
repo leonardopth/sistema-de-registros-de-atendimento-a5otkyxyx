@@ -136,6 +136,22 @@ export function DashboardAdvancedFilters({ filters, onChange }: Props) {
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] text-slate-500">Tipo de Viagem</Label>
+          <Select
+            value={filters.travelType || 'Todos'}
+            onValueChange={(v) => update('travelType', v)}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Todos">Todos</SelectItem>
+              <SelectItem value="Nacional">Nacional</SelectItem>
+              <SelectItem value="Internacional">Internacional</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1">

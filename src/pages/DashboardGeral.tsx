@@ -39,6 +39,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ComparativeView } from '@/components/ComparativeView'
 import { PeriodComparisonView } from '@/components/PeriodComparisonView'
 import { ThresholdSuggestionPanel } from '@/components/ThresholdSuggestionPanel'
+import { TravelTypeReportPanel } from '@/components/TravelTypeReportPanel'
 
 const PRIVILEGED_ROLES = ['Master', 'Gerentes', 'Supervisores', 'Líderes']
 
@@ -265,6 +266,7 @@ export default function DashboardGeral() {
 
           <ThresholdSuggestionPanel records={accessibleRecords} clients={clients} />
           <ConsolidatedReportPanel records={filtered} />
+          <TravelTypeReportPanel records={filtered} />
           <FeedbackReviewPanel />
         </TabsContent>
 

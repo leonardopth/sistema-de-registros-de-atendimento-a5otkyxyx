@@ -29,6 +29,7 @@ import {
   Share2,
   X,
   CheckCircle2,
+  MessageCircle,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -285,13 +286,32 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Telefone</Label>
-                <Input
-                  className="h-9 text-xs"
-                  value={form.clientPhone}
-                  onChange={(e) => form.setClientPhone(e.target.value)}
-                  placeholder="(00) 00000-0000"
-                  disabled={form.agentLocked}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    className="h-9 text-xs flex-1"
+                    value={form.clientPhone}
+                    onChange={(e) => form.setClientPhone(e.target.value)}
+                    placeholder="(00) 00000-0000"
+                    disabled={form.agentLocked}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shrink-0"
+                    onClick={() => {
+                      const phone = form.clientPhone.replace(/\D/g, '')
+                      if (phone) {
+                        window.open(`https://wa.me/55${phone}`, '_blank')
+                      } else {
+                        toast({ variant: 'destructive', title: 'Informe o telefone primeiro' })
+                      }
+                    }}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-1" />
+                    Falar
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -341,18 +361,24 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Nacional / Internacional *</Label>
-              <Select
-                value={form.travelType}
-                onValueChange={(v) => form.setTravelType(v as TravelType)}
-              >
-                <SelectTrigger className={`h-9 ${form.travelTypeError ? 'border-red-500' : ''}`}>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Nacional">Nacional</SelectItem>
-                  <SelectItem value="Internacional">Internacional</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-4 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={form.travelType === 'Nacional'}
+                    onCheckedChange={(checked) => form.setTravelType(checked ? 'Nacional' : '')}
+                  />
+                  <span className="text-xs">Nacional</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={form.travelType === 'Internacional'}
+                    onCheckedChange={(checked) =>
+                      form.setTravelType(checked ? 'Internacional' : '')
+                    }
+                  />
+                  <span className="text-xs">Internacional</span>
+                </label>
+              </div>
               {form.travelTypeError && (
                 <p className="text-xs text-red-500 font-medium">{form.travelTypeError}</p>
               )}

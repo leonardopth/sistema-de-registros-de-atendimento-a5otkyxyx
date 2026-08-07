@@ -24,6 +24,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ShieldAlert, RefreshCw, Loader2, User, Filter, X } from 'lucide-react'
+import { ExportMenu } from '@/components/ExportMenu'
+import {
+  downloadAuditLogCSV,
+  downloadAuditLogExcel,
+  downloadAuditLogPDF,
+} from '@/lib/audit-log-export'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -78,6 +84,22 @@ export default function Auditoria() {
     })
   }, [logs, selectedUser, selectedAction, selectedEntity, startDate, endDate])
 
+  const userNames = useMemo(() => {
+    const m = new Map<string, string>()
+    users.forEach((u) => m.set(u.id, u.name))
+    return m
+  }, [users])
+
+  const handleExportCSV = () => {
+    downloadAuditLogCSV(filteredLogs, userNames)
+  }
+  const handleExportExcel = () => {
+    downloadAuditLogExcel(filteredLogs, userNames)
+  }
+  const handleExportPDF = () => {
+    downloadAuditLogPDF(filteredLogs, userNames)
+  }
+
   const clearFilters = () => {
     setSelectedUser('ALL')
     setSelectedAction('ALL')
@@ -110,10 +132,18 @@ export default function Auditoria() {
             Registro detalhado de ações sensíveis e alterações no sistema.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportMenu
+            label="Exportar"
+            onCSV={handleExportCSV}
+            onExcel={handleExportExcel}
+            onPDF={handleExportPDF}
+          />
+          <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       <Card>

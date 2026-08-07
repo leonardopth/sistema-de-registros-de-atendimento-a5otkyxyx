@@ -49,11 +49,13 @@ import {
   ArrowUpDown,
   ListChecks,
   Play,
+  Plane,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
 import { useAuth } from '@/hooks/use-auth'
 import { MinhasTarefasList } from '@/components/MinhasTarefasList'
+import { TravelTypeBadge } from '@/components/TravelTypeBadge'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
 import { getAccountExecutives } from '@/services/account_executives'
 import { exportServiceRecordsByExecutiveCSV } from '@/lib/executive-export'
@@ -99,6 +101,7 @@ export default function Atendimentos() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [serviceGroupFilter, setServiceGroupFilter] = useState<string>('todos')
+  const [travelTypeFilter, setTravelTypeFilter] = useState<string>('todos')
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [users, setUsers] = useState<UserRecord[]>([])
   const [sharedRecordIds, setSharedRecordIds] = useState<Set<string>>(new Set())
@@ -284,6 +287,8 @@ export default function Atendimentos() {
     const matchesServiceGroup =
       serviceGroupFilter === 'todos' || recordServiceGroup === serviceGroupFilter
 
+    const matchesTravelType = travelTypeFilter === 'todos' || r.travel_type === travelTypeFilter
+
     return (
       matchesSearch &&
       matchesStatus &&
@@ -293,7 +298,8 @@ export default function Atendimentos() {
       matchesDateTo &&
       matchesExecutive &&
       matchesUser &&
-      matchesServiceGroup
+      matchesServiceGroup &&
+      matchesTravelType
     )
   })
 
@@ -424,6 +430,7 @@ export default function Atendimentos() {
     setSortField('created')
     setSortDirection('desc')
     setServiceGroupFilter('todos')
+    setTravelTypeFilter('todos')
     if (searchParams.get('avoidable_contact')) {
       searchParams.delete('avoidable_contact')
       setSearchParams(searchParams)
@@ -606,17 +613,30 @@ export default function Atendimentos() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <DateRangeFilter
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            onDateFromChange={setDateFrom}
-            onDateToChange={setDateTo}
-            onClear={() => {
-              setDateFrom('')
-              setDateTo('')
-            }}
-            hasActiveFilter={!!dateFrom || !!dateTo}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <DateRangeFilter
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateFromChange={setDateFrom}
+              onDateToChange={setDateTo}
+              onClear={() => {
+                setDateFrom('')
+                setDateTo('')
+              }}
+              hasActiveFilter={!!dateFrom || !!dateTo}
+            />
+            <Select value={travelTypeFilter} onValueChange={setTravelTypeFilter}>
+              <SelectTrigger className="h-8 text-xs w-[140px]">
+                <Plane className="h-3 w-3 text-indigo-500 mr-1 shrink-0" />
+                <SelectValue placeholder="Viagem" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os Tipos</SelectItem>
+                <SelectItem value="Nacional">Nacional</SelectItem>
+                <SelectItem value="Internacional">Internacional</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex gap-1.5">
             <ExportMenu
               label="Exportar"
@@ -781,6 +801,9 @@ export default function Atendimentos() {
                       >
                         {r.client_name}
                       </span>
+                      {r.travel_type && (
+                        <TravelTypeBadge travelType={r.travel_type} className="mt-0.5" />
+                      )}
                     </TableCell>
                     <TableCell className="text-xs text-slate-700">{r.contact_reason}</TableCell>
                     <TableCell>

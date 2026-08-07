@@ -13,31 +13,70 @@ export interface DashboardFilters {
   dateTo?: string
   serviceGroup?: string
   commercialBase?: string
+  travelType?: string
 }
 
-const PRIVILEGED_ROLES = ['Master', 'Gerentes', 'Supervisores', 'Líderes']
+export const DEFAULT_FILTERS: DashboardFilters = {
+  searchTerm: '',
+  contactReason: 'Todos',
+  status: 'Todos',
+  priority: 'Todas',
+  channel: 'Todos',
+  avoidableOnly: false,
+  dateFrom: '',
+  dateTo: '',
+  serviceGroup: 'Todos',
+  travelType: 'Todos',
+}
+
+export function hasActiveFilters(filters: DashboardFilters): boolean {
+  return (
+    !!filters.searchTerm ||
+    (filters.contactReason != null && filters.contactReason !== 'Todos') ||
+    (filters.status != null && filters.status !== 'Todos') ||
+    (filters.priority != null && filters.priority !== 'Todas') ||
+    (filters.channel != null && filters.channel !== 'Todos') ||
+    filters.avoidableOnly === true ||
+    !!filters.dateFrom ||
+    !!filters.dateTo ||
+    (filters.serviceGroup != null && filters.serviceGroup !== 'Todos') ||
+    (filters.travelType != null && filters.travelType !== 'Todos')
+  )
+}
 
 export function filterByUserAccess(
   records: ServiceRecord[],
-  user: { id?: string; role?: string } | null | undefined,
+  user:
+    | { id?: string; role?: string; service_groups?: string[]; master_access?: boolean }
+    | null
+    | undefined,
   clientMap: Map<string, ClientRecord>,
   userMap: Map<string, { service_groups?: string[] }>,
 ): ServiceRecord[] {
-  if (!Array.isArray(records)) return []
   if (!user) return []
-  if (PRIVILEGED_ROLES.includes(user.role || '')) return records
+  if (user.role === 'Master' || user.master_access) return records
+  const userServiceGroups = (user.service_groups as string[] | undefined) || []
+  const isManager = ['Gerentes', 'Supervisores', 'Líderes'].includes(user.role || '')
+  if (userServiceGroups.length === 0) return records
 
-  const userServiceGroups = userMap.get(user.id || '')?.service_groups || []
+  const companyToGroup = new Map<string, string>()
+  for (const [, c] of clientMap) {
+    if (c.company && c.service_group) companyToGroup.set(c.company.toLowerCase(), c.service_group)
+  }
 
   return records.filter((r) => {
-    if (r.user_id === user.id) return true
-    if (r.assigned_user === user.id) return true
-
-    if (r.client && clientMap.has(r.client)) {
-      const client = clientMap.get(r.client)
-      if (client && userServiceGroups.includes(client.service_group || '')) return true
+    if (r.user_id === user.id || r.assigned_user === user.id) return true
+    let recordGroup: string | undefined
+    const cid = r.client || r.expand?.client?.id
+    if (cid) recordGroup = clientMap.get(cid)?.service_group
+    if (!recordGroup && r.client_company)
+      recordGroup = companyToGroup.get(r.client_company.toLowerCase())
+    if (recordGroup && userServiceGroups.includes(recordGroup)) return true
+    if (isManager) {
+      const creatorId = r.assigned_user || r.user_id
+      const creatorGroups = creatorId ? userMap.get(creatorId)?.service_groups : undefined
+      if (creatorGroups && creatorGroups.some((g) => userServiceGroups.includes(g))) return true
     }
-
     return false
   })
 }
@@ -47,84 +86,79 @@ export function getPreviousPeriodCount(
   dateFrom?: string,
   dateTo?: string,
 ): number {
-  if (!Array.isArray(records) || !dateFrom || !dateTo) return 0
-
-  const from = new Date(dateFrom)
-  const to = new Date(dateTo)
-  if (isNaN(from.getTime()) || isNaN(to.getTime())) return 0
-
-  const diffMs = to.getTime() - from.getTime()
-  const prevTo = new Date(from.getTime() - 1)
-  const prevFrom = new Date(prevTo.getTime() - diffMs)
-
-  const prevFromStr = prevFrom.toISOString().substring(0, 10)
-  const prevToStr = prevTo.toISOString().substring(0, 10)
-
-  return records.filter((r) => {
-    if (!r.created) return false
-    const createdDate = r.created.substring(0, 10)
-    return createdDate >= prevFromStr && createdDate <= prevToStr
-  }).length
-}
-
-export const DEFAULT_FILTERS: DashboardFilters = {}
-
-export function hasActiveFilters(filters: DashboardFilters): boolean {
-  if (!filters) return false
-  return Boolean(
-    filters.searchTerm ||
-    filters.contactReason ||
-    filters.status ||
-    filters.priority ||
-    filters.channel ||
-    filters.avoidableOnly ||
-    filters.startDate ||
-    filters.endDate ||
-    filters.serviceGroup ||
-    filters.commercialBase,
-  )
+  if (!dateFrom || !dateTo) return 0
+  try {
+    const start = new Date(dateFrom + 'T00:00:00')
+    const end = new Date(dateTo + 'T23:59:59')
+    const duration = end.getTime() - start.getTime()
+    const prevEnd = new Date(start.getTime() - 1)
+    const prevStart = new Date(prevEnd.getTime() - duration)
+    const prevStartStr = prevStart.toISOString().substring(0, 10)
+    const prevEndStr = prevEnd.toISOString().substring(0, 10)
+    return records.filter((r) => {
+      const recDate = r.created?.substring(0, 10) || ''
+      return recDate >= prevStartStr && recDate <= prevEndStr
+    }).length
+  } catch {
+    return 0
+  }
 }
 
 export function filterRecords(
   records: ServiceRecord[] | undefined | null,
   filters: DashboardFilters,
-  clients?: ClientRecord[] | undefined | null,
+  clients?: Map<string, ClientRecord> | ClientRecord[] | undefined | null,
 ): ServiceRecord[] {
-  if (!Array.isArray(records)) return []
-  const safeClients = Array.isArray(clients) ? clients : []
+  if (!records) return []
+  const clientMap =
+    clients instanceof Map ? clients : new Map((clients || []).map((c) => [c.id, c]))
+  const companyToGroup = new Map<string, string>()
+  for (const [, c] of clientMap) {
+    if (c.company && c.service_group) companyToGroup.set(c.company.toLowerCase(), c.service_group)
+  }
 
   return records.filter((r) => {
-    if (!r) return false
-
     if (filters.searchTerm) {
-      const term = filters.searchTerm.toLowerCase()
-      const matchName = r.client_name?.toLowerCase().includes(term)
-      const matchCompany = r.client_company?.toLowerCase().includes(term)
-      const matchDesc = r.description?.toLowerCase().includes(term)
-      const matchReason = r.contact_reason?.toLowerCase().includes(term)
-      if (!matchName && !matchCompany && !matchDesc && !matchReason) return false
-    }
-
-    if (filters.contactReason && r.contact_reason !== filters.contactReason) return false
-    if (filters.status && r.status !== filters.status) return false
-    if (filters.priority && r.priority !== filters.priority) return false
-    if (filters.channel && r.channel !== filters.channel) return false
-    if (filters.avoidableOnly && !r.avoidable_contact) return false
-
-    if (filters.startDate && r.created) {
-      if (r.created.substring(0, 10) < filters.startDate) return false
-    }
-
-    if (filters.endDate && r.created) {
-      if (r.created.substring(0, 10) > filters.endDate) return false
-    }
-
-    if (filters.serviceGroup && safeClients.length > 0) {
-      const matchingClient = safeClients.find(
-        (c) =>
-          c && (c.id === r.client || c.name === r.client_name || c.company === r.client_company),
+      const s = filters.searchTerm.toLowerCase()
+      if (
+        !r.client_name?.toLowerCase().includes(s) &&
+        !r.description?.toLowerCase().includes(s) &&
+        !r.client_company?.toLowerCase().includes(s)
       )
-      if (matchingClient && matchingClient.service_group !== filters.serviceGroup) return false
+        return false
+    }
+    if (
+      filters.contactReason &&
+      filters.contactReason !== 'Todos' &&
+      r.contact_reason !== filters.contactReason
+    )
+      return false
+    if (filters.status && filters.status !== 'Todos' && r.status !== filters.status) return false
+    if (filters.priority && filters.priority !== 'Todas' && r.priority !== filters.priority)
+      return false
+    if (filters.channel && filters.channel !== 'Todos' && r.channel !== filters.channel)
+      return false
+    if (filters.avoidableOnly && !r.avoidable_contact) return false
+    if (
+      filters.travelType &&
+      filters.travelType !== 'Todos' &&
+      r.travel_type !== filters.travelType
+    )
+      return false
+
+    const recDate = r.created?.substring(0, 10) || ''
+    if (filters.dateFrom && recDate < filters.dateFrom) return false
+    if (filters.dateTo && recDate > filters.dateTo) return false
+    if (filters.startDate && recDate < filters.startDate) return false
+    if (filters.endDate && recDate > filters.endDate) return false
+
+    if (filters.serviceGroup && filters.serviceGroup !== 'Todos') {
+      let recordGroup: string | undefined
+      const cid = r.client || r.expand?.client?.id
+      if (cid) recordGroup = clientMap.get(cid)?.service_group
+      if (!recordGroup && r.client_company)
+        recordGroup = companyToGroup.get(r.client_company.toLowerCase())
+      if (recordGroup !== filters.serviceGroup) return false
     }
 
     return true
