@@ -14,8 +14,7 @@ import { ServiceRecord } from '@/types/service_record'
 import { StatusBadge } from '@/components/StatusBadge'
 import { PriorityBadge } from '@/components/PriorityBadge'
 import { ArrowUpRight, Eye, CheckCircle2, Loader2, X } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatGMT3DateTime } from '@/lib/timezone'
 
 interface RecentActivitiesProps {
   records: ServiceRecord[]
@@ -133,9 +132,7 @@ export function RecentActivities({
                   {r.duration ? `${r.duration} min` : '-'}
                 </TableCell>
                 <TableCell className="text-xs text-slate-500 whitespace-nowrap">
-                  {r.created
-                    ? format(new Date(r.created), 'dd/MM/yyyy HH:mm', { locale: ptBR })
-                    : '-'}
+                  {r.created ? formatGMT3DateTime(r.created) : '-'}
                 </TableCell>
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600">

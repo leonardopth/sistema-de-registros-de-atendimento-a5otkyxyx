@@ -53,9 +53,8 @@ import {
   Undo2,
   Share2,
 } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { formatGMT3DateTime, formatGMT3Date, formatGMT3DateTimeAt } from '@/lib/timezone'
 import { ShareDialog } from './ShareDialog'
 import { SharedUsersList } from './SharedUsersList'
 import { getSharesByRecord } from '@/services/service_record_shares'
@@ -468,11 +467,7 @@ export function ServiceRecordDetailModal({
                   {record.client_company || record.client_name}
                 </span>
                 <span className="text-xs font-normal text-slate-500">
-                  {record.start_time
-                    ? format(new Date(record.start_time), "dd/MM/yyyy 'às' HH:mm", {
-                        locale: ptBR,
-                      })
-                    : ''}
+                  {record.start_time ? formatGMT3DateTimeAt(record.start_time) : ''}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
@@ -709,18 +704,14 @@ export function ServiceRecordDetailModal({
                                   'text-amber-600 font-medium',
                               )}
                             >
-                              <Calendar className="h-2.5 w-2.5" />{' '}
-                              {format(new Date(task.due_date), 'dd/MM/yyyy', {
-                                locale: ptBR,
-                              })}
+                              <Calendar className="h-2.5 w-2.5" /> {formatGMT3Date(task.due_date)}
                             </span>
                           )}
                           {task.done && task.done_by && (
                             <span className="flex items-center gap-0.5 text-emerald-600">
                               <CheckCircle2 className="h-2.5 w-2.5" />{' '}
                               {responsibleName(task.done_by)}
-                              {task.done_at &&
-                                ` em ${format(new Date(task.done_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`}
+                              {task.done_at && ` em ${formatGMT3DateTime(task.done_at)}`}
                             </span>
                           )}
                         </div>

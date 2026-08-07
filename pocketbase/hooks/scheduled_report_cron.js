@@ -1,4 +1,4 @@
-cronAdd('0 8 * * *', function () {
+cronAdd('0 11 * * *', function () {
   try {
     var schedules = $app.findRecordsByFilter('scheduled_reports', 'active = true', '', 0, 0)
     var now = new Date()
@@ -45,6 +45,15 @@ cronAdd('0 8 * * *', function () {
         )
       }
 
+      function toGMT3ISO(isoStr) {
+        if (!isoStr) return ''
+        var d = new Date(isoStr)
+        if (isNaN(d.getTime())) return ''
+        return new Date(d.getTime() - 3 * 60 * 60 * 1000).toISOString()
+      }
+
+      var gmt3DateStr = new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString().substring(0, 10)
+
       var csv = 'Cliente,Empresa,Motivo,Canal,Prioridade,Status,Data,Duracao(min),Descricao\n'
       for (var j = 0; j < records.length; j++) {
         var r = records[j]
@@ -55,7 +64,7 @@ cronAdd('0 8 * * *', function () {
           r.getString('channel') || '',
           r.getString('priority') || '',
           r.getString('status') || '',
-          r.getString('created') || '',
+          toGMT3ISO(r.getString('created')) || '',
           String(r.get('duration') || 0),
           (r.getString('description') || '').replace(/"/g, '""'),
         ]
@@ -80,7 +89,7 @@ cronAdd('0 8 * * *', function () {
           .send(
             { address: 'noreply@rexturadvance.com.br', name: 'Sistema de Registros' },
             [{ address: emailAddr }],
-            'Relatorio de Atendimentos - ' + frequency,
+            'Relatorio de Atendimentos - ' + frequency + ' (' + gmt3DateStr + ')',
             htmlBody,
           )
       } catch (mailErr) {

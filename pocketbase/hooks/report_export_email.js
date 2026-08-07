@@ -33,6 +33,13 @@ routerAdd(
       return e.json(500, { error: 'failed to fetch records' })
     }
 
+    function toGMT3ISO(isoStr) {
+      if (!isoStr) return ''
+      var d = new Date(isoStr)
+      if (isNaN(d.getTime())) return ''
+      return new Date(d.getTime() - 3 * 60 * 60 * 1000).toISOString()
+    }
+
     var csv = 'Cliente,Empresa,Motivo,Canal,Prioridade,Status,Data,Duracao(min),Descricao\n'
     for (var j = 0; j < records.length; j++) {
       var r = records[j]
@@ -43,7 +50,7 @@ routerAdd(
         r.getString('channel') || '',
         r.getString('priority') || '',
         r.getString('status') || '',
-        r.getString('created') || '',
+        toGMT3ISO(r.getString('created')) || '',
         String(r.get('duration') || 0),
         (r.getString('description') || '').replace(/"/g, '""'),
       ]

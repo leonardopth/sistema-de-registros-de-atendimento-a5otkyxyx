@@ -1,4 +1,5 @@
 import { ServiceRecord, ClientRecord } from '@/types/service_record'
+import { getGMT3DateString } from '@/lib/timezone'
 
 export interface DashboardFilters {
   searchTerm?: string
@@ -96,7 +97,7 @@ export function getPreviousPeriodCount(
     const prevStartStr = prevStart.toISOString().substring(0, 10)
     const prevEndStr = prevEnd.toISOString().substring(0, 10)
     return records.filter((r) => {
-      const recDate = r.created?.substring(0, 10) || ''
+      const recDate = getGMT3DateString(r.created)
       return recDate >= prevStartStr && recDate <= prevEndStr
     }).length
   } catch {
@@ -146,7 +147,7 @@ export function filterRecords(
     )
       return false
 
-    const recDate = r.created?.substring(0, 10) || ''
+    const recDate = getGMT3DateString(r.created)
     if (filters.dateFrom && recDate < filters.dateFrom) return false
     if (filters.dateTo && recDate > filters.dateTo) return false
     if (filters.startDate && recDate < filters.startDate) return false

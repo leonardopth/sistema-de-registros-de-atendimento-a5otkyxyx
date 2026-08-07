@@ -3,8 +3,7 @@ import { getHistoryByServiceRecord } from '@/services/service_record_history'
 import { useRealtime } from '@/hooks/use-realtime'
 import { ServiceRecordHistory } from '@/types/service_record'
 import { Loader2, History, User } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatGMT3DateTime } from '@/lib/timezone'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 const FIELD_LABELS: Record<string, string> = {
@@ -86,7 +85,7 @@ export function ServiceRecordHistoryPanel({ serviceRecordId }: Props) {
                 {FIELD_LABELS[h.field] || h.field}
               </span>
               <span className="text-[10px] text-slate-400">
-                Em: {format(new Date(h.created), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                Em: {formatGMT3DateTime(h.created)}
               </span>
             </div>
             <div className="flex items-center gap-2 text-[11px] flex-wrap">

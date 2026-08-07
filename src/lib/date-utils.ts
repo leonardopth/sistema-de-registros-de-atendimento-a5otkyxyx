@@ -1,14 +1,14 @@
+import { getGMT3DayRange } from '@/lib/timezone'
+
 export function getLocalDayRange(date: Date = new Date()): { start: Date; end: Date } {
-  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0)
-  const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999)
-  return { start, end }
+  return getGMT3DayRange(date)
 }
 
 export function isCreatedToday(created: string | undefined): boolean {
   if (!created) return false
   const createdDate = new Date(created)
   if (isNaN(createdDate.getTime())) return false
-  const { start, end } = getLocalDayRange()
+  const { start, end } = getGMT3DayRange()
   return createdDate >= start && createdDate <= end
 }
 
@@ -21,11 +21,13 @@ export function isCreatedInRange(
   const createdDate = new Date(created)
   if (isNaN(createdDate.getTime())) return false
   if (startStr) {
-    const start = new Date(startStr + 'T00:00:00')
+    const [sy, sm, sd] = startStr.split('-').map(Number)
+    const start = new Date(Date.UTC(sy, sm - 1, sd, 3, 0, 0, 0))
     if (createdDate < start) return false
   }
   if (endStr) {
-    const end = new Date(endStr + 'T23:59:59.999')
+    const [ey, em, ed] = endStr.split('-').map(Number)
+    const end = new Date(Date.UTC(ey, em - 1, ed, 3, 0, 0, 0) + 24 * 60 * 60 * 1000 - 1)
     if (createdDate > end) return false
   }
   return true

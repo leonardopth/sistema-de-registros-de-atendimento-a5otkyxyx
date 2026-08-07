@@ -75,8 +75,7 @@ import {
   downloadConsolidatedExcel,
   downloadConsolidatedPDF,
 } from '@/lib/consolidated-report'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatGMT3DateTime, getGMT3DateString } from '@/lib/timezone'
 
 export default function Atendimentos() {
   const [records, setRecords] = useState<ServiceRecord[]>([])
@@ -277,7 +276,7 @@ export default function Atendimentos() {
 
     const matchesUser = !filterByUser || r.assigned_user === user?.id || r.user_id === user?.id
 
-    const recDate = r.created ? r.created.substring(0, 10) : ''
+    const recDate = getGMT3DateString(r.created)
     const matchesDateFrom = !dateFrom || recDate >= dateFrom
     const matchesDateTo = !dateTo || recDate <= dateTo
 
@@ -819,9 +818,7 @@ export default function Atendimentos() {
                       {r.expand?.assigned_user?.name || r.assigned_agent || '-'}
                     </TableCell>
                     <TableCell className="text-xs text-slate-500">
-                      {r.created
-                        ? format(new Date(r.created), 'dd/MM/yyyy HH:mm', { locale: ptBR })
-                        : '-'}
+                      {r.created ? formatGMT3DateTime(r.created) : '-'}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">

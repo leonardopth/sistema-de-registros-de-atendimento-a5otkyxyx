@@ -16,8 +16,7 @@ import { useRealtime } from '@/hooks/use-realtime'
 import { NotificationRecord } from '@/types/service_record'
 import { TelegramSettings } from '@/components/TelegramSettings'
 import { cn } from '@/lib/utils'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatGMT3DateTimeAt } from '@/lib/timezone'
 
 type FilterType = 'all' | 'pending' | 'resolved'
 
@@ -150,11 +149,7 @@ export function NotificationBell() {
                         <p className="text-xs font-bold text-slate-900">{notif.title}</p>
                         <p className="text-xs text-slate-600 mt-0.5">{notif.message}</p>
                         <p className="text-[10px] text-slate-400 mt-1">
-                          {notif.created
-                            ? format(new Date(notif.created), "dd/MM/yyyy 'às' HH:mm", {
-                                locale: ptBR,
-                              })
-                            : ''}
+                          {notif.created ? formatGMT3DateTimeAt(notif.created) : ''}
                         </p>
                       </div>
                       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
