@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge'
-import { Plane, Globe } from 'lucide-react'
+import { Map, Globe } from 'lucide-react'
 import { TravelType } from '@/types/service_record'
 import { cn } from '@/lib/utils'
 
@@ -24,7 +24,7 @@ export function TravelTypeBadge({ travelType, className }: TravelTypeBadgeProps)
         className,
       )}
     >
-      {isNational ? <Plane className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+      {isNational ? <Map className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
       {travelType}
     </Badge>
   )

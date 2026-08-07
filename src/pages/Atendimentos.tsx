@@ -374,6 +374,20 @@ export default function Atendimentos() {
     }
   }
 
+  const handleToggleTask = async (recordId: string, taskIndex: number) => {
+    const record = records.find((r) => r.id === recordId)
+    if (!record || !Array.isArray(record.tasks)) return
+    const newTasks = [...record.tasks]
+    newTasks[taskIndex] = { ...newTasks[taskIndex], done: !newTasks[taskIndex].done }
+    setRecords((prev) => prev.map((r) => (r.id === recordId ? { ...r, tasks: newTasks } : r)))
+    try {
+      await updateServiceRecord(recordId, { tasks: newTasks })
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao atualizar tarefa' })
+      loadData()
+    }
+  }
+
   const exportData = view === 'mine' ? myRecords : displayRecords
 
   const handleExportCSV = () => {
@@ -513,141 +527,126 @@ export default function Atendimentos() {
         </p>
       </div>
 
-      <Card className="p-3 border-slate-200 shadow-subtle space-y-2.5">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-12 gap-2">
-          <div className="col-span-2 sm:col-span-3 lg:col-span-3 relative">
-            <Search className="absolute left-2.5 top-2 h-4 w-4 text-slate-400" />
+      <Card className="p-2 border-slate-200 shadow-subtle space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="relative flex-1 min-w-[140px]">
+            <Search className="absolute left-2.5 top-1.5 h-3.5 w-3.5 text-slate-400" />
             <Input
               placeholder="Buscar cliente, empresa..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 text-xs"
+              className="pl-7 h-7 text-xs"
             />
           </div>
-          <div className="lg:col-span-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 text-xs w-full">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Status</SelectItem>
-                <SelectItem value="Aberto">Aberto</SelectItem>
-                <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                <SelectItem value="Concluído">Concluído</SelectItem>
-                <SelectItem value="Cancelado">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="lg:col-span-2">
-            <Select value={reasonFilter} onValueChange={setReasonFilter}>
-              <SelectTrigger className="h-8 text-xs w-full">
-                <SelectValue placeholder="Motivo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Motivos</SelectItem>
-                <SelectItem value="Bagagem">Bagagem</SelectItem>
-                <SelectItem value="Assento">Assento</SelectItem>
-                <SelectItem value="cálculo reemissão">cálculo reemissão</SelectItem>
-                <SelectItem value="reembolso">reembolso</SelectItem>
-                <SelectItem value="cotação">cotação</SelectItem>
-                <SelectItem value="reserva">reserva</SelectItem>
-                <SelectItem value="cancelamento">cancelamento</SelectItem>
-                <SelectItem value="regras tarifárias">regras tarifárias</SelectItem>
-                <SelectItem value="erro RF">erro RF</SelectItem>
-                <SelectItem value="outros">outros</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="lg:col-span-2">
-            <Select
-              value={wrongDeptFilter}
-              onValueChange={(val) => {
-                setWrongDeptFilter(val)
-                if (val === 'todos') {
-                  searchParams.delete('avoidable_contact')
-                } else {
-                  searchParams.set('avoidable_contact', val)
-                }
-                setSearchParams(searchParams)
-              }}
-            >
-              <SelectTrigger className="h-8 text-xs w-full">
-                <Filter className="h-3 w-3 text-amber-500 mr-1 shrink-0" />
-                <SelectValue placeholder="Evitável" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Contato Evitável: Todos</SelectItem>
-                <SelectItem value="sim">Sim</SelectItem>
-                <SelectItem value="nao">Não</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="lg:col-span-2">
-            <Select value={serviceGroupFilter} onValueChange={setServiceGroupFilter}>
-              <SelectTrigger className="h-8 text-xs w-full">
-                <Filter className="h-3 w-3 text-indigo-500 mr-1 shrink-0" />
-                <SelectValue placeholder="Grupo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Grupos</SelectItem>
-                {SERVICE_GROUP_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="lg:col-span-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearFilters}
-              className="h-8 text-xs text-slate-600 w-full px-0"
-              title="Limpar Filtros"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <DateRangeFilter
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-              onDateFromChange={setDateFrom}
-              onDateToChange={setDateTo}
-              onClear={() => {
-                setDateFrom('')
-                setDateTo('')
-              }}
-              hasActiveFilter={!!dateFrom || !!dateTo}
-            />
-            <Select value={travelTypeFilter} onValueChange={setTravelTypeFilter}>
-              <SelectTrigger className="h-8 text-xs w-[140px]">
-                <Plane className="h-3 w-3 text-indigo-500 mr-1 shrink-0" />
-                <SelectValue placeholder="Viagem" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Tipos</SelectItem>
-                <SelectItem value="Nacional">Nacional</SelectItem>
-                <SelectItem value="Internacional">Internacional</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex gap-1.5">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-7 text-xs w-[120px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Status</SelectItem>
+              <SelectItem value="Aberto">Aberto</SelectItem>
+              <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+              <SelectItem value="Concluído">Concluído</SelectItem>
+              <SelectItem value="Cancelado">Cancelado</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={reasonFilter} onValueChange={setReasonFilter}>
+            <SelectTrigger className="h-7 text-xs w-[130px]">
+              <SelectValue placeholder="Motivo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Motivos</SelectItem>
+              <SelectItem value="Bagagem">Bagagem</SelectItem>
+              <SelectItem value="Assento">Assento</SelectItem>
+              <SelectItem value="cálculo reemissão">cálculo reemissão</SelectItem>
+              <SelectItem value="reembolso">reembolso</SelectItem>
+              <SelectItem value="cotação">cotação</SelectItem>
+              <SelectItem value="reserva">reserva</SelectItem>
+              <SelectItem value="cancelamento">cancelamento</SelectItem>
+              <SelectItem value="regras tarifárias">regras tarifárias</SelectItem>
+              <SelectItem value="erro RF">erro RF</SelectItem>
+              <SelectItem value="outros">outros</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={wrongDeptFilter}
+            onValueChange={(val) => {
+              setWrongDeptFilter(val)
+              if (val === 'todos') {
+                searchParams.delete('avoidable_contact')
+              } else {
+                searchParams.set('avoidable_contact', val)
+              }
+              setSearchParams(searchParams)
+            }}
+          >
+            <SelectTrigger className="h-7 text-xs w-[110px]">
+              <Filter className="h-3 w-3 text-amber-500 mr-1 shrink-0" />
+              <SelectValue placeholder="Evitável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Evitável: Todos</SelectItem>
+              <SelectItem value="sim">Sim</SelectItem>
+              <SelectItem value="nao">Não</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={serviceGroupFilter} onValueChange={setServiceGroupFilter}>
+            <SelectTrigger className="h-7 text-xs w-[120px]">
+              <Filter className="h-3 w-3 text-indigo-500 mr-1 shrink-0" />
+              <SelectValue placeholder="Grupo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Grupos</SelectItem>
+              {SERVICE_GROUP_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={travelTypeFilter} onValueChange={setTravelTypeFilter}>
+            <SelectTrigger className="h-7 text-xs w-[110px]">
+              <Plane className="h-3 w-3 text-indigo-500 mr-1 shrink-0" />
+              <SelectValue placeholder="Viagem" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Tipos</SelectItem>
+              <SelectItem value="Nacional">Nacional</SelectItem>
+              <SelectItem value="Internacional">Internacional</SelectItem>
+            </SelectContent>
+          </Select>
+          <DateRangeFilter
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={setDateFrom}
+            onDateToChange={setDateTo}
+            onClear={() => {
+              setDateFrom('')
+              setDateTo('')
+            }}
+            hasActiveFilter={!!dateFrom || !!dateTo}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearFilters}
+            className="h-7 text-xs text-slate-600 px-2"
+            title="Limpar Filtros"
+          >
+            <RotateCcw className="h-3 w-3" />
+          </Button>
+          <div className="ml-auto flex gap-1.5">
             <ExportMenu
               label="Exportar"
               variant="default"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white h-8"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white h-7"
               onCSV={handleExportCSV}
               onExcel={handleExportExcel}
               onPDF={handleExportPDF}
             />
             <ExportMenu
               label="Consolidado"
-              className="h-8"
+              className="h-7"
               onCSV={handleExportConsolidatedCSV}
               onExcel={handleExportConsolidatedExcel}
               onPDF={handleExportConsolidatedPDF}
@@ -664,7 +663,7 @@ export default function Atendimentos() {
               <Button
                 size="sm"
                 onClick={handleBatchComplete}
-                className="bg-emerald-600 hover:bg-emerald-700 h-8 text-xs font-semibold"
+                className="bg-emerald-600 hover:bg-emerald-700 h-7 text-xs font-semibold"
               >
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Concluir
               </Button>
@@ -672,7 +671,7 @@ export default function Atendimentos() {
                 size="sm"
                 variant="destructive"
                 onClick={handleBatchDelete}
-                className="h-8 text-xs font-semibold"
+                className="h-7 text-xs font-semibold"
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
               </Button>
@@ -707,6 +706,7 @@ export default function Atendimentos() {
             setSelectedRecord(r)
             setDetailOpen(true)
           }}
+          onToggleTask={handleToggleTask}
         />
       ) : (
         <Card className="border-slate-200 shadow-subtle overflow-hidden">
@@ -776,8 +776,15 @@ export default function Atendimentos() {
               </TableHeader>
               <TableBody>
                 {displayRecords.map((r) => (
-                  <TableRow key={r.id} className="hover:bg-slate-50">
-                    <TableCell>
+                  <TableRow
+                    key={r.id}
+                    className="hover:bg-slate-50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      setSelectedRecord(r)
+                      setDetailOpen(true)
+                    }}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedIds.includes(r.id)}
                         onCheckedChange={(checked) => handleSelectRow(r.id, !!checked)}
@@ -820,7 +827,7 @@ export default function Atendimentos() {
                     <TableCell className="text-xs text-slate-500">
                       {r.created ? formatGMT3DateTime(r.created) : '-'}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
                         {r.status === 'Em Andamento' &&
                           ((r.duration || 0) > 0 || r.timer_start) && (

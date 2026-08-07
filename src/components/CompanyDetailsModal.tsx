@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { StatusBadge } from '@/components/StatusBadge'
 import { PriorityBadge } from '@/components/PriorityBadge'
+import { TravelTypeBadge } from '@/components/TravelTypeBadge'
 import { AgentInlineEditor } from '@/components/AgentInlineEditor'
 import { AgentStatsList } from '@/components/AgentStatsList'
 import { getClients } from '@/services/clients'
@@ -234,9 +235,14 @@ export function CompanyDetailsModal({
                                 className="p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1.5"
                               >
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="font-semibold text-indigo-950">
-                                    {r.contact_reason}
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-indigo-950">
+                                      {r.contact_reason}
+                                    </span>
+                                    {r.travel_type && (
+                                      <TravelTypeBadge travelType={r.travel_type} />
+                                    )}
+                                  </div>
                                   <div className="flex items-center gap-1.5">
                                     <PriorityBadge priority={r.priority} />
                                     <StatusBadge status={r.status} />
@@ -273,7 +279,10 @@ export function CompanyDetailsModal({
                 {clientRecords.map((r) => (
                   <div key={r.id} className="p-3.5 bg-slate-50 border rounded-lg space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-indigo-950">{r.contact_reason}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-indigo-950">{r.contact_reason}</span>
+                        {r.travel_type && <TravelTypeBadge travelType={r.travel_type} />}
+                      </div>
                       <StatusBadge status={r.status} />
                     </div>
                     <p className="text-xs text-slate-700">{r.description}</p>

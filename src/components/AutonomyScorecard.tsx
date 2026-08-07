@@ -1,10 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ServiceRecord, ClientRecord } from '@/types/service_record'
-import { Award, CheckCircle } from 'lucide-react'
+import { Award, CheckCircle, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
 
 interface AutonomyScorecardProps {
   records?: ServiceRecord[]
   clients?: ClientRecord[]
+}
+
+interface ClientAutonomy {
+  name: string
+  total: number
+  avoidable: number
+  autonomyRate: number
 }
 
 export function AutonomyScorecard({ records = [] }: AutonomyScorecardProps) {
@@ -15,15 +22,28 @@ export function AutonomyScorecard({ records = [] }: AutonomyScorecardProps) {
   const avoidableRate = total > 0 ? Math.round((avoidableCount / total) * 100) : 0
   const autonomyRate = 100 - avoidableRate
 
-  const reasonCounts: Record<string, number> = {}
+  const clientMap = new Map<string, { total: number; avoidable: number }>()
   safeRecords.forEach((r) => {
-    if (r && r.avoidable_contact && r.avoidable_contact_reason) {
-      const reason = r.avoidable_contact_reason
-      reasonCounts[reason] = (reasonCounts[reason] || 0) + 1
-    }
+    const key = r.client_company || r.client_name || 'Desconhecido'
+    if (!clientMap.has(key)) clientMap.set(key, { total: 0, avoidable: 0 })
+    const entry = clientMap.get(key)!
+    entry.total++
+    if (r.avoidable_contact) entry.avoidable++
   })
 
-  const sortedReasons = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])
+  const clientAutonomies: ClientAutonomy[] = Array.from(clientMap.entries())
+    .filter(([, v]) => v.total >= 2)
+    .map(([name, v]) => ({
+      name,
+      total: v.total,
+      avoidable: v.avoidable,
+      autonomyRate: Math.round(((v.total - v.avoidable) / v.total) * 100),
+    }))
+    .sort((a, b) => b.autonomyRate - a.autonomyRate)
+
+  const top3 = clientAutonomies.slice(0, 3)
+  const showBottom3 = clientAutonomies.length > 3
+  const bottom3 = showBottom3 ? clientAutonomies.slice(-3).reverse() : []
 
   return (
     <Card className="border-slate-200 shadow-subtle">
@@ -52,22 +72,52 @@ export function AutonomyScorecard({ records = [] }: AutonomyScorecardProps) {
           </div>
         </div>
 
-        {sortedReasons.length > 0 ? (
+        {top3.length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
-              Principais Motivos de Evitáveis
+            <p className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+              <TrendingUp className="h-3 w-3 text-emerald-600" /> Top 3 — Maior Autonomia
             </p>
-            {sortedReasons.slice(0, 3).map(([reason, count]) => (
+            {top3.map((c, idx) => (
               <div
-                key={reason}
-                className="flex items-center justify-between text-xs p-1.5 bg-slate-100/70 rounded"
+                key={`top-${c.name}`}
+                className="flex items-center justify-between text-xs p-1.5 bg-emerald-50/70 rounded"
               >
-                <span className="text-slate-700 truncate">{reason}</span>
-                <span className="font-bold text-slate-900 shrink-0">{count} contatos</span>
+                <span className="text-slate-700 truncate flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold text-emerald-600">#{idx + 1}</span>
+                  {c.name}
+                </span>
+                <span className="font-bold text-emerald-700 shrink-0">{c.autonomyRate}%</span>
               </div>
             ))}
           </div>
-        ) : (
+        )}
+
+        {bottom3.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider flex items-center gap-1">
+              <TrendingDown className="h-3 w-3 text-amber-600" /> Bottom 3 — Precisam de Treinamento
+            </p>
+            {bottom3.map((c, idx) => (
+              <div
+                key={`bottom-${c.name}`}
+                className="flex items-center justify-between text-xs p-1.5 bg-amber-50/70 rounded border border-amber-100"
+              >
+                <span className="text-slate-700 truncate flex items-center gap-1.5">
+                  <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
+                  {c.name}
+                </span>
+                <div className="text-right shrink-0">
+                  <span className="font-bold text-amber-700">{c.autonomyRate}%</span>
+                  <span className="text-[10px] text-slate-400 ml-1">
+                    ({c.avoidable}/{c.total} evit.)
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {top3.length === 0 && bottom3.length === 0 && (
           <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 p-2.5 rounded-lg border border-emerald-100">
             <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" />
             <span>Nenhum contato evitável registrado no período. Ótimo trabalho!</span>

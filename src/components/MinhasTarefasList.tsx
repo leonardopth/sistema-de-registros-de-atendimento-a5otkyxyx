@@ -1,9 +1,10 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
-import { ServiceRecord } from '@/types/service_record'
+import { ServiceRecord, TaskItem } from '@/types/service_record'
 import { StatusBadge } from './StatusBadge'
 import { PriorityBadge } from './PriorityBadge'
+import { TravelTypeBadge } from './TravelTypeBadge'
 import { Eye, Clock, User, CheckSquare } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -11,9 +12,10 @@ import { ptBR } from 'date-fns/locale'
 interface MinhasTarefasListProps {
   records: ServiceRecord[]
   onViewRecord?: (record: ServiceRecord) => void
+  onToggleTask?: (recordId: string, taskIndex: number) => void
 }
 
-export function MinhasTarefasList({ records, onViewRecord }: MinhasTarefasListProps) {
+export function MinhasTarefasList({ records, onViewRecord, onToggleTask }: MinhasTarefasListProps) {
   if (records.length === 0) {
     return (
       <Card className="border-slate-200 shadow-subtle p-8 text-center">
@@ -23,11 +25,14 @@ export function MinhasTarefasList({ records, onViewRecord }: MinhasTarefasListPr
     )
   }
 
+  const isTaskEditable = (status: string) => status !== 'Cancelado' && status !== 'Concluído'
+
   return (
     <div className="space-y-3">
       {records.map((r) => {
         const tasks = Array.isArray(r.tasks) ? r.tasks : []
         const completedTasks = tasks.filter((t) => t.done).length
+        const editable = isTaskEditable(r.status)
         return (
           <Card key={r.id} className="border-slate-200 shadow-subtle overflow-hidden">
             <CardContent className="p-4 space-y-3">
@@ -45,6 +50,7 @@ export function MinhasTarefasList({ records, onViewRecord }: MinhasTarefasListPr
                     <h4 className="font-bold text-sm text-slate-900">{r.client_name}</h4>
                     <StatusBadge status={r.status} />
                     <PriorityBadge priority={r.priority} />
+                    {r.travel_type && <TravelTypeBadge travelType={r.travel_type} />}
                   </div>
                   <p className="text-xs text-slate-600 line-clamp-2">{r.description}</p>
                   <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
@@ -83,12 +89,16 @@ export function MinhasTarefasList({ records, onViewRecord }: MinhasTarefasListPr
                     </span>
                   </div>
                   <div className="space-y-1">
-                    {tasks.map((task, idx) => (
+                    {tasks.map((task: TaskItem, idx: number) => (
                       <div
                         key={idx}
                         className="flex items-center gap-2 p-1.5 bg-slate-50 rounded text-xs"
                       >
-                        <Checkbox checked={task.done} disabled />
+                        <Checkbox
+                          checked={task.done}
+                          disabled={!editable}
+                          onCheckedChange={() => onToggleTask?.(r.id, idx)}
+                        />
                         <span
                           className={task.done ? 'line-through text-slate-400' : 'text-slate-700'}
                         >
