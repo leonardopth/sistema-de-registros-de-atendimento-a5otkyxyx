@@ -19,6 +19,11 @@ import { Building, Mail, Phone, Loader2, Pencil, Headset } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
+function cleanStr(str?: string | null): string {
+  if (!str) return ''
+  return str.trim().toLowerCase()
+}
+
 interface CompanyDetailsModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -73,6 +78,13 @@ export function CompanyDetailsModal({
     open,
   )
   useRealtime(
+    'clients',
+    () => {
+      if (open) loadData()
+    },
+    open,
+  )
+  useRealtime(
     'service_record_history',
     () => {
       if (open) loadData()
@@ -80,28 +92,58 @@ export function CompanyDetailsModal({
     open,
   )
 
-  const matchingClient = useMemo(
-    () => clients.find((c) => (clientId ? c.id === clientId : c.company === companyName)),
+  const matchingClients = useMemo(
+    () =>
+      clients.filter(
+        (c) =>
+          (clientId && c.id === clientId) ||
+          cleanStr(c.company) === cleanStr(companyName) ||
+          cleanStr(c.name) === cleanStr(companyName),
+      ),
     [clients, clientId, companyName],
   )
 
+  const matchingClient =
+    matchingClients[0] || (clientId ? clients.find((c) => c.id === clientId) : null) || null
   const effectiveClientId = clientId || matchingClient?.id
-
-  const companyAgents = useMemo(() => {
-    const matchingClientIds = new Set(
-      clients
-        .filter((c) => (clientId ? c.id === clientId : c.company === companyName))
-        .map((c) => c.id),
-    )
-    return agents.filter((a) => matchingClientIds.has(a.client_id))
-  }, [clients, agents, clientId, companyName])
 
   const clientRecords = useMemo(() => {
     const filtered = records.filter((r) =>
-      isRecordForClient(r, matchingClient, clientId, companyName),
+      isRecordForClient(r, matchingClient, effectiveClientId, companyName),
     )
     return filterRecordsByUserAccess(user, filtered)
-  }, [records, clientId, companyName, matchingClient, user])
+  }, [records, effectiveClientId, companyName, matchingClient, user])
+
+  const companyAgents = useMemo(() => {
+    const matchingClientIds = new Set(matchingClients.map((c) => c.id))
+    if (effectiveClientId) matchingClientIds.add(effectiveClientId)
+
+    const agentMap = new Map<string, AgentRecord>()
+
+    for (const a of agents) {
+      if (
+        matchingClientIds.has(a.client_id) ||
+        (a.expand?.client_id?.id && matchingClientIds.has(a.expand.client_id.id))
+      ) {
+        agentMap.set(a.id, a)
+      }
+    }
+
+    for (const r of clientRecords) {
+      if (r.agent && !agentMap.has(r.agent)) {
+        const found = agents.find((a) => a.id === r.agent)
+        if (found) agentMap.set(found.id, found)
+      }
+      if (r.assigned_agent) {
+        const found = agents.find(
+          (a) => a.id === r.assigned_agent || cleanStr(a.name) === cleanStr(r.assigned_agent),
+        )
+        if (found && !agentMap.has(found.id)) agentMap.set(found.id, found)
+      }
+    }
+
+    return Array.from(agentMap.values())
+  }, [agents, matchingClients, effectiveClientId, clientRecords])
 
   const getAgentRecords = useCallback(
     (agent: AgentRecord): ServiceRecord[] => {
@@ -222,7 +264,7 @@ export function CompanyDetailsModal({
           </div>
         )}
 
-        {(effectiveClientId || clientRecords.length > 0) && (
+        {(effectiveClientId || clientRecords.length > 0 || companyAgents.length > 0) && (
           <div className="space-y-4 pt-2">
             <Card className="border-slate-200 p-4 space-y-3">
               <div className="flex items-center justify-between border-b pb-2">
@@ -267,6 +309,7 @@ export function CompanyDetailsModal({
                 clientId={effectiveClientId || ''}
                 companyName={companyName}
                 clientRecords={clientRecords}
+                agents={companyAgents}
               />
             </Card>
           </div>

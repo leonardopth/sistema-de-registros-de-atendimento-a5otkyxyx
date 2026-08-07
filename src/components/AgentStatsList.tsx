@@ -1,119 +1,114 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { AgentRecord, ServiceRecord } from '@/types/service_record'
-import { getAgents } from '@/services/agents'
-import { getServiceRecords } from '@/services/service_records'
-import { getClients } from '@/services/clients'
-import { useRealtime } from '@/hooks/use-realtime'
-import { useAuth } from '@/hooks/use-auth'
-import { isRecordForClient, isRecordForAgent } from '@/lib/client-record-helpers'
-import { filterRecordsByUserAccess } from '@/lib/service-group-access'
-import { Headset, AlertTriangle, TrendingUp } from 'lucide-react'
+import { isRecordForAgent } from '@/lib/client-record-helpers'
+import { Headset, AlertTriangle, TrendingUp, User } from 'lucide-react'
 
 interface AgentStatsListProps {
   clientId?: string
   companyName?: string
-  clientRecords?: ServiceRecord[]
+  clientRecords: ServiceRecord[]
+  agents?: AgentRecord[]
 }
 
-export function AgentStatsList({ clientId, companyName, clientRecords }: AgentStatsListProps) {
-  const [agents, setAgents] = useState<AgentRecord[]>([])
-  const [fetchedRecords, setFetchedRecords] = useState<ServiceRecord[]>([])
-  const { user } = useAuth()
-
-  const loadData = async () => {
-    try {
-      const [agentList, allRecords, clientList] = await Promise.all([
-        getAgents(),
-        getServiceRecords(),
-        getClients(),
-      ])
-
-      const matchingClient = clientList.find(
-        (c) => (clientId && c.id === clientId) || (companyName && c.company === companyName),
-      )
-      const matchingClientIds = new Set(
-        clientList
-          .filter(
-            (c) => (clientId && c.id === clientId) || (companyName && c.company === companyName),
-          )
-          .map((c) => c.id),
-      )
-
-      const filteredAgents = agentList.filter((a: AgentRecord) =>
-        matchingClientIds.has(a.client_id),
-      )
-      setAgents(filteredAgents)
-
-      if (!clientRecords) {
-        const filteredRecs = allRecords.filter((r) =>
-          isRecordForClient(r, matchingClient, clientId, companyName),
-        )
-        setFetchedRecords(filterRecordsByUserAccess(user, filteredRecs))
+export function AgentStatsList({ clientRecords, agents = [] }: AgentStatsListProps) {
+  const agentStats = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        agent: AgentRecord | { id: string; name: string }
+        total: number
+        avoidable: number
       }
-    } catch (err) {
-      console.error(err)
-    }
-  }
+    >()
 
-  useEffect(() => {
-    loadData()
-  }, [clientId, companyName])
-
-  useRealtime('service_records', () => loadData())
-  useRealtime('agents', () => loadData())
-
-  const effectiveRecords = clientRecords || fetchedRecords
-
-  const stats = useMemo(() => {
-    return agents.map((agent) => {
-      const agentRecords = effectiveRecords.filter((r) => isRecordForAgent(r, agent))
-      const total = agentRecords.length
-      const avoidable = agentRecords.filter((r) => r.avoidable_contact).length
-      const reasonCount: Record<string, number> = {}
-      agentRecords.forEach((r) => {
-        if (r.contact_reason) {
-          reasonCount[r.contact_reason] = (reasonCount[r.contact_reason] || 0) + 1
-        }
+    for (const agent of agents) {
+      map.set(agent.id, {
+        agent,
+        total: 0,
+        avoidable: 0,
       })
-      const mostFrequent = Object.entries(reasonCount).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'
-      return { agent, total, avoidable, mostFrequent }
-    })
-  }, [agents, effectiveRecords])
+    }
 
-  if (agents.length === 0) {
+    for (const record of clientRecords) {
+      let matchedAgentId: string | null = null
+
+      for (const agent of agents) {
+        if (isRecordForAgent(record, agent)) {
+          matchedAgentId = agent.id
+          break
+        }
+      }
+
+      if (matchedAgentId && map.has(matchedAgentId)) {
+        const item = map.get(matchedAgentId)!
+        item.total += 1
+        if (record.avoidable_contact) {
+          item.avoidable += 1
+        }
+      } else {
+        const agentName = record.expand?.agent?.name || record.assigned_agent || 'Sem agente'
+        const agentKey = record.agent || record.assigned_agent || agentName
+
+        if (!map.has(agentKey)) {
+          map.set(agentKey, {
+            agent: { id: agentKey, name: agentName },
+            total: 0,
+            avoidable: 0,
+          })
+        }
+        const item = map.get(agentKey)!
+        item.total += 1
+        if (record.avoidable_contact) {
+          item.avoidable += 1
+        }
+      }
+    }
+
+    return Array.from(map.values())
+  }, [agents, clientRecords])
+
+  if (agentStats.length === 0) {
     return (
-      <p className="text-xs text-slate-400 text-center py-4">
-        Nenhum agente cadastrado para esta empresa.
-      </p>
+      <div className="text-center py-4 text-xs text-slate-400">
+        Nenhum histórico de agentes disponível.
+      </div>
     )
   }
 
   return (
-    <div className="space-y-2">
-      <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-        Histórico de Agentes
-      </span>
-      {stats.map(({ agent, total, avoidable, mostFrequent }) => (
-        <div
-          key={agent.id}
-          className="flex items-center justify-between p-3 bg-white border rounded-lg"
-        >
-          <div className="space-y-0.5">
-            <p className="text-xs font-semibold text-slate-900">{agent.name}</p>
-            <div className="flex items-center gap-3 text-[11px] text-slate-500">
-              <span className="flex items-center gap-1">
-                <Headset className="h-3 w-3" /> {total} atendimento(s)
-              </span>
-              <span className="flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" /> {mostFrequent}
-              </span>
-              <span className="flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3 text-amber-500" /> {avoidable} evitável(eis)
-              </span>
+    <div className="space-y-3">
+      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+        HISTÓRICO DE AGENTES
+      </h4>
+      <div className="grid gap-2 sm:grid-cols-1">
+        {agentStats.map(({ agent, total, avoidable }) => (
+          <div
+            key={agent.id}
+            className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+          >
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+                <User className="h-3.5 w-3.5 text-slate-500" />
+                <span>{agent.name}</span>
+              </div>
+              <div className="flex items-center gap-4 text-slate-500 text-[11px]">
+                <span className="flex items-center gap-1">
+                  <Headset className="h-3 w-3 text-indigo-600" />
+                  <strong className="font-semibold text-slate-700">{total}</strong> atendimento(s)
+                </span>
+                <span className="flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-emerald-600" /> —
+                </span>
+                <span className="flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3 text-amber-500" />
+                  <strong className="font-semibold text-slate-700">{avoidable}</strong>{' '}
+                  evitável(eis)
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }
