@@ -85,11 +85,15 @@ export default function Login() {
         })
       } else {
         const errorText = getErrorMessage(error)
+        const fallback = 'E-mail ou senha incorretos. Verifique as credenciais.'
         toast({
           variant: 'destructive',
           title: 'Falha no login',
-          description: errorText || 'E-mail ou senha incorretos. Verifique as credenciais.',
+          description: errorText || fallback,
         })
+        if (!errorText) {
+          setLoginMessage({ type: 'rejected', text: fallback })
+        }
       }
     } else {
       if (rememberMe) {

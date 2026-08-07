@@ -134,7 +134,9 @@ export default function Clientes() {
   const handleSelectClient = (c: ClientRecord) => {
     setSelectedClient(c)
     setEditName(c.name)
-    setEditExecutiveId(executives.find((ex) => ex.name === c.name)?.id || '')
+    setEditExecutiveId(
+      c.account_executive_rel || executives.find((ex) => ex.name === c.name)?.id || '',
+    )
     setExecutiveError('')
     setEditPhone(c.phone || '')
     setEditCompany(c.company || '')

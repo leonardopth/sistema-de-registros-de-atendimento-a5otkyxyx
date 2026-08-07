@@ -5,7 +5,7 @@ export const getClients = async (): Promise<ClientRecord[]> => {
   try {
     const list = await pb.collection('clients').getFullList<ClientRecord>({
       sort: '-created',
-      expand: 'account_executive_rel',
+      expand: 'account_executive_rel,blocked_by',
     })
     return Array.isArray(list) ? list : []
   } catch (error) {

@@ -164,14 +164,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         pb.authStore.clear()
         setUser(null)
         setIsAuthenticated(false)
-        return { error: { message: 'pending' }, approvalStatus: 'Pendente' }
+        return {
+          error: { message: 'Seu cadastro está aguardando aprovação do gestor.' },
+          approvalStatus: 'Pendente',
+        }
       }
 
       if (approvalStatus === 'Rejeitado') {
         pb.authStore.clear()
         setUser(null)
         setIsAuthenticated(false)
-        return { error: { message: 'rejected' }, approvalStatus: 'Rejeitado' }
+        return {
+          error: {
+            message: 'Seu cadastro foi rejeitado. Entre em contato com o gestor do sistema.',
+          },
+          approvalStatus: 'Rejeitado',
+        }
       }
 
       setUser(authData.record)
