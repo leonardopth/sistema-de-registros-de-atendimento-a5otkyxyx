@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { VoiceInputButton } from '@/components/VoiceInputButton'
+import { NewAgentDialog } from '@/components/NewAgentDialog'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
@@ -28,6 +29,7 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
   const form = useServiceRecordForm(open, true)
   const { toast } = useToast()
   const [analyzing, setAnalyzing] = useState(false)
+  const [newAgentOpen, setNewAgentOpen] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -111,13 +113,20 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
               className="h-9"
             />
           </div>
-          {form.selectedClientId && form.agents.length > 0 && (
+          {form.selectedClientId && (
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Cliente/Agente</Label>
               <SearchableSelect
                 options={form.agents.map((a) => ({ value: a.id, label: a.name }))}
+                pinnedOptions={[{ value: '__new_agent__', label: '＋ Cadastrar novo Agente' }]}
                 value={form.selectedAgentId}
-                onValueChange={form.handleSelectAgent}
+                onValueChange={(val) => {
+                  if (val === '__new_agent__') {
+                    setNewAgentOpen(true)
+                    return
+                  }
+                  form.handleSelectAgent(val)
+                }}
                 placeholder="Selecione o agente..."
                 emptyText="Nenhum agente encontrado."
                 className="h-9"
@@ -197,6 +206,15 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
               )}
             </div>
           )}
+          <NewAgentDialog
+            open={newAgentOpen}
+            onOpenChange={setNewAgentOpen}
+            clientId={form.selectedClientId}
+            onAgentCreated={(agent) => {
+              form.addAndSelectAgent(agent)
+            }}
+          />
+
           <div className="flex gap-2">
             <Button
               type="submit"

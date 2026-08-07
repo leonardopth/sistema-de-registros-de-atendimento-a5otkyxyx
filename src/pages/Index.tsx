@@ -79,7 +79,7 @@ export default function Index() {
   const myRecords = accessibleRecords.filter(
     (r) => r && (r.assigned_user === user?.id || r.user_id === user?.id),
   )
-  const recentRecords = accessibleRecords.slice(0, 6)
+  const recentRecords = accessibleRecords.slice(0, 3)
 
   const stats = {
     todayCount: todayRecords.length,

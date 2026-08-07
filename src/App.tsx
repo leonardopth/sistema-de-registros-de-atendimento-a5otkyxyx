@@ -14,6 +14,7 @@ import Index from '@/pages/Index'
 import NovoAtendimento from '@/pages/NovoAtendimento'
 import Atendimentos from '@/pages/Atendimentos'
 import Clientes from '@/pages/Clientes'
+import Autonomia from '@/pages/Autonomia'
 import ExecutivosContas from '@/pages/ExecutivosContas'
 import GestaoUsuarios from '@/pages/GestaoUsuarios'
 import DiagnosticoEmail from '@/pages/DiagnosticoEmail'
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/novo-atendimento" element={<NovoAtendimento />} />
               <Route path="/atendimentos" element={<Atendimentos />} />
               <Route path="/clientes" element={<Clientes />} />
+              <Route path="/autonomia" element={<Autonomia />} />
               <Route
                 path="/relatorios-grupo"
                 element={

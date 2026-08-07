@@ -41,9 +41,9 @@ export function AutonomyScorecard({ records = [] }: AutonomyScorecardProps) {
     }))
     .sort((a, b) => b.autonomyRate - a.autonomyRate)
 
-  const top3 = clientAutonomies.slice(0, 3)
-  const showBottom3 = clientAutonomies.length > 3
-  const bottom3 = showBottom3 ? clientAutonomies.slice(-3).reverse() : []
+  const showTop3 = clientAutonomies.length > 3
+  const top3 = showTop3 ? clientAutonomies.slice(0, 3) : []
+  const bottom3 = clientAutonomies.slice(-3).reverse()
 
   return (
     <Card className="border-slate-200 shadow-subtle">

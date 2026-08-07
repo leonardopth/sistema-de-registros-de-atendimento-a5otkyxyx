@@ -50,6 +50,7 @@ import {
   ListChecks,
   Play,
   Plane,
+  AlertTriangle,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
@@ -750,6 +751,7 @@ export default function Atendimentos() {
                     sortDirection={sortDirection}
                     onSort={handleSort}
                   />
+                  <TableHead className="text-xs font-bold">Evitável</TableHead>
                   <SortableHeader
                     label="Duração"
                     field="duration"
@@ -818,6 +820,17 @@ export default function Atendimentos() {
                     <TableCell>
                       <PriorityBadge priority={r.priority} />
                     </TableCell>
+                    <TableCell className="text-center">
+                      {r.avoidable_contact ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">
+                          <AlertTriangle className="h-3 w-3" /> Sim
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="h-3 w-3" /> Não
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-xs text-slate-600">
                       {r.duration ? `${r.duration} min` : '-'}
                     </TableCell>
@@ -861,7 +874,7 @@ export default function Atendimentos() {
                 ))}
                 {displayRecords.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-slate-400 text-xs">
+                    <TableCell colSpan={10} className="text-center py-12 text-slate-400 text-xs">
                       Nenhum atendimento encontrado para os filtros selecionados.
                     </TableCell>
                   </TableRow>

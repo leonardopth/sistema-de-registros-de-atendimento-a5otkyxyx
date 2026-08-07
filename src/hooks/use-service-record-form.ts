@@ -175,6 +175,15 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     }
   }
 
+  const addAndSelectAgent = useCallback((agent: AgentRecord) => {
+    setAgents((prev) => [...prev, agent])
+    setSelectedAgentId(agent.id)
+    setClientName(agent.name)
+    setClientEmail(agent.email || '')
+    setClientPhone(agent.phone || '')
+    setAgentLocked(true)
+  }, [])
+
   const handleAddTask = () => {
     if (!newTaskTitle.trim()) return
     setTasks([
@@ -446,6 +455,7 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     handleSelectCompany,
     selectedAgentId,
     handleSelectAgent,
+    addAndSelectAgent,
     agents,
     agentLocked,
     clientName,

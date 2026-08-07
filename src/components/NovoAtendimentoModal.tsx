@@ -35,6 +35,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { VoiceInputButton } from '@/components/VoiceInputButton'
 import { ShareSelectDialog } from '@/components/ShareSelectDialog'
+import { NewAgentDialog } from '@/components/NewAgentDialog'
 import { SERVICE_TEMPLATES } from '@/lib/service-templates'
 import { suggestArticles } from '@/lib/knowledge-base'
 import { useAuth } from '@/hooks/use-auth'
@@ -78,6 +79,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
   const [analyzing, setAnalyzing] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [shareOpen, setShareOpen] = useState(false)
+  const [newAgentOpen, setNewAgentOpen] = useState(false)
 
   const handleTemplateSelect = (reason: string) => {
     setSelectedTemplate(reason)
@@ -241,8 +243,17 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                     <Label className="text-xs">Selecionar Agente</Label>
                     <SearchableSelect
                       options={form.agents.map((a) => ({ value: a.id, label: a.name }))}
+                      pinnedOptions={[
+                        { value: '__new_agent__', label: '＋ Cadastrar novo Agente' },
+                      ]}
                       value={form.selectedAgentId}
-                      onValueChange={form.handleSelectAgent}
+                      onValueChange={(val) => {
+                        if (val === '__new_agent__') {
+                          setNewAgentOpen(true)
+                          return
+                        }
+                        form.handleSelectAgent(val)
+                      }}
                       placeholder="Escolha um agente da empresa"
                       emptyText="Nenhum agente encontrado."
                       className="h-9"
@@ -743,6 +754,15 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
               ))}
             </div>
           )}
+
+          <NewAgentDialog
+            open={newAgentOpen}
+            onOpenChange={setNewAgentOpen}
+            clientId={form.selectedClientId}
+            onAgentCreated={(agent) => {
+              form.addAndSelectAgent(agent)
+            }}
+          />
 
           <ShareSelectDialog
             open={shareOpen}
