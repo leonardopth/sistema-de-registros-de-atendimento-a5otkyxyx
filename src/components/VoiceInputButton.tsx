@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Mic } from 'lucide-react'
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
 interface VoiceInputButtonProps {
@@ -11,12 +12,20 @@ interface VoiceInputButtonProps {
 
 export function VoiceInputButton({ onTranscript, disabled, className }: VoiceInputButtonProps) {
   const { isListening, interimTranscript, start, stop, supported } = useSpeechRecognition()
+  const { toast } = useToast()
 
   if (!supported) return null
 
+  const handleError = (error: string) => {
+    toast({ variant: 'destructive', title: 'Erro na transcrição', description: error })
+  }
+
   const handleClick = () => {
-    if (isListening) stop()
-    else start(onTranscript)
+    if (isListening) {
+      stop()
+    } else {
+      start(onTranscript, handleError)
+    }
   }
 
   return (
@@ -31,7 +40,7 @@ export function VoiceInputButton({ onTranscript, disabled, className }: VoiceInp
         variant="outline"
         size="sm"
         onClick={handleClick}
-        disabled={disabled}
+        disabled={disabled && !isListening}
         className={cn('text-xs', className)}
       >
         {isListening ? (
