@@ -10,8 +10,7 @@ import { AgentStatsList } from '@/components/AgentStatsList'
 import { getClients } from '@/services/clients'
 import { getAgents } from '@/services/agents'
 import { getServiceRecords } from '@/services/service_records'
-import { filterRecordsByUserAccess } from '@/lib/service-group-access'
-import { isRecordForClient, isRecordForAgent } from '@/lib/client-record-helpers'
+import { isRecordForAgent } from '@/lib/client-record-helpers'
 import { ClientRecord, AgentRecord, ServiceRecord } from '@/types/service_record'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
@@ -108,11 +107,11 @@ export function CompanyDetailsModal({
   const effectiveClientId = clientId || matchingClient?.id
 
   const clientRecords = useMemo(() => {
-    const filtered = records.filter((r) =>
-      isRecordForClient(r, matchingClient, effectiveClientId, companyName),
+    if (!effectiveClientId) return []
+    return records.filter(
+      (r) => r.client === effectiveClientId || r.expand?.client?.id === effectiveClientId,
     )
-    return filterRecordsByUserAccess(user, filtered)
-  }, [records, effectiveClientId, companyName, matchingClient, user])
+  }, [records, effectiveClientId])
 
   const companyAgents = useMemo(() => {
     const matchingClientIds = new Set(matchingClients.map((c) => c.id))
