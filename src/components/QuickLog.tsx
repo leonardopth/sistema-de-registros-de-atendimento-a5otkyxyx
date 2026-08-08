@@ -50,19 +50,7 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
     setAnalyzing(true)
     try {
       const result = await analyzeDescription(form.description)
-      form.setContactReason(result.contact_reason as ContactReason)
-      if (result.channel) {
-        form.setChannel(result.channel as ServiceChannel)
-      }
-      if (result.travel_type) {
-        form.setTravelType(result.travel_type as TravelType)
-      }
-      if (result.avoidable_contact) {
-        form.handleAvoidableChange(true)
-        if (result.avoidable_contact_reason) {
-          form.setAvoidableContactReason(result.avoidable_contact_reason as AvoidableContactReason)
-        }
-      }
+      form.applyAIResult(result)
       toast({ title: 'IA preencheu os campos!' })
     } catch {
       toast({ variant: 'destructive', title: 'Erro na análise com IA' })

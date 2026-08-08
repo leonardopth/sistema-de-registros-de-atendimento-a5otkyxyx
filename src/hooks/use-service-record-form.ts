@@ -7,6 +7,7 @@ import { getAccountExecutives } from '@/services/account_executives'
 import { getUsers } from '@/services/users'
 import { createServiceRecord } from '@/services/service_records'
 import { createShare } from '@/services/service_record_shares'
+import type { AIAnalysisResult } from '@/services/ai-analysis'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
@@ -119,6 +120,9 @@ export function useServiceRecordForm(
         if (s.manualServiceGroup !== undefined) setManualServiceGroup(s.manualServiceGroup)
         if (s.registerClient !== undefined) setRegisterClient(s.registerClient)
         if (s.selectedExecutiveId !== undefined) setSelectedExecutiveId(s.selectedExecutiveId)
+        if (s.timerStart !== undefined) setTimerStart(s.timerStart)
+        if (s.timerRunning !== undefined) setTimerRunning(s.timerRunning)
+        if (s.accumulatedMs !== undefined) setAccumulatedMs(s.accumulatedMs)
       } catch {
         /* intentionally ignored */
       }
@@ -158,6 +162,9 @@ export function useServiceRecordForm(
         manualServiceGroup,
         registerClient,
         selectedExecutiveId,
+        timerStart,
+        timerRunning,
+        accumulatedMs,
       }),
     )
   }, [
@@ -190,6 +197,9 @@ export function useServiceRecordForm(
     manualServiceGroup,
     registerClient,
     selectedExecutiveId,
+    timerStart,
+    timerRunning,
+    accumulatedMs,
   ])
 
   const loadClients = useCallback(() => {
@@ -221,15 +231,18 @@ export function useServiceRecordForm(
   }, [user?.id])
 
   useEffect(() => {
-    if (enabled && !disableTimer && !timerAutoStartedRef.current) {
-      setTimerStart(new Date().toISOString())
-      setTimerRunning(true)
-      timerAutoStartedRef.current = true
-    }
     if (!enabled) {
       timerAutoStartedRef.current = false
+      return
     }
-  }, [enabled, disableTimer])
+    if (disableTimer) return
+    if (persistKey && !hasLoaded) return
+    if (!timerAutoStartedRef.current && !timerRunning) {
+      setTimerStart(new Date().toISOString())
+      setTimerRunning(true)
+    }
+    timerAutoStartedRef.current = true
+  }, [enabled, disableTimer, hasLoaded, persistKey, timerRunning])
 
   useRealtime('clients', () => loadClients(), enabled)
   useRealtime('account_executives', () => loadExecutives(), enabled)
@@ -563,8 +576,27 @@ export function useServiceRecordForm(
     }
   }
 
+  const applyAIResult = (result: AIAnalysisResult) => {
+    if (result.contact_reason) setContactReason(result.contact_reason as ContactReason)
+    if (result.channel) setChannel(result.channel as ServiceChannel)
+    if (result.travel_type) setTravelType(result.travel_type as TravelType)
+    if (result.agency_name) setClientCompany(result.agency_name)
+    if (result.agent_name) setClientName(result.agent_name)
+    if (result.client_email) setClientEmail(result.client_email)
+    if (result.client_phone) setClientPhone(result.client_phone)
+    if (result.priority) setPriority(result.priority as ServicePriority)
+    if (result.description) setDescription(result.description)
+    if (result.avoidable_contact) {
+      handleAvoidableChange(true)
+      if (result.avoidable_contact_reason) {
+        setAvoidableContactReason(result.avoidable_contact_reason as AvoidableContactReason)
+      }
+    }
+  }
+
   return {
     useExisting,
+    applyAIResult,
     setUseExisting,
     showAllClients,
     setShowAllClients,

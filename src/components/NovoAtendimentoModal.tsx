@@ -81,6 +81,9 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
   const [shareOpen, setShareOpen] = useState(false)
   const [newAgentOpen, setNewAgentOpen] = useState(false)
 
+  const autoAtendimentoExec = form.allExecutives.find((ex) => ex.name === 'Auto-Atendimento')
+  const regularExecutives = form.allExecutives.filter((ex) => ex.name !== 'Auto-Atendimento')
+
   const handleTemplateSelect = (reason: string) => {
     setSelectedTemplate(reason)
     const template = SERVICE_TEMPLATES.find((t) => t.reason === reason)
@@ -121,19 +124,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
     setAnalyzing(true)
     try {
       const result = await analyzeDescription(form.description)
-      form.setContactReason(result.contact_reason as ContactReason)
-      if (result.channel) {
-        form.setChannel(result.channel as ServiceChannel)
-      }
-      if (result.travel_type) {
-        form.setTravelType(result.travel_type as TravelType)
-      }
-      if (result.avoidable_contact) {
-        form.handleAvoidableChange(true)
-        if (result.avoidable_contact_reason) {
-          form.setAvoidableContactReason(result.avoidable_contact_reason as AvoidableContactReason)
-        }
-      }
+      form.applyAIResult(result)
       toast({ title: 'Análise concluída', description: 'Campos sugeridos preenchidos.' })
     } catch {
       toast({ variant: 'destructive', title: 'Erro na análise com IA' })
@@ -148,19 +139,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
     setAnalyzing(true)
     try {
       const result = await analyzeDescription(text)
-      form.setContactReason(result.contact_reason as ContactReason)
-      if (result.channel) {
-        form.setChannel(result.channel as ServiceChannel)
-      }
-      if (result.travel_type) {
-        form.setTravelType(result.travel_type as TravelType)
-      }
-      if (result.avoidable_contact) {
-        form.handleAvoidableChange(true)
-        if (result.avoidable_contact_reason) {
-          form.setAvoidableContactReason(result.avoidable_contact_reason as AvoidableContactReason)
-        }
-      }
+      form.applyAIResult(result)
       toast({ title: 'Voz + IA', description: 'Transcrição e análise concluídas.' })
     } catch {
       toast({ variant: 'destructive', title: 'Transcrição ok, erro na análise IA' })
@@ -518,21 +497,20 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Executivo de Contas</Label>
-                  <Select
+                  <SearchableSelect
+                    pinnedOptions={
+                      autoAtendimentoExec
+                        ? [{ value: autoAtendimentoExec.id, label: autoAtendimentoExec.name }]
+                        : []
+                    }
+                    pinnedHeading="Auto-Atendimento"
+                    options={regularExecutives.map((ex) => ({ value: ex.id, label: ex.name }))}
                     value={form.selectedExecutiveId}
                     onValueChange={form.setSelectedExecutiveId}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Selecione um executivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {form.allExecutives.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Selecione um executivo"
+                    emptyText="Nenhum executivo encontrado."
+                    className="h-9"
+                  />
                 </div>
               </div>
               <div className="flex items-center space-x-2">

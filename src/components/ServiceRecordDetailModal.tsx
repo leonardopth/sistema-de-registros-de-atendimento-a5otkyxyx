@@ -30,6 +30,7 @@ import { AVOIDABLE_CONTACT_REASONS } from '@/lib/constants'
 import { StatusBadge } from './StatusBadge'
 import { PriorityBadge } from './PriorityBadge'
 import { updateServiceRecordWithHistory, deleteServiceRecord } from '@/services/service_records'
+import { analyzeDescription } from '@/services/ai-analysis'
 import { getUsers } from '@/services/users'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
@@ -52,6 +53,7 @@ import {
   CheckCircle2,
   Undo2,
   Share2,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatGMT3DateTime, formatGMT3Date, formatGMT3DateTimeAt } from '@/lib/timezone'
@@ -113,6 +115,7 @@ export function ServiceRecordDetailModal({
   const [userSharePermission, setUserSharePermission] = useState<'Visualizar' | 'Editar' | null>(
     null,
   )
+  const [analyzing, setAnalyzing] = useState(false)
 
   const isOwner = record
     ? record.user_id === user?.id || record.assigned_user === user?.id || user?.role === 'Master'
@@ -263,6 +266,31 @@ export function ServiceRecordDetailModal({
     setTimerStart(null)
     setAccumulatedMs(0)
     setDuration(0)
+  }
+
+  const handleAIAnalysis = async () => {
+    if (!description.trim()) {
+      toast({ variant: 'destructive', title: 'Digite uma descrição primeiro' })
+      return
+    }
+    setAnalyzing(true)
+    try {
+      const result = await analyzeDescription(description)
+      if (result.channel) setChannel(result.channel as ServiceChannel)
+      if (result.travel_type) setTravelType(result.travel_type as TravelType)
+      if (result.description) setDescription(result.description)
+      if (result.avoidable_contact) {
+        setAvoidableContact(true)
+        if (result.avoidable_contact_reason) {
+          setAvoidableContactReason(result.avoidable_contact_reason as AvoidableContactReason)
+        }
+      }
+      toast({ title: 'Análise concluída', description: 'Campos sugeridos preenchidos.' })
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro na análise com IA' })
+    } finally {
+      setAnalyzing(false)
+    }
   }
 
   const handleSave = async (overrideStatus?: ServiceStatus | unknown) => {
@@ -619,9 +647,26 @@ export function ServiceRecordDetailModal({
             </div>
 
             <div>
-              <span className="text-xs font-medium text-slate-500 block mb-1">
-                Descrição do Atendimento
-              </span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-500">Descrição do Atendimento</span>
+                {isEditable && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-indigo-600 h-7"
+                    onClick={handleAIAnalysis}
+                    disabled={analyzing}
+                  >
+                    {analyzing ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3 mr-1" />
+                    )}
+                    Preencher com IA
+                  </Button>
+                )}
+              </div>
               {isEditable ? (
                 <div>
                   <textarea

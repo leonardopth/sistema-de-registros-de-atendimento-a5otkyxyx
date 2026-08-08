@@ -4,6 +4,7 @@ import type {
   AvoidableContactReason,
   ServiceChannel,
   TravelType,
+  ServicePriority,
 } from '@/types/service_record'
 
 export interface AIAnalysisResult {
@@ -12,6 +13,12 @@ export interface AIAnalysisResult {
   avoidable_contact_reason: AvoidableContactReason | ''
   channel: ServiceChannel | ''
   travel_type: TravelType | ''
+  agency_name: string
+  agent_name: string
+  client_email: string
+  client_phone: string
+  priority: ServicePriority | ''
+  description: string
 }
 
 export const analyzeDescription = async (description: string): Promise<AIAnalysisResult> => {
