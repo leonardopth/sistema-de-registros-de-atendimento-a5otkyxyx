@@ -29,7 +29,11 @@ const AVOIDABLE_REASON_MAP: Partial<Record<string, AvoidableContactReason>> = {
   'erro RF': 'Erro RF',
 }
 
-export function useServiceRecordForm(enabled: boolean = true, disableTimer: boolean = false) {
+export function useServiceRecordForm(
+  enabled: boolean = true,
+  disableTimer: boolean = false,
+  persistKey?: string,
+) {
   const { user } = useAuth()
   const { toast } = useToast()
 
@@ -78,6 +82,115 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
   const [manualServiceGroup, setManualServiceGroup] = useState<ServiceGroup | ''>('')
   const [registerClient, setRegisterClient] = useState(false)
   const [clientFieldErrors, setClientFieldErrors] = useState<FieldErrors>({})
+  const [hasLoaded, setHasLoaded] = useState(false)
+
+  useEffect(() => {
+    if (!persistKey) return
+    const saved = localStorage.getItem(persistKey)
+    if (saved) {
+      try {
+        const s = JSON.parse(saved)
+        if (s.useExisting !== undefined) setUseExisting(s.useExisting)
+        if (s.showAllClients !== undefined) setShowAllClients(s.showAllClients)
+        if (s.selectedClientId !== undefined) setSelectedClientId(s.selectedClientId)
+        if (s.selectedAgentId !== undefined) setSelectedAgentId(s.selectedAgentId)
+        if (s.clientName !== undefined) setClientName(s.clientName)
+        if (s.clientEmail !== undefined) setClientEmail(s.clientEmail)
+        if (s.clientPhone !== undefined) setClientPhone(s.clientPhone)
+        if (s.clientCompany !== undefined) setClientCompany(s.clientCompany)
+        if (s.contactReason !== undefined) setContactReason(s.contactReason)
+        if (s.channel !== undefined) setChannel(s.channel)
+        if (s.description !== undefined) setDescription(s.description)
+        if (s.priority !== undefined) setPriority(s.priority)
+        if (s.status !== undefined) setStatus(s.status)
+        if (s.duration !== undefined) setDuration(s.duration)
+        if (s.travelType !== undefined) setTravelType(s.travelType)
+        if (s.tasks !== undefined) setTasks(s.tasks)
+        if (s.avoidableContact !== undefined) setAvoidableContact(s.avoidableContact)
+        if (s.avoidableContactReason !== undefined)
+          setAvoidableContactReason(s.avoidableContactReason)
+        if (s.avoidableContactExplanation !== undefined)
+          setAvoidableContactExplanation(s.avoidableContactExplanation)
+        if (s.assignedUserId !== undefined) setAssignedUserId(s.assignedUserId)
+        if (s.selectedShareUserIds !== undefined) setSelectedShareUserIds(s.selectedShareUserIds)
+        if (s.newTaskTitle !== undefined) setNewTaskTitle(s.newTaskTitle)
+        if (s.newTaskResponsible !== undefined) setNewTaskResponsible(s.newTaskResponsible)
+        if (s.newTaskDueDate !== undefined) setNewTaskDueDate(s.newTaskDueDate)
+        if (s.manualServiceGroup !== undefined) setManualServiceGroup(s.manualServiceGroup)
+        if (s.registerClient !== undefined) setRegisterClient(s.registerClient)
+        if (s.selectedExecutiveId !== undefined) setSelectedExecutiveId(s.selectedExecutiveId)
+      } catch {
+        /* intentionally ignored */
+      }
+    }
+    setHasLoaded(true)
+  }, [persistKey])
+
+  useEffect(() => {
+    if (!persistKey || !hasLoaded) return
+    localStorage.setItem(
+      persistKey,
+      JSON.stringify({
+        useExisting,
+        showAllClients,
+        selectedClientId,
+        selectedAgentId,
+        clientName,
+        clientEmail,
+        clientPhone,
+        clientCompany,
+        contactReason,
+        channel,
+        description,
+        priority,
+        status,
+        duration,
+        travelType,
+        tasks,
+        avoidableContact,
+        avoidableContactReason,
+        avoidableContactExplanation,
+        assignedUserId,
+        selectedShareUserIds,
+        newTaskTitle,
+        newTaskResponsible,
+        newTaskDueDate,
+        manualServiceGroup,
+        registerClient,
+        selectedExecutiveId,
+      }),
+    )
+  }, [
+    persistKey,
+    hasLoaded,
+    useExisting,
+    showAllClients,
+    selectedClientId,
+    selectedAgentId,
+    clientName,
+    clientEmail,
+    clientPhone,
+    clientCompany,
+    contactReason,
+    channel,
+    description,
+    priority,
+    status,
+    duration,
+    travelType,
+    tasks,
+    avoidableContact,
+    avoidableContactReason,
+    avoidableContactExplanation,
+    assignedUserId,
+    selectedShareUserIds,
+    newTaskTitle,
+    newTaskResponsible,
+    newTaskDueDate,
+    manualServiceGroup,
+    registerClient,
+    selectedExecutiveId,
+  ])
 
   const loadClients = useCallback(() => {
     getClients()
@@ -259,6 +372,7 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
   }, [clients, showAllClients, user])
 
   const resetForm = () => {
+    if (persistKey) localStorage.removeItem(persistKey)
     setUseExisting(true)
     setShowAllClients(false)
     setSelectedClientId('')
@@ -302,6 +416,10 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     setAssignedUserId(user?.id || '')
     setSelectedShareUserIds([])
     setChannelError('')
+  }
+
+  const clearForm = () => {
+    resetForm()
   }
 
   const handleSubmit = async (
@@ -504,6 +622,7 @@ export function useServiceRecordForm(enabled: boolean = true, disableTimer: bool
     loading,
     handleSubmit,
     resetForm,
+    clearForm,
     users,
     assignedUserId,
     setAssignedUserId,

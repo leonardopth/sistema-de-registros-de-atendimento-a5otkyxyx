@@ -17,7 +17,12 @@ import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { useToast } from '@/hooks/use-toast'
 import { Zap, Loader2, Sparkles, CheckCircle2 } from 'lucide-react'
-import type { ContactReason, AvoidableContactReason, TravelType } from '@/types/service_record'
+import type {
+  ContactReason,
+  AvoidableContactReason,
+  TravelType,
+  ServiceChannel,
+} from '@/types/service_record'
 
 interface QuickLogProps {
   open: boolean
@@ -46,6 +51,12 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
     try {
       const result = await analyzeDescription(form.description)
       form.setContactReason(result.contact_reason as ContactReason)
+      if (result.channel) {
+        form.setChannel(result.channel as ServiceChannel)
+      }
+      if (result.travel_type) {
+        form.setTravelType(result.travel_type as TravelType)
+      }
       if (result.avoidable_contact) {
         form.handleAvoidableChange(true)
         if (result.avoidable_contact_reason) {
@@ -151,6 +162,49 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
               <p className="text-xs text-red-500 font-medium">{form.travelTypeError}</p>
             )}
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Motivo</Label>
+              <Select
+                value={form.contactReason}
+                onValueChange={(v) => form.setContactReason(v as ContactReason)}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Bagagem">Bagagem</SelectItem>
+                  <SelectItem value="Assento">Assento</SelectItem>
+                  <SelectItem value="cálculo reemissão">cálculo reemissão</SelectItem>
+                  <SelectItem value="reembolso">reembolso</SelectItem>
+                  <SelectItem value="cotação">cotação</SelectItem>
+                  <SelectItem value="reserva">reserva</SelectItem>
+                  <SelectItem value="cancelamento">cancelamento</SelectItem>
+                  <SelectItem value="regras tarifárias">regras tarifárias</SelectItem>
+                  <SelectItem value="erro RF">erro RF</SelectItem>
+                  <SelectItem value="outros">outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Canal</Label>
+              <Select
+                value={form.channel}
+                onValueChange={(v) => form.setChannel(v as ServiceChannel)}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Telefone">Telefone</SelectItem>
+                  <SelectItem value="e-mail">e-mail</SelectItem>
+                  <SelectItem value="whatsapp">whatsapp</SelectItem>
+                  <SelectItem value="comercial">comercial</SelectItem>
+                  <SelectItem value="outros">outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">O que aconteceu? *</Label>
@@ -202,6 +256,16 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
               {form.avoidableContact && (
                 <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded">
                   Evitável
+                </span>
+              )}
+              {form.channel && (
+                <span className="font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded">
+                  {form.channel}
+                </span>
+              )}
+              {form.travelType && (
+                <span className="font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+                  {form.travelType}
                 </span>
               )}
             </div>

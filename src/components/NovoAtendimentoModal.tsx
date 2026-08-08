@@ -122,6 +122,12 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
     try {
       const result = await analyzeDescription(form.description)
       form.setContactReason(result.contact_reason as ContactReason)
+      if (result.channel) {
+        form.setChannel(result.channel as ServiceChannel)
+      }
+      if (result.travel_type) {
+        form.setTravelType(result.travel_type as TravelType)
+      }
       if (result.avoidable_contact) {
         form.handleAvoidableChange(true)
         if (result.avoidable_contact_reason) {
@@ -143,6 +149,12 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
     try {
       const result = await analyzeDescription(text)
       form.setContactReason(result.contact_reason as ContactReason)
+      if (result.channel) {
+        form.setChannel(result.channel as ServiceChannel)
+      }
+      if (result.travel_type) {
+        form.setTravelType(result.travel_type as TravelType)
+      }
       if (result.avoidable_contact) {
         form.handleAvoidableChange(true)
         if (result.avoidable_contact_reason) {

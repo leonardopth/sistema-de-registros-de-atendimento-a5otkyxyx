@@ -1,10 +1,17 @@
 import pb from '@/lib/pocketbase/client'
-import type { ContactReason, AvoidableContactReason } from '@/types/service_record'
+import type {
+  ContactReason,
+  AvoidableContactReason,
+  ServiceChannel,
+  TravelType,
+} from '@/types/service_record'
 
 export interface AIAnalysisResult {
   contact_reason: ContactReason
   avoidable_contact: boolean
   avoidable_contact_reason: AvoidableContactReason | ''
+  channel: ServiceChannel | ''
+  travel_type: TravelType | ''
 }
 
 export const analyzeDescription = async (description: string): Promise<AIAnalysisResult> => {

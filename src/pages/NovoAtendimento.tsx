@@ -69,7 +69,7 @@ const avoidableReasons: AvoidableContactReason[] = AVOIDABLE_CONTACT_REASONS
 
 export default function NovoAtendimento() {
   const navigate = useNavigate()
-  const form = useServiceRecordForm(true)
+  const form = useServiceRecordForm(true, false, 'novo-atendimento-form')
   const { toast } = useToast()
   const { user } = useAuth()
   const [analyzing, setAnalyzing] = useState(false)
@@ -112,6 +112,12 @@ export default function NovoAtendimento() {
     try {
       const result = await analyzeDescription(form.description)
       form.setContactReason(result.contact_reason as ContactReason)
+      if (result.channel) {
+        form.setChannel(result.channel as ServiceChannel)
+      }
+      if (result.travel_type) {
+        form.setTravelType(result.travel_type as TravelType)
+      }
       if (result.avoidable_contact) {
         form.handleAvoidableChange(true)
         if (result.avoidable_contact_reason) {
@@ -133,6 +139,12 @@ export default function NovoAtendimento() {
     try {
       const result = await analyzeDescription(text)
       form.setContactReason(result.contact_reason as ContactReason)
+      if (result.channel) {
+        form.setChannel(result.channel as ServiceChannel)
+      }
+      if (result.travel_type) {
+        form.setTravelType(result.travel_type as TravelType)
+      }
       if (result.avoidable_contact) {
         form.handleAvoidableChange(true)
         if (result.avoidable_contact_reason) {
@@ -334,6 +346,59 @@ export default function NovoAtendimento() {
               </div>
             </div>
           </div>
+
+          {form.showExecutiveSelect && (
+            <div className="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Grupo de Atendimento</Label>
+                  <Select
+                    value={form.manualServiceGroup}
+                    onValueChange={(v) => form.setManualServiceGroup(v as ServiceGroup)}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Selecione o grupo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SERVICE_GROUP_OPTIONS.map((g: { value: string; label: string }) => (
+                        <SelectItem key={g.value} value={g.value}>
+                          {g.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Executivo de Contas</Label>
+                  <Select
+                    value={form.selectedExecutiveId}
+                    onValueChange={form.setSelectedExecutiveId}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Selecione um executivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {form.allExecutives.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="pg-register-client"
+                  checked={form.registerClient}
+                  onCheckedChange={(c) => form.setRegisterClient(!!c)}
+                />
+                <Label htmlFor="pg-register-client" className="text-xs cursor-pointer">
+                  Cadastrar cliente
+                </Label>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 2. DETALHES DO ATENDIMENTO */}
@@ -578,59 +643,6 @@ export default function NovoAtendimento() {
             </div>
           )}
 
-          {form.showExecutiveSelect && (
-            <div className="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Grupo de Atendimento</Label>
-                  <Select
-                    value={form.manualServiceGroup}
-                    onValueChange={(v) => form.setManualServiceGroup(v as ServiceGroup)}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Selecione o grupo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SERVICE_GROUP_OPTIONS.map((g: { value: string; label: string }) => (
-                        <SelectItem key={g.value} value={g.value}>
-                          {g.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Executivo de Contas</Label>
-                  <Select
-                    value={form.selectedExecutiveId}
-                    onValueChange={form.setSelectedExecutiveId}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Selecione um executivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {form.allExecutives.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="pg-register-client"
-                  checked={form.registerClient}
-                  onCheckedChange={(c) => form.setRegisterClient(!!c)}
-                />
-                <Label htmlFor="pg-register-client" className="text-xs cursor-pointer">
-                  Cadastrar cliente
-                </Label>
-              </div>
-            </div>
-          )}
-
           <div className="space-y-2 border-t pt-3">
             <Label className="text-xs font-semibold text-slate-700">
               Tarefas de Acompanhamento
@@ -802,6 +814,9 @@ export default function NovoAtendimento() {
         />
 
         <div className="pt-4 flex justify-end gap-3 border-t">
+          <Button type="button" variant="outline" onClick={() => form.clearForm()}>
+            Limpar
+          </Button>
           <Button type="button" variant="outline" onClick={() => navigate('/atendimentos')}>
             Cancelar
           </Button>
