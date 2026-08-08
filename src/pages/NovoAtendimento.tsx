@@ -176,6 +176,7 @@ export default function NovoAtendimento() {
           onStart={form.handleTimerStart}
           onPause={form.handleTimerPause}
           onReset={form.handleTimerReset}
+          position="bottom-right"
         />
 
         <div className="flex items-center gap-2 pb-2 border-b">

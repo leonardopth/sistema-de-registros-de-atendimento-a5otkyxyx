@@ -44,8 +44,8 @@ routerAdd(
               '5) travel_type — one of: ' +
               travelTypes.join(', ') +
               ' (domestic or international travel)\n' +
-              '6) agency_name — the travel agency or company name mentioned (empty string if not mentioned)\n' +
-              '7) agent_name — the name of the person/agent who contacted (empty string if not mentioned)\n' +
+              '6) agency_name — the travel agency or COMPANY/ORGANIZATION name mentioned in the description. Look for organization names such as "agência CVC", "empresa Decolar", "Flytour", "BTM". This is the AGENCY/COMPANY name, NOT a person name. Extract just the name without the word "agência" or "empresa". (empty string if not mentioned)\n' +
+              '7) agent_name — the name of the PERSON who contacted or is referenced. Look for person names such as "João", "Maria Silva", "o senhor Carlos", "falamos com Ana". This is a PERSON name, NOT the company/agency name. (empty string if not mentioned)\n' +
               '8) client_email — any email address mentioned (empty string if not mentioned)\n' +
               '9) client_phone — any phone number mentioned (empty string if not mentioned)\n' +
               '10) priority — one of: ' +

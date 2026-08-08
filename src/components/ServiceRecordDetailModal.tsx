@@ -110,6 +110,8 @@ export function ServiceRecordDetailModal({
   const [duration, setDuration] = useState(0)
   const [description, setDescription] = useState('')
   const [travelType, setTravelType] = useState<TravelType | ''>('')
+  const [clientName, setClientName] = useState('')
+  const [clientCompany, setClientCompany] = useState('')
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [userSharePermission, setUserSharePermission] = useState<'Visualizar' | 'Editar' | null>(
@@ -145,6 +147,8 @@ export function ServiceRecordDetailModal({
       setDuration(record.duration || 0)
       setDescription(record.description || '')
       setTravelType((record.travel_type as TravelType) || '')
+      setClientName(record.client_name || '')
+      setClientCompany(record.client_company || '')
       setFieldErrors({})
       setActiveTab('details')
     }
@@ -279,6 +283,8 @@ export function ServiceRecordDetailModal({
       if (result.channel) setChannel(result.channel as ServiceChannel)
       if (result.travel_type) setTravelType(result.travel_type as TravelType)
       if (result.description) setDescription(result.description)
+      if (result.agency_name) setClientCompany(result.agency_name)
+      if (result.agent_name) setClientName(result.agent_name)
       if (result.avoidable_contact) {
         setAvoidableContact(true)
         if (result.avoidable_contact_reason) {
@@ -362,6 +368,8 @@ export function ServiceRecordDetailModal({
           channel: channel || undefined,
           travel_type: travelType as TravelType,
           description: description.trim(),
+          client_name: clientName.trim(),
+          client_company: clientCompany.trim(),
           tasks: cleanTasks,
           end_time: isCompletedNow ? new Date().toISOString() : record.end_time,
           duration: finalDuration || undefined,
@@ -490,18 +498,36 @@ export function ServiceRecordDetailModal({
               </div>
             )}
             <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-100 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-indigo-950 text-base">
-                  {record.client_company || record.client_name}
-                </span>
-                <span className="text-xs font-normal text-slate-500">
+              <div className="flex items-center justify-between gap-2">
+                {isEditable ? (
+                  <Input
+                    className="font-bold text-indigo-950 text-base h-8 max-w-[60%]"
+                    value={clientCompany}
+                    onChange={(e) => setClientCompany(e.target.value)}
+                    placeholder="Nome da agência"
+                  />
+                ) : (
+                  <span className="font-bold text-indigo-950 text-base">
+                    {clientCompany || clientName}
+                  </span>
+                )}
+                <span className="text-xs font-normal text-slate-500 whitespace-nowrap">
                   {record.start_time ? formatGMT3DateTimeAt(record.start_time) : ''}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
                 <div className="flex items-center gap-1.5 font-medium text-slate-800">
                   <User className="h-3.5 w-3.5 text-slate-400" />
-                  {record.client_name}
+                  {isEditable ? (
+                    <Input
+                      className="h-8 text-xs"
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      placeholder="Nome do agente"
+                    />
+                  ) : (
+                    clientName
+                  )}
                 </div>
                 {record.client_email && (
                   <div className="flex items-center gap-1.5">

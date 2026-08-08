@@ -166,6 +166,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             onStart={form.handleTimerStart}
             onPause={form.handleTimerPause}
             onReset={form.handleTimerReset}
+            position="bottom-right"
           />
           <div className="flex items-center gap-2">
             <Label className="text-xs font-semibold text-slate-700 whitespace-nowrap">
