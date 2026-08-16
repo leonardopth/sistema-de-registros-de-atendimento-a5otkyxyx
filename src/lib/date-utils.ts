@@ -12,6 +12,18 @@ export function isCreatedToday(created: string | undefined): boolean {
   return createdDate >= start && createdDate <= end
 }
 
+export function isCreatedOrUpdatedToday(
+  created: string | undefined,
+  updated: string | undefined,
+): boolean {
+  if (isCreatedToday(created)) return true
+  if (!updated) return false
+  const updatedDate = new Date(updated)
+  if (isNaN(updatedDate.getTime())) return false
+  const { start, end } = getGMT3DayRange()
+  return updatedDate >= start && updatedDate <= end
+}
+
 export function isCreatedInRange(
   created: string | undefined,
   startStr: string | undefined,

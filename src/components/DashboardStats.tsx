@@ -1,9 +1,10 @@
 import { Card, CardContent } from '@/components/ui/card'
-import { Calendar, Clock, Activity, AlertOctagon, Info } from 'lucide-react'
+import { Calendar, Clock, Activity, AlertOctagon, Info, ListChecks } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 interface StatusBreakdown {
   Aberto: number
@@ -18,6 +19,7 @@ interface DashboardStatsProps {
   isStatusFiltered?: boolean
   activeStatusFilter?: string | null
   totalCount?: number
+  cancelledCount?: number
   inProgressCount?: number
   completedTodayCount?: number
   avgDuration?: number
@@ -44,6 +46,8 @@ export function DashboardStats({
   todayCountTotal = 0,
   isStatusFiltered = false,
   activeStatusFilter = null,
+  totalCount = 0,
+  cancelledCount = 0,
   inProgressCount = 0,
   completedTodayCount = 0,
   avgDuration = 0,
@@ -52,6 +56,8 @@ export function DashboardStats({
 }: DashboardStatsProps) {
   const safeTodayCount = Number.isFinite(todayCount) ? todayCount : 0
   const safeTodayTotal = Number.isFinite(todayCountTotal) ? todayCountTotal : 0
+  const safeTotalCount = Number.isFinite(totalCount) ? totalCount : 0
+  const safeCancelled = Number.isFinite(cancelledCount) ? cancelledCount : 0
   const safeInProgress = Number.isFinite(inProgressCount) ? inProgressCount : 0
   const safeCompleted = Number.isFinite(completedTodayCount) ? completedTodayCount : 0
   const safeAvgDuration = Number.isFinite(avgDuration) ? avgDuration : 0
@@ -65,7 +71,21 @@ export function DashboardStats({
     ? `${safeTodayTotal} no total hoje`
     : `${safeCompleted} concluídos hoje`
 
+  const totalSubtext = isStatusFiltered
+    ? `Filtro ativo: ${activeStatusFilter}`
+    : `Inclui ${safeCancelled} cancelado(s)`
+
   const statCards = [
+    {
+      title: 'Total de Atendimentos',
+      value: safeTotalCount,
+      subtext: totalSubtext,
+      icon: ListChecks,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-50',
+      isTodayCard: false,
+      isTotalCard: true,
+    },
     {
       title: 'Atendimentos Hoje',
       value: safeTodayCount,
@@ -74,6 +94,7 @@ export function DashboardStats({
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
       isTodayCard: true,
+      isTotalCard: false,
     },
     {
       title: 'Em Andamento',
@@ -83,6 +104,7 @@ export function DashboardStats({
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
       isTodayCard: false,
+      isTotalCard: false,
     },
     {
       title: 'Tempo Médio',
@@ -92,6 +114,7 @@ export function DashboardStats({
       color: 'text-cyan-600',
       bgColor: 'bg-cyan-50',
       isTodayCard: false,
+      isTotalCard: false,
     },
     {
       title: 'Contatos Evitáveis',
@@ -101,17 +124,21 @@ export function DashboardStats({
       color: 'text-rose-600',
       bgColor: 'bg-rose-50',
       isTodayCard: false,
+      isTotalCard: false,
     },
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
       {statCards.map((stat, idx) => {
         const Icon = stat.icon
         return (
           <Card
             key={idx}
-            className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors"
+            className={cn(
+              'border-slate-200 shadow-subtle hover:border-slate-300 transition-colors',
+              stat.isTotalCard && 'col-span-2 lg:col-span-1',
+            )}
           >
             <CardContent className="p-4 flex items-center justify-between">
               <div className="min-w-0">

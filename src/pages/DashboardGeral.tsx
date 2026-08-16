@@ -27,7 +27,7 @@ import { DashboardAdvancedFilters } from '@/components/DashboardAdvancedFilters'
 import { FeedbackReviewPanel } from '@/components/FeedbackReviewPanel'
 import { ScheduledExportDialog } from '@/components/ScheduledExportDialog'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
-import { isCreatedToday } from '@/lib/date-utils'
+import { isCreatedToday, isCreatedOrUpdatedToday } from '@/lib/date-utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Info } from 'lucide-react'
 import {
@@ -97,10 +97,13 @@ export default function DashboardGeral() {
   )
 
   const stats = useMemo(() => {
-    const todayRecords = accessibleRecords.filter((r) => isCreatedToday(r.created))
-    const todayFiltered = filtered.filter((r) => isCreatedToday(r.created))
+    const todayRecords = accessibleRecords.filter((r) =>
+      isCreatedOrUpdatedToday(r.created, r.updated),
+    )
     const isStatusFiltered = filters.status != null && filters.status !== 'Todos'
-    const todayCountSource = isStatusFiltered ? todayFiltered : todayRecords
+    const todayCountSource = isStatusFiltered
+      ? todayRecords.filter((r) => r.status === filters.status)
+      : todayRecords
     const totalDur = filtered.reduce((a, r) => a + (r.duration || 0), 0)
 
     const statusBreakdown = {
@@ -116,6 +119,7 @@ export default function DashboardGeral() {
       isStatusFiltered,
       activeStatusFilter: isStatusFiltered ? filters.status : null,
       totalCount: filtered.length,
+      cancelledCount: filtered.filter((r) => r.status === 'Cancelado').length,
       inProgressCount: filtered.filter((r) => r.status === 'Em Andamento').length,
       completedTodayCount: todayRecords.filter((r) => r.status === 'Concluído').length,
       avgDuration: filtered.length > 0 ? Math.round(totalDur / filtered.length) : 0,
@@ -221,6 +225,7 @@ export default function DashboardGeral() {
             isStatusFiltered={stats.isStatusFiltered}
             activeStatusFilter={stats.activeStatusFilter}
             totalCount={stats.totalCount}
+            cancelledCount={stats.cancelledCount}
             inProgressCount={stats.inProgressCount}
             completedTodayCount={stats.completedTodayCount}
             avgDuration={stats.avgDuration}
