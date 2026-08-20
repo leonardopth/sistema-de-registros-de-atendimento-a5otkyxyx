@@ -528,11 +528,42 @@ export default function Clientes() {
                   setFilterState('')
                   setFilterCity('')
                   setFilterServiceGroup('')
+                  setColCompanies([])
+                  setColGroups([])
+                  setColStatuses([])
+                  setColCities([])
+                  setColStates([])
+                  setColExecs([])
                 }}
               >
                 <FilterX className="h-3.5 w-3.5 mr-1" /> Limpar filtros
               </Button>
             )}
+            {(colCompanies.length > 0 ||
+              colGroups.length > 0 ||
+              colStatuses.length > 0 ||
+              colCities.length > 0 ||
+              colStates.length > 0 ||
+              colExecs.length > 0) &&
+              !filterState &&
+              !filterCity &&
+              !filterServiceGroup && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-9 text-slate-500"
+                  onClick={() => {
+                    setColCompanies([])
+                    setColGroups([])
+                    setColStatuses([])
+                    setColCities([])
+                    setColStates([])
+                    setColExecs([])
+                  }}
+                >
+                  <FilterX className="h-3.5 w-3.5 mr-1" /> Limpar filtros de coluna
+                </Button>
+              )}
           </div>
           <Card className="border-slate-200 overflow-hidden">
             <Table>

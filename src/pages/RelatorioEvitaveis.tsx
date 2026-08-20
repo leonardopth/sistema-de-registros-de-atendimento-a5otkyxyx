@@ -177,21 +177,23 @@ export default function RelatorioEvitaveis() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {crossTable.filter((row) => colAgencies.length === 0 || colAgencies.includes(row.agency)).map((row) => (
-                <TableRow key={row.agency} className="hover:bg-slate-50">
-                  <TableCell className="text-xs font-semibold text-slate-900">
-                    {row.agency}
-                  </TableCell>
-                  {AVOIDABLE_REASONS.map((r) => (
-                    <TableCell key={r} className="text-xs text-center text-slate-700">
-                      {row.reasons[r] || 0}
+              {crossTable
+                .filter((row) => colAgencies.length === 0 || colAgencies.includes(row.agency))
+                .map((row) => (
+                  <TableRow key={row.agency} className="hover:bg-slate-50">
+                    <TableCell className="text-xs font-semibold text-slate-900">
+                      {row.agency}
                     </TableCell>
-                  ))}
-                  <TableCell className="text-xs text-center font-bold text-slate-900">
-                    {row.total}
-                  </TableCell>
-                </TableRow>
-              ))}
+                    {AVOIDABLE_REASONS.map((r) => (
+                      <TableCell key={r} className="text-xs text-center text-slate-700">
+                        {row.reasons[r] || 0}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-xs text-center font-bold text-slate-900">
+                      {row.total}
+                    </TableCell>
+                  </TableRow>
+                ))}
               {crossTable.length === 0 && (
                 <TableRow>
                   <TableCell

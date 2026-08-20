@@ -94,7 +94,18 @@ export default function Auditoria() {
 
       return true
     })
-  }, [logs, selectedUser, selectedAction, selectedEntity, startDate, endDate, colUsers, colActions, colEntities, userNames])
+  }, [
+    logs,
+    selectedUser,
+    selectedAction,
+    selectedEntity,
+    startDate,
+    endDate,
+    colUsers,
+    colActions,
+    colEntities,
+    userNames,
+  ])
 
   const userNames = useMemo(() => {
     const m = new Map<string, string>()

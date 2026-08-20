@@ -24,14 +24,15 @@ import {
   updateAccountExecutive,
   deleteAccountExecutive,
 } from '@/services/account_executives'
-import { AccountExecutiveRecord } from '@/types/service_record'
+import { AccountExecutiveRecord, CommercialBase } from '@/types/service_record'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { extractFieldErrors, getErrorMessage, type FieldErrors } from '@/lib/pocketbase/errors'
-import { UserCog, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { UserCog, Plus, Pencil, Trash2, Loader2, FilterX } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { COMMERCIAL_BASE_OPTIONS } from '@/lib/commercial-bases'
+import { TableColumnFilter } from '@/components/TableColumnFilter'
 
 export default function ExecutivosContas() {
   const { user } = useAuth()
@@ -44,10 +45,16 @@ export default function ExecutivosContas() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [selectedBases, setSelectedBases] = useState<string[]>([])
+  const [selectedBases, setSelectedBases] = useState<CommercialBase[]>([])
   const [saving, setSaving] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const canManage = ['Gerentes', 'Supervisores', 'Líderes', 'Master'].includes(user?.role)
+
+  // Filtros por coluna
+  const [colNames, setColNames] = useState<string[]>([])
+  const [colEmails, setColEmails] = useState<string[]>([])
+  const [colPhones, setColPhones] = useState<string[]>([])
+  const [colBases, setColBases] = useState<string[]>([])
 
   const loadData = async () => {
     setLoading(true)
@@ -68,12 +75,24 @@ export default function ExecutivosContas() {
     loadData()
   })
 
-  const filtered = executives.filter(
-    (a) =>
+  const hasColFilters =
+    colNames.length > 0 || colEmails.length > 0 || colPhones.length > 0 || colBases.length > 0
+
+  const filtered = executives.filter((a) => {
+    const matchesSearch =
       a.name.toLowerCase().includes(search.toLowerCase()) ||
       (a.email || '').toLowerCase().includes(search.toLowerCase()) ||
-      (a.phone || '').toLowerCase().includes(search.toLowerCase()),
-  )
+      (a.phone || '').toLowerCase().includes(search.toLowerCase())
+
+    const matchesName = colNames.length === 0 || colNames.includes(a.name)
+    const matchesEmail = colEmails.length === 0 || colEmails.includes(a.email || '—')
+    const matchesPhone = colPhones.length === 0 || colPhones.includes(a.phone || '—')
+    const basesFormatted =
+      a.bases && (a.bases as string[]).length > 0 ? (a.bases as string[]).join(', ') : '—'
+    const matchesBases = colBases.length === 0 || colBases.includes(basesFormatted)
+
+    return matchesSearch && matchesName && matchesEmail && matchesPhone && matchesBases
+  })
 
   const resetForm = () => {
     setName('')
@@ -89,7 +108,7 @@ export default function ExecutivosContas() {
     setName(a.name)
     setEmail(a.email || '')
     setPhone(a.phone || '')
-    setSelectedBases((a.bases as string[] | undefined) || [])
+    setSelectedBases((a.bases as CommercialBase[] | undefined) || [])
     setFieldErrors({})
     setDialogOpen(true)
   }
@@ -174,12 +193,29 @@ export default function ExecutivosContas() {
       </div>
 
       <Card className="p-4 border-slate-200 shadow-subtle">
-        <Input
-          placeholder="Buscar por nome, e-mail ou telefone..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-9 text-xs mb-4"
-        />
+        <div className="flex items-center gap-2 mb-4">
+          <Input
+            placeholder="Buscar por nome, e-mail ou telefone..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9 text-xs max-w-sm"
+          />
+          {hasColFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-9 text-slate-500"
+              onClick={() => {
+                setColNames([])
+                setColEmails([])
+                setColPhones([])
+                setColBases([])
+              }}
+            >
+              <FilterX className="h-3.5 w-3.5 mr-1" /> Limpar filtros de coluna
+            </Button>
+          )}
+        </div>
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
@@ -189,10 +225,54 @@ export default function ExecutivosContas() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50">
-                  <TableHead className="text-xs font-bold">Nome</TableHead>
-                  <TableHead className="text-xs font-bold">E-mail</TableHead>
-                  <TableHead className="text-xs font-bold">Telefone</TableHead>
-                  <TableHead className="text-xs font-bold">Bases</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-700">
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Nome</span>
+                      <TableColumnFilter
+                        title="Nome"
+                        options={executives.map((e) => e.name).filter(Boolean)}
+                        selectedValues={colNames}
+                        onChange={setColNames}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-slate-700">
+                    <div className="flex items-center justify-between gap-1">
+                      <span>E-mail</span>
+                      <TableColumnFilter
+                        title="E-mail"
+                        options={executives.map((e) => e.email || '—')}
+                        selectedValues={colEmails}
+                        onChange={setColEmails}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-slate-700">
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Telefone</span>
+                      <TableColumnFilter
+                        title="Telefone"
+                        options={executives.map((e) => e.phone || '—')}
+                        selectedValues={colPhones}
+                        onChange={setColPhones}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-slate-700">
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Bases</span>
+                      <TableColumnFilter
+                        title="Bases"
+                        options={executives.map((e) =>
+                          e.bases && (e.bases as string[]).length > 0
+                            ? (e.bases as string[]).join(', ')
+                            : '—',
+                        )}
+                        selectedValues={colBases}
+                        onChange={setColBases}
+                      />
+                    </div>
+                  </TableHead>
                   {canManage && (
                     <TableHead className="text-xs font-bold text-right">Ações</TableHead>
                   )}
@@ -298,9 +378,10 @@ export default function ExecutivosContas() {
                   <div key={opt.value} className="flex items-center space-x-2">
                     <Checkbox
                       id={`exec-base-${opt.value}`}
-                      checked={selectedBases.includes(opt.value)}
+                      checked={selectedBases.includes(opt.value as CommercialBase)}
                       onCheckedChange={(checked) => {
-                        if (checked) setSelectedBases([...selectedBases, opt.value])
+                        if (checked)
+                          setSelectedBases([...selectedBases, opt.value as CommercialBase])
                         else setSelectedBases(selectedBases.filter((b) => b !== opt.value))
                       }}
                     />

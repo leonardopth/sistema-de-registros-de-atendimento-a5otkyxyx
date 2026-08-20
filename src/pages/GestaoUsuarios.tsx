@@ -15,7 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { UserPlus, Check, X, Trash2, Loader2, Crown, History, Pencil } from 'lucide-react'
+import { UserPlus, Check, X, Trash2, Loader2, Crown, History, Pencil, FilterX } from 'lucide-react'
 import { NewUserDialog } from '@/components/NewUserDialog'
 import { EditUserDialog } from '@/components/EditUserDialog'
 import { MasterAccessHistoryDialog } from '@/components/MasterAccessHistoryDialog'
@@ -41,6 +41,8 @@ export default function GestaoUsuarios() {
   const [loading, setLoading] = useState(true)
 
   // Filtros por coluna
+  const [colNames, setColNames] = useState<string[]>([])
+  const [colEmails, setColEmails] = useState<string[]>([])
   const [colRoles, setColRoles] = useState<string[]>([])
   const [colStatuses, setColStatuses] = useState<string[]>([])
   const [colGroups, setColGroups] = useState<string[]>([])
@@ -106,8 +108,17 @@ export default function GestaoUsuarios() {
       u.name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()),
   )
+  const hasColFilters =
+    colNames.length > 0 ||
+    colEmails.length > 0 ||
+    colRoles.length > 0 ||
+    colStatuses.length > 0 ||
+    colGroups.length > 0
+
   const visibleUsers = (showMasterOnly ? filtered.filter((u) => u.master_access) : filtered).filter(
     (u) => {
+      const matchesName = colNames.length === 0 || colNames.includes(u.name || '-')
+      const matchesEmail = colEmails.length === 0 || colEmails.includes(u.email || '-')
       const matchesRole = colRoles.length === 0 || colRoles.includes(u.role)
       const matchesStatus = colStatuses.length === 0 || colStatuses.includes(u.approval_status)
       const groupStr = u.service_groups?.length
@@ -116,7 +127,7 @@ export default function GestaoUsuarios() {
           ? u.bases.join(', ')
           : '-'
       const matchesGroup = colGroups.length === 0 || colGroups.includes(groupStr)
-      return matchesRole && matchesStatus && matchesGroup
+      return matchesName && matchesEmail && matchesRole && matchesStatus && matchesGroup
     },
   )
 
@@ -148,12 +159,30 @@ export default function GestaoUsuarios() {
           </Button>
         </div>
       </div>
-      <Input
-        placeholder="Buscar por nome ou e-mail..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
-      />
+      <div className="flex items-center gap-2">
+        <Input
+          placeholder="Buscar por nome ou e-mail..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-sm"
+        />
+        {hasColFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs h-9 text-slate-500"
+            onClick={() => {
+              setColNames([])
+              setColEmails([])
+              setColRoles([])
+              setColStatuses([])
+              setColGroups([])
+            }}
+          >
+            <FilterX className="h-3.5 w-3.5 mr-1" /> Limpar filtros de coluna
+          </Button>
+        )}
+      </div>
       {loading ? (
         <div className="flex justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
@@ -163,8 +192,28 @@ export default function GestaoUsuarios() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>E-mail</TableHead>
+                <TableHead>
+                  <div className="flex items-center justify-between gap-1">
+                    <span>Nome</span>
+                    <TableColumnFilter
+                      title="Nome"
+                      options={users.map((u) => u.name || '-')}
+                      selectedValues={colNames}
+                      onChange={setColNames}
+                    />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center justify-between gap-1">
+                    <span>E-mail</span>
+                    <TableColumnFilter
+                      title="E-mail"
+                      options={users.map((u) => u.email || '-')}
+                      selectedValues={colEmails}
+                      onChange={setColEmails}
+                    />
+                  </div>
+                </TableHead>
                 <TableHead>
                   <div className="flex items-center justify-between gap-1">
                     <span>Cargo</span>

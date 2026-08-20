@@ -11,7 +11,8 @@ export interface TableColumnFilterProps {
   title?: string
   options: string[]
   selectedValues: string[]
-  onChange: (values: string[]) => void
+  onChange?: (values: string[]) => void
+  onSelectionChange?: (values: string[]) => void
   align?: 'start' | 'center' | 'end'
 }
 
@@ -20,10 +21,16 @@ export function TableColumnFilter({
   options,
   selectedValues = [],
   onChange,
+  onSelectionChange,
   align = 'start',
 }: TableColumnFilterProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [open, setOpen] = useState(false)
+
+  const handleChange = (vals: string[]) => {
+    if (onChange) onChange(vals)
+    if (onSelectionChange) onSelectionChange(vals)
+  }
 
   // Remove duplicados e vazios, ordenando alfabeticamente
   const uniqueOptions = useMemo(() => {
@@ -49,23 +56,23 @@ export function TableColumnFilter({
 
   const handleToggleOption = (option: string) => {
     if (selectedValues.includes(option)) {
-      onChange(selectedValues.filter((v) => v !== option))
+      handleChange(selectedValues.filter((v) => v !== option))
     } else {
-      onChange([...selectedValues, option])
+      handleChange([...selectedValues, option])
     }
   }
 
   const handleToggleAll = () => {
     if (isAllSelected || activeCount > 0) {
-      onChange([])
+      handleChange([])
     } else {
-      onChange([...uniqueOptions])
+      handleChange([...uniqueOptions])
     }
   }
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation()
-    onChange([])
+    handleChange([])
   }
 
   return (
@@ -127,10 +134,10 @@ export function TableColumnFilter({
           />
         </div>
 
-        <div className="flex items-center justify-between px-1 py-1 mb-1 bg-slate-50 rounded text-xs">
-          <label className="flex items-center gap-2 cursor-pointer text-slate-600 select-none">
+        <div className="flex items-center justify-between px-1.5 py-1 mb-1 bg-slate-50 rounded text-xs">
+          <label className="flex items-center gap-2 cursor-pointer text-slate-700 select-none flex-1">
             <Checkbox
-              checked={isAllSelected}
+              checked={isAllSelected ? true : activeCount > 0 ? 'indeterminate' : false}
               onCheckedChange={handleToggleAll}
               className="h-3.5 w-3.5"
             />

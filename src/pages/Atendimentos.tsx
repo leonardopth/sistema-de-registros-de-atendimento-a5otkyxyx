@@ -92,7 +92,9 @@ export default function Atendimentos() {
   const [colStatuses, setColStatuses] = useState<string[]>([])
   const [colPriorities, setColPriorities] = useState<string[]>([])
   const [colAvoidable, setColAvoidable] = useState<string[]>([])
+  const [colDurations, setColDurations] = useState<string[]>([])
   const [colConsultants, setColConsultants] = useState<string[]>([])
+  const [colCreatedDates, setColCreatedDates] = useState<string[]>([])
 
   const [selectedRecord, setSelectedRecord] = useState<ServiceRecord | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -317,15 +319,28 @@ export default function Atendimentos() {
     const matchesTravelType = travelTypeFilter === 'todos' || r.travel_type === travelTypeFilter
 
     // Filtros por coluna
-    const clientNameDisplay = r.client_company ? `${r.client_company} - ${r.client_name}` : r.client_name
-    const matchesColClient = colClients.length === 0 || colClients.includes(clientNameDisplay) || colClients.includes(r.client_company || '') || colClients.includes(r.client_name)
+    const clientNameDisplay = r.client_company
+      ? `${r.client_company} - ${r.client_name}`
+      : r.client_name
+    const matchesColClient =
+      colClients.length === 0 ||
+      colClients.includes(clientNameDisplay) ||
+      colClients.includes(r.client_company || '') ||
+      colClients.includes(r.client_name)
     const matchesColReason = colReasons.length === 0 || colReasons.includes(r.contact_reason || '')
     const matchesColStatus = colStatuses.length === 0 || colStatuses.includes(r.status || '')
-    const matchesColPriority = colPriorities.length === 0 || colPriorities.includes(r.priority || '')
+    const matchesColPriority =
+      colPriorities.length === 0 || colPriorities.includes(r.priority || '')
     const avoidableLabel = r.avoidable_contact ? 'Sim' : 'Não'
     const matchesColAvoidable = colAvoidable.length === 0 || colAvoidable.includes(avoidableLabel)
+    const durationLabel = r.duration ? `${r.duration} min` : '-'
+    const matchesColDuration = colDurations.length === 0 || colDurations.includes(durationLabel)
     const consultantName = r.expand?.assigned_user?.name || r.assigned_agent || 'Não atribuído'
-    const matchesColConsultant = colConsultants.length === 0 || colConsultants.includes(consultantName)
+    const matchesColConsultant =
+      colConsultants.length === 0 || colConsultants.includes(consultantName)
+    const createdDateFormatted = r.created ? formatGMT3DateTime(r.created) : '-'
+    const matchesColCreated =
+      colCreatedDates.length === 0 || colCreatedDates.includes(createdDateFormatted)
 
     return (
       matchesSearch &&
@@ -343,7 +358,9 @@ export default function Atendimentos() {
       matchesColStatus &&
       matchesColPriority &&
       matchesColAvoidable &&
-      matchesColConsultant
+      matchesColDuration &&
+      matchesColConsultant &&
+      matchesColCreated
     )
   })
 
@@ -494,7 +511,9 @@ export default function Atendimentos() {
     setColStatuses([])
     setColPriorities([])
     setColAvoidable([])
+    setColDurations([])
     setColConsultants([])
+    setColCreatedDates([])
     if (searchParams.get('avoidable_contact')) {
       searchParams.delete('avoidable_contact')
       setSearchParams(searchParams)
@@ -779,7 +798,9 @@ export default function Atendimentos() {
                     currentSortField={sortField}
                     currentSortDirection={sortDirection}
                     onSort={handleSort}
-                    filterOptions={records.map((r) => r.client_company ? `${r.client_company} - ${r.client_name}` : r.client_name)}
+                    filterOptions={records.map((r) =>
+                      r.client_company ? `${r.client_company} - ${r.client_name}` : r.client_name,
+                    )}
                     filterSelected={colClients}
                     onFilterChange={setColClients}
                   />
@@ -830,6 +851,9 @@ export default function Atendimentos() {
                     currentSortField={sortField}
                     currentSortDirection={sortDirection}
                     onSort={handleSort}
+                    filterOptions={records.map((r) => (r.duration ? `${r.duration} min` : '-'))}
+                    filterSelected={colDurations}
+                    onFilterChange={setColDurations}
                   />
                   <SortableHeader
                     label="Consultor"
@@ -837,7 +861,9 @@ export default function Atendimentos() {
                     currentSortField={sortField}
                     currentSortDirection={sortDirection}
                     onSort={handleSort}
-                    filterOptions={users.map((u) => u.name).filter(Boolean)}
+                    filterOptions={records.map(
+                      (r) => r.expand?.assigned_user?.name || r.assigned_agent || 'Não atribuído',
+                    )}
                     filterSelected={colConsultants}
                     onFilterChange={setColConsultants}
                   />
@@ -847,6 +873,11 @@ export default function Atendimentos() {
                     currentSortField={sortField}
                     currentSortDirection={sortDirection}
                     onSort={handleSort}
+                    filterOptions={records.map((r) =>
+                      r.created ? formatGMT3DateTime(r.created) : '-',
+                    )}
+                    filterSelected={colCreatedDates}
+                    onFilterChange={setColCreatedDates}
                   />
                   <TableHead className="text-xs font-bold text-right">Ação</TableHead>
                 </TableRow>
