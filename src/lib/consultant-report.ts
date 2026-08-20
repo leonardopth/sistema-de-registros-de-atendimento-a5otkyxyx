@@ -45,7 +45,7 @@ export function computeConsultantStats(
 
 export function filterConsultantsByAccess(stats: ConsultantStat[], user: any): ConsultantStat[] {
   if (!user) return []
-  // Usuários com papel "Master" ou permissão master_access visualizam TODOS os consultores
+  // Usuários com papel "Master" ou permissão master_access visualizam TODOS os consultores sem restrição
   if (isMasterUser(user)) return stats
   // Gestão/Liderança (Gerentes, Supervisores, Líderes) visualiza consultores dos seus grupos de atendimento
   if (isManagerUser(user)) {

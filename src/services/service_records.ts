@@ -51,6 +51,111 @@ export const getAccessibleServiceRecords = async (
   }
 }
 
+/**
+ * Busca atendimentos e usuários aplicando restrição de acesso a nível de consulta backend para o Relatório Consultor:
+ * - Master (ou master_access=true): busca TODOS os atendimentos e TODOS os usuários/consultores sem restrição
+ * - Líderes / Gestão (Gerentes, Supervisores, Líderes): filtra no backend consultores dos seus grupos de atendimento e os atendimentos correspondentes
+ * - Consultores comuns e outros não-master: filtra no backend apenas os registros do próprio usuário
+ */
+export const getConsultantReportData = async (
+  currentUser: any,
+): Promise<{ records: ServiceRecord[]; users: any[] }> => {
+  try {
+    if (!currentUser) {
+      return { records: [], users: [] }
+    }
+
+    const isMaster = currentUser.role === 'Master' || currentUser.master_access === true
+    const isLeadership =
+      isMaster ||
+      currentUser.role === 'Gerentes' ||
+      currentUser.role === 'Supervisores' ||
+      currentUser.role === 'Líderes'
+
+    // 1. Caso Master: sem nenhuma restrição no backend (vê todos os consultores e registros)
+    if (isMaster) {
+      const [records, users] = await Promise.all([
+        getServiceRecords('-created'),
+        pb
+          .collection('users')
+          .getFullList({ sort: 'name' })
+          .catch(async () => {
+            const { getUsers } = await import('@/services/users')
+            return getUsers()
+          }),
+      ])
+      return { records, users: Array.isArray(users) ? users : [] }
+    }
+
+    // 2. Caso Líder / Gestão: filtra consultores dos mesmos grupos de atendimento e busca atendimentos desses consultores
+    if (isLeadership) {
+      const userGroups: string[] = Array.isArray(currentUser.service_groups)
+        ? currentUser.service_groups
+        : []
+
+      let userFilter = `id = "${currentUser.id}"`
+      if (userGroups.length > 0) {
+        const groupConds = userGroups.map((g) => `service_groups ~ "${g}"`).join(' || ')
+        userFilter = `(${userFilter}) || (role = 'Consultores' && (${groupConds}))`
+      } else {
+        // Se o líder não tiver grupos específicos definidos, vê todos os consultores ou todos do sistema
+        userFilter = `role = 'Consultores' || id = "${currentUser.id}"`
+      }
+
+      let teamUsers: any[] = []
+      try {
+        teamUsers = await pb.collection('users').getFullList({
+          filter: userFilter,
+          sort: 'name',
+        })
+      } catch (err) {
+        console.warn('Fallback loading team users:', err)
+        const { getUsers } = await import('@/services/users')
+        const all = await getUsers()
+        teamUsers = all.filter((u: any) => {
+          if (u.id === currentUser.id) return true
+          if (u.role !== 'Consultores') return false
+          if (userGroups.length === 0) return true
+          const cg = Array.isArray(u.service_groups) ? u.service_groups : []
+          return cg.some((g: string) => userGroups.includes(g))
+        })
+      }
+
+      // Agora busca no backend os atendimentos vinculados a essa equipe
+      const teamUserIds = Array.from(new Set(teamUsers.map((u) => u.id).filter(Boolean)))
+      if (teamUserIds.length === 0) {
+        teamUserIds.push(currentUser.id)
+      }
+
+      // Constrói filtro backend para service_records
+      const userConditions = teamUserIds
+        .map((id) => `user_id = "${id}" || assigned_user = "${id}"`)
+        .join(' || ')
+
+      const records = await getServiceRecords('-created', userConditions)
+      return { records, users: teamUsers }
+    }
+
+    // 3. Caso Consultor comum / não-master: busca no backend apenas os próprios dados
+    const myFilter = `user_id = "${currentUser.id}" || assigned_user = "${currentUser.id}"`
+    const [records, myUserRec] = await Promise.all([
+      getServiceRecords('-created', myFilter),
+      pb
+        .collection('users')
+        .getOne(currentUser.id)
+        .catch(() => currentUser),
+    ])
+
+    return {
+      records,
+      users: myUserRec ? [myUserRec] : [currentUser],
+    }
+  } catch (error) {
+    console.error('Error fetching consultant report data:', error)
+    return { records: [], users: [] }
+  }
+}
+
 export const getMyServiceRecords = async (userId: string): Promise<ServiceRecord[]> => {
   try {
     if (!userId) return []

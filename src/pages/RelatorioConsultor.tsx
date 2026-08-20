@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { getServiceRecords } from '@/services/service_records'
-import { getUsers } from '@/services/users'
+import { getConsultantReportData } from '@/services/service_records'
 import { ServiceRecord, UserRecord } from '@/types/service_record'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
@@ -14,22 +13,36 @@ import {
   buildAnonymizedNames,
   type ConsultantStat,
 } from '@/lib/consultant-report'
-import { Headset, Clock, AlertTriangle, CheckCircle2, Award, Users } from 'lucide-react'
+import {
+  Headset,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  Award,
+  Users,
+  Crown,
+  Shield,
+} from 'lucide-react'
 
 export default function RelatorioConsultor() {
   const { user } = useAuth()
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [users, setUsers] = useState<UserRecord[]>([])
+  const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async () => {
+    if (!user) return
     try {
-      const [r, u] = await Promise.all([getServiceRecords(), getUsers()])
-      setRecords(r)
-      setUsers(u)
+      setLoading(true)
+      const data = await getConsultantReportData(user)
+      setRecords(data.records)
+      setUsers(data.users as UserRecord[])
     } catch (err) {
       console.error(err)
+    } finally {
+      setLoading(false)
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     loadData()
@@ -55,16 +68,48 @@ export default function RelatorioConsultor() {
     return anonymizedNames.get(stat.uid) || 'Consultor'
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="h-8 w-64 bg-slate-200 animate-pulse rounded" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="border-slate-200 p-4">
+              <div className="h-16 bg-slate-100 animate-pulse rounded" />
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   if (visibleStats.length === 0 && !myStats) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-extrabold text-slate-900">
-          {isMaster
-            ? 'Relatório Geral de Consultores (Master)'
-            : isLeadership
-              ? 'Relatório da Equipe'
-              : 'Meu Relatório'}
-        </h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
+              {isMaster && <Crown className="h-6 w-6 text-amber-500" />}
+              {isMaster
+                ? 'Relatório Geral de Consultores (Master)'
+                : isLeadership
+                  ? 'Relatório da Equipe'
+                  : 'Meu Relatório'}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {isMaster
+                ? 'Visão irrestrita de todos os consultores cadastrados na base de dados'
+                : isLeadership
+                  ? 'Visão dos consultores dos seus grupos de atendimento'
+                  : 'Sua performance individual'}
+            </p>
+          </div>
+          {isMaster && (
+            <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+              <Shield className="h-3 w-3 mr-1" /> Acesso Master
+            </Badge>
+          )}
+        </div>
         <Card className="p-8 text-center">
           <p className="text-sm text-slate-400">
             {isMaster
@@ -106,9 +151,19 @@ export default function RelatorioConsultor() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">{title}</h2>
-        <p className="text-xs text-slate-500">{subtitle}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
+            {isMaster && <Crown className="h-6 w-6 text-amber-500" />}
+            {title}
+          </h2>
+          <p className="text-xs text-slate-500">{subtitle}</p>
+        </div>
+        {isMaster && (
+          <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+            <Shield className="h-3 w-3 mr-1" /> Acesso Master ({visibleStats.length} consultores)
+          </Badge>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
