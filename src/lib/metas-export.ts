@@ -1,116 +1,103 @@
-import { formatGMT3DateTime } from '@/lib/timezone'
 import { STATUS_LABEL, type ComparisonRow, type Status } from '@/lib/metas'
 
-/** Colunas do comparativo de metas. */
-export interface ExportColumn {
-  header: string
-  accessor: (row: ComparisonRow) => string
-}
-
-const COLUMNS: ExportColumn[] = [
-  { header: 'Agente', accessor: (r) => r.agentName },
-  {
-    header: 'Tipo de Meta',
-    accessor: (r) => (r.source === 'individual' ? 'Individual' : 'Global'),
-  },
-  { header: 'Meta de Atendimentos', accessor: (r) => String(r.attendanceTarget) },
-  { header: 'Atendimentos Realizados', accessor: (r) => String(r.realAttendance) },
-  { header: '% Atingida', accessor: (r) => `${r.attendancePct}%` },
-  { header: 'Taxa Resolução Mínima', accessor: (r) => `${r.minResolutionRate}%` },
-  { header: 'Taxa Resolução Real', accessor: (r) => `${r.realResolutionRate}%` },
-  {
-    header: 'Status Atendimentos',
-    accessor: (r) => STATUS_LABEL[r.attendanceStatus as Status],
-  },
-  {
-    header: 'Status Resolução',
-    accessor: (r) => STATUS_LABEL[r.resolutionStatus as Status],
-  },
-  { header: 'Status Geral', accessor: (r) => STATUS_LABEL[r.overall as Status] },
+export const COLUMNS: { key: keyof ComparisonRow; header: string }[] = [
+  { key: 'userName', header: 'Colaborador' },
+  { key: 'userRole', header: 'Função' },
+  { key: 'source', header: 'Origem da meta' },
+  { key: 'attendanceTarget', header: 'Meta de Atendimentos' },
+  { key: 'realAttendance', header: 'Atendimentos Realizados' },
+  { key: 'attendancePct', header: '% Atingimento Atendimentos' },
+  { key: 'minResolutionRate', header: 'Meta Mín. Resolução (%)' },
+  { key: 'realResolutionRate', header: 'Taxa Real Resolução (%)' },
+  { key: 'avgDuration', header: 'Tempo Médio (min)' },
+  { key: 'attendanceStatus', header: 'Status Atendimentos' },
+  { key: 'resolutionStatus', header: 'Status Resolução' },
+  { key: 'overall', header: 'Status Geral' },
 ]
 
-/** Gera e baixa o CSV do comparativo de metas (fuso GMT-3). */
-export function exportMetasCSV(rows: ComparisonRow[]): void {
-  const now = formatGMT3DateTime(new Date().toISOString())
-  const escape = (v: string) => {
-    const s = String(v ?? '')
-    if (/[;",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
-    return s
+function formatCell(row: ComparisonRow, key: keyof ComparisonRow): string {
+  const v = row[key]
+  if (key === 'source') {
+    return v === 'individual' ? 'Individual' : 'Global (padrão)'
   }
-  const header = COLUMNS.map((c) => escape(c.header)).join(';')
-  const body = rows.map((r) => COLUMNS.map((c) => escape(c.accessor(r))).join(';')).join('\r\n')
-  const content = `${header}\r\n${body}\r\n\r\nGerado em: ${now} (GMT-3)\r\n`
+  if (key === 'attendanceStatus' || key === 'resolutionStatus' || key === 'overall') {
+    return STATUS_LABEL[v as Status] || String(v ?? '')
+  }
+  if (key === 'attendancePct' || key === 'minResolutionRate' || key === 'realResolutionRate') {
+    return `${v}%`
+  }
+  if (key === 'avgDuration') {
+    return `${v} min`
+  }
+  return String(v ?? '')
+}
 
-  const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8;' })
+/** Gera e baixa o CSV do comparativo de metas de colaboradores. */
+export function exportMetasCSV(rows: ComparisonRow[]): void {
+  const headerLine = COLUMNS.map((c) => `"${c.header.replace(/"/g, '""')}"`).join(',')
+  const dataLines = rows.map((r) =>
+    COLUMNS.map((c) => `"${formatCell(r, c.key).replace(/"/g, '""')}"`).join(','),
+  )
+  const csvContent = '\uFEFF' + [headerLine, ...dataLines].join('\r\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `metas-desempenho-${new Date().toISOString().substring(0, 10)}.csv`
+  a.download = `metas-desempenho-colaboradores-${new Date().toISOString().substring(0, 10)}.csv`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  URL.revokeObjectURL(url)
 }
 
-/**
- * Gera e baixa o PDF do comparativo de metas (fuso GMT-3).
- * Usa o helper `downloadPDF` (window.print) existente para evitar depêndencias extras.
- */
+/** Gera e abre a janela de impressão para exportar PDF do comparativo de metas. */
 export function exportMetasPDF(rows: ComparisonRow[]): void {
-  const now = formatGMT3DateTime(new Date().toISOString())
   const headerCells = COLUMNS.map((c) => `<th>${c.header}</th>`).join('')
   const bodyRows = rows
-    .map((r) => {
-      const cells = COLUMNS.map((c) => `<td>${escapeHtml(c.accessor(r))}</td>`).join('')
-      return `<tr>${cells}</tr>`
-    })
+    .map((r) => `<tr>${COLUMNS.map((c) => `<td>${formatCell(r, c.key)}</td>`).join('')}</tr>`)
     .join('')
 
   const html = `
-    <h1>Metas de Desempenho — Comparativo</h1>
-    <p class="subtitle">Relatório de metas de atendimentos e resolução por agente</p>
+    <h1>Metas de Desempenho — Colaboradores</h1>
+    <p class="subtitle">Relatório de metas de atendimentos e resolução por colaborador interno</p>
     <table>
       <thead><tr>${headerCells}</tr></thead>
-      <tbody>${bodyRows || '<tr><td colspan="' + COLUMNS.length + '" style="text-align:center">Nenhum dado</td></tr>'}</tbody>
+      <tbody>${bodyRows}</tbody>
     </table>
-    <div class="footer">Gerado em: ${now} (GMT-3)</div>
   `
-
-  openPrintWindow(html, 'Metas de Desempenho')
+  openPrintWindow(html, 'Metas de Desempenho - Colaboradores')
 }
 
-function escapeHtml(s: string): string {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-function openPrintWindow(htmlContent: string, title: string): void {
+function openPrintWindow(bodyContent: string, title: string): void {
   const win = window.open('', '_blank')
   if (!win) return
-  win.document.write(`<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<title>${title}</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; padding: 20px; color: #1e293b; }
-  h1 { font-size: 18px; margin-bottom: 4px; color: #0f172a; }
-  .subtitle { font-size: 11px; color: #64748b; margin-bottom: 14px; }
-  table { width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 12px; }
-  th, td { border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; vertical-align: top; }
-  th { background: #f1f5f9; font-weight: bold; }
-  tr:nth-child(even) td { background: #f8fafc; }
-  .footer { margin-top: 16px; font-size: 10px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 8px; }
-  @media print { body { padding: 10px; } @page { margin: 1cm; } }
-</style>
-</head>
-<body>${htmlContent}</body>
-</html>`)
+  win.document.write(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="utf-8" />
+      <title>${title}</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 24px; color: #1e293b; }
+        h1 { font-size: 18px; margin: 0 0 4px 0; color: #0f172a; }
+        .subtitle { font-size: 11px; color: #64748b; margin: 0 0 16px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; }
+        th { background: #f1f5f9; font-weight: 700; color: #334155; }
+        tr:nth-child(even) { background: #f8fafc; }
+        @media print {
+          body { margin: 12px; }
+        }
+      </style>
+    </head>
+    <body>
+      ${bodyContent}
+    </body>
+    </html>
+  `)
   win.document.close()
   win.focus()
-  setTimeout(() => win.print(), 300)
+  setTimeout(() => {
+    win.print()
+  }, 250)
 }

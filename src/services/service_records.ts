@@ -1,15 +1,52 @@
 import pb from '@/lib/pocketbase/client'
 import { ServiceRecord } from '@/types/service_record'
 
-export const getServiceRecords = async (): Promise<ServiceRecord[]> => {
+export const getServiceRecords = async (
+  sort = '-created',
+  filter?: string,
+): Promise<ServiceRecord[]> => {
   try {
     const records = await pb.collection('service_records').getFullList<ServiceRecord>({
-      sort: '-created',
+      sort,
+      filter: filter || undefined,
       expand: 'account_executive,client,agent,assigned_user,user_id',
     })
     return Array.isArray(records) ? records : []
   } catch (error) {
     console.error('Error fetching service records:', error)
+    return []
+  }
+}
+
+/**
+ * Busca atendimentos aplicando a regra de acesso centralizada (RBAC no backend):
+ * - Usuários 'Master' ou master_access = true visualizam TODOS os atendimentos
+ * - Usuários normais visualizam APENAS: (a) seus próprios atendimentos (user_id ou assigned_user); (b) atendimentos compartilhados com eles.
+ */
+export const getAccessibleServiceRecords = async (
+  userId?: string,
+  userRole?: string,
+  masterAccess?: boolean,
+  sort = '-created',
+): Promise<ServiceRecord[]> => {
+  try {
+    const isMaster = userRole === 'Master' || masterAccess === true
+    if (isMaster || !userId) {
+      return await getServiceRecords(sort)
+    }
+
+    // Busca IDs dos atendimentos compartilhados com o usuário
+    const sharedIds = await getSharedRecordIds(userId)
+
+    let filter = `user_id = "${userId}" || assigned_user = "${userId}"`
+    if (sharedIds.length > 0) {
+      const sharesFilter = sharedIds.map((id) => `id = "${id}"`).join(' || ')
+      filter = `(${filter}) || (${sharesFilter})`
+    }
+
+    return await getServiceRecords(sort, filter)
+  } catch (error) {
+    console.error('Error fetching accessible service records:', error)
     return []
   }
 }

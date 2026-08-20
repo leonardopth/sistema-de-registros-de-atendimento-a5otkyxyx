@@ -148,7 +148,8 @@ export interface AgentRecord {
   name: string
   email?: string
   phone?: string
-  client_id: string
+  birthday?: string
+  client_id?: string
   created: string
   updated: string
   expand?: {
@@ -213,13 +214,15 @@ export interface FeedbackRecord {
 export interface ServiceRecordShare {
   id: string
   service_record: string
-  user: string
+  user?: string
+  account_executive?: string
   shared_by: string
   permission: 'Visualizar' | 'Editar'
   created: string
   updated: string
   expand?: {
     user?: UserRecord
+    account_executive?: AccountExecutiveRecord
     shared_by?: UserRecord
     service_record?: ServiceRecord
   }

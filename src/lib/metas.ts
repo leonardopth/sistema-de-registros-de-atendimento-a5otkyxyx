@@ -1,9 +1,5 @@
-import type {
-  AgentRecord,
-  AgentTargetRecord,
-  GlobalTargetRecord,
-  ServiceRecord,
-} from '@/types/service_record'
+import type { UserRecord, GlobalTargetRecord, ServiceRecord } from '@/types/service_record'
+import type { UserTargetRecord } from '@/services/user-targets'
 import { TIMEZONE } from '@/lib/timezone'
 
 /** Funções/papéis com permissão de gestão sobre metas. */
@@ -57,28 +53,32 @@ export function getOverallStatus(a: Status, r: Status): Status {
 }
 
 export interface EffectiveTarget {
-  /** 'individual' = meta própria do agente; 'global' = meta padrão herdada. */
+  /** 'individual' = meta própria do colaborador; 'global' = meta padrão herdada. */
   source: 'individual' | 'global'
   monthly_attendance_target: number
   min_resolution_rate: number
-  /** Referência ao registro de agent_targets (quando source = individual). */
-  targetRecord?: AgentTargetRecord
+  avg_response_time_target: number
+  auto_categorization_target: number
+  targetRecord?: UserTargetRecord
 }
 
 /**
- * Resolve a meta efetiva de um agente: prevalece a meta individual sobre a global.
+ * Resolve a meta efetiva de um colaborador (usuário interno): prevalece individual sobre global.
  */
 export function resolveEffectiveTarget(
-  agentId: string,
-  targets: AgentTargetRecord[],
+  userId: string,
+  targets: UserTargetRecord[],
   global: GlobalTargetRecord,
 ): EffectiveTarget {
-  const individual = targets.find((t) => t.agent === agentId)
+  const individual = targets.find((t) => t.user === userId)
   if (individual) {
     return {
       source: 'individual',
-      monthly_attendance_target: individual.monthly_attendance_target,
-      min_resolution_rate: individual.min_resolution_rate,
+      monthly_attendance_target:
+        individual.monthly_attendance_target ?? global.monthly_attendance_target,
+      min_resolution_rate: individual.min_resolution_rate ?? global.min_resolution_rate,
+      avg_response_time_target: individual.avg_response_time_target ?? 15,
+      auto_categorization_target: individual.auto_categorization_target ?? 80,
       targetRecord: individual,
     }
   }
@@ -86,43 +86,63 @@ export function resolveEffectiveTarget(
     source: 'global',
     monthly_attendance_target: global.monthly_attendance_target,
     min_resolution_rate: global.min_resolution_rate,
+    avg_response_time_target: 15,
+    auto_categorization_target: 80,
   }
 }
 
-export interface AgentRealStats {
+export interface UserRealStats {
   total: number
   resolved: number
   rate: number
+  avgDuration: number // minutos
+  avoidableCount: number
+  avoidableRate: number
 }
 
-/** Agrupa estatísticas reais por agente para um mês/ano específicos (GMT-3). */
-export function computeStatsByAgentForMonth(
+/** Agrupa estatísticas reais por colaborador/usuário para um mês/ano específicos (GMT-3). */
+export function computeStatsByUserForMonth(
   records: ServiceRecord[],
   year: number,
   month: number, // 0-based
-): Map<string, AgentRealStats> {
-  const map = new Map<string, AgentRealStats>()
+): Map<string, UserRealStats> {
+  const map = new Map<string, UserRealStats>()
   for (const r of records) {
-    const aid = r.agent
-    if (!aid) continue
+    const uid = r.assigned_user || r.user_id
+    if (!uid) continue
     const parts = getGMT3MonthParts(r.created)
     if (!parts) continue
     if (parts.year !== year || parts.month !== month) continue
-    const cur = map.get(aid) || { total: 0, resolved: 0, rate: 0 }
+
+    const cur = map.get(uid) || {
+      total: 0,
+      resolved: 0,
+      rate: 0,
+      avgDuration: 0,
+      avoidableCount: 0,
+      avoidableRate: 0,
+    }
+
     cur.total += 1
     if (r.status === 'Concluído') cur.resolved += 1
-    map.set(aid, cur)
+    if (r.avoidable_contact) cur.avoidableCount += 1
+    cur.avgDuration += r.duration || 0
+
+    map.set(uid, cur)
   }
+
   for (const [, v] of map) {
     v.rate = v.total > 0 ? Math.round((v.resolved / v.total) * 100) : 0
+    v.avoidableRate = v.total > 0 ? Math.round((v.avoidableCount / v.total) * 100) : 0
+    v.avgDuration = v.total > 0 ? Math.round(v.avgDuration / v.total) : 0
   }
   return map
 }
 
-/** Estatísticas reais do mês corrente (GMT-3). */
-export function computeCurrentMonthStats(records: ServiceRecord[]): Map<string, AgentRealStats> {
+/** Estatísticas reais do mês corrente por colaborador (GMT-3). */
+export function computeCurrentMonthStats(records: ServiceRecord[]): Map<string, UserRealStats> {
   const now = currentGMT3Date()
-  return computeStatsByAgentForMonth(records, now.year, now.month)
+  return computeStatsByUserForMonth(records, now.year, now.month)
 }
 
 export interface MonthParts {
@@ -163,7 +183,7 @@ export interface HistoryRow {
   label: string
   attendanceTarget: number
   minResolutionRate: number
-  real: AgentRealStats
+  real: UserRealStats
   attendanceStatus: Status
   resolutionStatus: Status
   overall: Status
@@ -171,12 +191,10 @@ export interface HistoryRow {
 }
 
 /**
- * Gera o histórico mensal (últimos N meses, inclusive o corrente) para um agente,
- * calculado a partir dos service_records agrupados por mês (GMT-3).
- * A meta usada em cada mês é a meta efetiva atual (individual ou global).
+ * Gera o histórico mensal (últimos N meses) para um colaborador interno.
  */
-export function buildAgentHistory(
-  agentId: string,
+export function buildUserHistory(
+  userId: string,
   records: ServiceRecord[],
   effective: EffectiveTarget,
   monthsBack = 12,
@@ -187,8 +205,15 @@ export function buildAgentHistory(
     const d = new Date(Date.UTC(now.year, now.month - i, 1, 12, 0, 0))
     const year = d.getUTCFullYear()
     const month = d.getUTCMonth()
-    const statsMap = computeStatsByAgentForMonth(records, year, month)
-    const real = statsMap.get(agentId) || { total: 0, resolved: 0, rate: 0 }
+    const statsMap = computeStatsByUserForMonth(records, year, month)
+    const real = statsMap.get(userId) || {
+      total: 0,
+      resolved: 0,
+      rate: 0,
+      avgDuration: 0,
+      avoidableCount: 0,
+      avoidableRate: 0,
+    }
     const attendanceStatus = getAttendanceStatus(real.total, effective.monthly_attendance_target)
     const resolutionStatus = getResolutionStatus(real.rate, effective.min_resolution_rate)
     const overall = getOverallStatus(attendanceStatus, resolutionStatus)
@@ -209,43 +234,49 @@ export function buildAgentHistory(
 }
 
 export interface PerformanceAlert {
-  agentId: string
-  agentName: string
-  /** 'attendance' | 'resolution' */
+  userId: string
+  userName: string
+  userRole?: string
   type: 'attendance' | 'resolution'
   metricLabel: string
   realValue: number
   expectedValue: number
-  /** Representação textual do valor real (ex.: "12" ou "55%"). */
   realDisplay: string
   expectedDisplay: string
-  /** Razão real/esperado (para atendimentos) ou diferença em p.p. (para resolução). */
   ratio: number
 }
 
 /**
- * Calcula alertas de desempenho:
+ * Calcula alertas de desempenho para colaboradores:
  * - Atendimentos: abaixo de 50% da meta do mês corrente.
  * - Resolução: taxa real > 20 p.p. abaixo do mínimo.
  */
 export function computePerformanceAlerts(
-  agents: AgentRecord[],
-  targets: AgentTargetRecord[],
+  users: UserRecord[],
+  targets: UserTargetRecord[],
   global: GlobalTargetRecord,
   records: ServiceRecord[],
 ): PerformanceAlert[] {
   const stats = computeCurrentMonthStats(records)
   const alerts: PerformanceAlert[] = []
-  for (const agent of agents) {
-    const eff = resolveEffectiveTarget(agent.id, targets, global)
-    const real = stats.get(agent.id) || { total: 0, resolved: 0, rate: 0 }
-    // Atendimentos muito abaixo (< 50% da meta) — só dispara se houver meta > 0
+  for (const u of users) {
+    const eff = resolveEffectiveTarget(u.id, targets, global)
+    const real = stats.get(u.id) || {
+      total: 0,
+      resolved: 0,
+      rate: 0,
+      avgDuration: 0,
+      avoidableCount: 0,
+      avoidableRate: 0,
+    }
+
     if (eff.monthly_attendance_target > 0) {
       const ratio = real.total / eff.monthly_attendance_target
       if (ratio < 0.5) {
         alerts.push({
-          agentId: agent.id,
-          agentName: agent.name,
+          userId: u.id,
+          userName: u.name,
+          userRole: u.role,
           type: 'attendance',
           metricLabel: 'Atendimentos',
           realValue: real.total,
@@ -256,13 +287,14 @@ export function computePerformanceAlerts(
         })
       }
     }
-    // Resolução muito abaixo (> 20 p.p. abaixo do mínimo) — só dispara se houver atendimentos
+
     if (eff.min_resolution_rate > 0 && real.total > 0) {
       const diff = eff.min_resolution_rate - real.rate
       if (diff > 20) {
         alerts.push({
-          agentId: agent.id,
-          agentName: agent.name,
+          userId: u.id,
+          userName: u.name,
+          userRole: u.role,
           type: 'resolution',
           metricLabel: 'Taxa de resolução',
           realValue: real.rate,
@@ -274,7 +306,7 @@ export function computePerformanceAlerts(
       }
     }
   }
-  // Ordena: alertas de resolução primero, depois por gravidade (menor ratio)
+
   alerts.sort((a, b) => {
     if (a.type !== b.type) return a.type === 'resolution' ? -1 : 1
     return a.ratio - b.ratio
@@ -282,31 +314,40 @@ export function computePerformanceAlerts(
   return alerts
 }
 
-/** Linha de comparativo para exportação CSV/PDF. */
+/** Linha de comparativo para exportação CSV/PDF de colaboradores. */
 export interface ComparisonRow {
-  agentName: string
+  userName: string
+  userRole?: string
   source: 'individual' | 'global'
   attendanceTarget: number
   realAttendance: number
   attendancePct: number
   minResolutionRate: number
   realResolutionRate: number
+  avgDuration: number
   attendanceStatus: Status
   resolutionStatus: Status
   overall: Status
 }
 
 export function buildComparisonRows(
-  agents: AgentRecord[],
-  targets: AgentTargetRecord[],
+  users: UserRecord[],
+  targets: UserTargetRecord[],
   global: GlobalTargetRecord,
   records: ServiceRecord[],
 ): ComparisonRow[] {
   const stats = computeCurrentMonthStats(records)
-  return agents
-    .map((agent) => {
-      const eff = resolveEffectiveTarget(agent.id, targets, global)
-      const real = stats.get(agent.id) || { total: 0, resolved: 0, rate: 0 }
+  return users
+    .map((u) => {
+      const eff = resolveEffectiveTarget(u.id, targets, global)
+      const real = stats.get(u.id) || {
+        total: 0,
+        resolved: 0,
+        rate: 0,
+        avgDuration: 0,
+        avoidableCount: 0,
+        avoidableRate: 0,
+      }
       const attendanceStatus = getAttendanceStatus(real.total, eff.monthly_attendance_target)
       const resolutionStatus = getResolutionStatus(real.rate, eff.min_resolution_rate)
       const overall = getOverallStatus(attendanceStatus, resolutionStatus)
@@ -315,19 +356,21 @@ export function buildComparisonRows(
           ? Math.round((real.total / eff.monthly_attendance_target) * 100)
           : 0
       return {
-        agentName: agent.name,
+        userName: u.name,
+        userRole: u.role,
         source: eff.source,
         attendanceTarget: eff.monthly_attendance_target,
         realAttendance: real.total,
         attendancePct,
         minResolutionRate: eff.min_resolution_rate,
         realResolutionRate: real.rate,
+        avgDuration: real.avgDuration,
         attendanceStatus,
         resolutionStatus,
         overall,
       }
     })
-    .sort((a, b) => a.agentName.localeCompare(b.agentName))
+    .sort((a, b) => a.userName.localeCompare(b.userName))
 }
 
 export const STATUS_LABEL: Record<Status, string> = {

@@ -26,6 +26,7 @@ export function NewAgentDialog({
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [birthday, setBirthday] = useState('')
   const [saving, setSaving] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
@@ -46,6 +47,7 @@ export function NewAgentDialog({
         name: name.trim(),
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
+        birthday: birthday || undefined,
         client_id: clientId,
       })
       toast({ title: 'Agente cadastrado com sucesso!' })
@@ -53,6 +55,7 @@ export function NewAgentDialog({
       setName('')
       setEmail('')
       setPhone('')
+      setBirthday('')
       onOpenChange(false)
     } catch (err) {
       setFieldErrors(extractFieldErrors(err))
@@ -103,6 +106,15 @@ export function NewAgentDialog({
               placeholder="(00) 00000-0000"
             />
             {fieldErrors.phone && <p className="text-xs text-red-500">{fieldErrors.phone}</p>}
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Data de Aniversário (opcional)</Label>
+            <Input
+              className="h-9 text-xs"
+              type="date"
+              value={birthday}
+              onChange={(e) => setBirthday(e.target.value)}
+            />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

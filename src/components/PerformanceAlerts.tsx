@@ -3,15 +3,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { getAgents } from '@/services/agents'
-import { getAgentTargets } from '@/services/agent-targets'
+import { getUsers } from '@/services/users'
+import { getUserTargets, type UserTargetRecord } from '@/services/user-targets'
 import { getGlobalTarget } from '@/services/global-targets'
-import type {
-  AgentRecord,
-  AgentTargetRecord,
-  GlobalTargetRecord,
-  ServiceRecord,
-} from '@/types/service_record'
+import type { UserRecord, GlobalTargetRecord, ServiceRecord } from '@/types/service_record'
 import { computePerformanceAlerts, canManageTargets, type PerformanceAlert } from '@/lib/metas'
 
 interface PerformanceAlertsProps {
@@ -20,19 +15,23 @@ interface PerformanceAlertsProps {
 
 /**
  * Card de Alertas de Desempenho para o Dashboard.
+ * Avalia o desempenho dos colaboradores internos (consultores, supervisores, gerentes).
  * Visível apenas para gestores/supervisores/líderes/master.
  */
 export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
-  const [agents, setAgents] = useState<AgentRecord[]>([])
-  const [targets, setTargets] = useState<AgentTargetRecord[]>([])
+  const [users, setUsers] = useState<UserRecord[]>([])
+  const [targets, setTargets] = useState<UserTargetRecord[]>([])
   const [globalTarget, setGlobalTarget] = useState<GlobalTargetRecord | null>(null)
 
   useEffect(() => {
     let active = true
-    Promise.all([getAgents(), getAgentTargets(), getGlobalTarget()])
-      .then(([a, t, g]) => {
+    Promise.all([getUsers(), getUserTargets(), getGlobalTarget()])
+      .then(([u, t, g]) => {
         if (!active) return
-        setAgents(a)
+        const internal = u.filter((item) =>
+          ['Consultores', 'Líderes', 'Supervisores', 'Gerentes'].includes(item.role),
+        )
+        setUsers(internal)
         setTargets(t)
         setGlobalTarget(g)
       })
@@ -44,8 +43,8 @@ export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
 
   const alerts = useMemo<PerformanceAlert[]>(() => {
     if (!globalTarget) return []
-    return computePerformanceAlerts(agents, targets, globalTarget, records)
-  }, [agents, targets, globalTarget, records])
+    return computePerformanceAlerts(users, targets, globalTarget, records)
+  }, [users, targets, globalTarget, records])
 
   return (
     <Card className="border-slate-200 shadow-subtle">
@@ -54,26 +53,33 @@ export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
           <AlertTriangle className="h-4 w-4 text-amber-500" /> Alertas de Desempenho
         </h3>
         <p className="text-[11px] text-slate-500 mb-3">
-          Agentes com menos de 50% da meta de atendimentos ou taxa de resolução mais de 20 p.p.
-          abaixo do mínimo no mês corrente.
+          Colaboradores com menos de 50% da meta de atendimentos ou taxa de resolução mais de 20
+          p.p. abaixo do mínimo no mês corrente.
         </p>
 
         {alerts.length === 0 ? (
           <div className="flex items-center gap-2 py-4 text-xs text-emerald-600">
             <CheckCircle2 className="h-4 w-4" />
-            Nenhum alerta no momento. Todos os agentes dentro do esperado.
+            Nenhum alerta no momento. Todos os colaboradores dentro do esperado.
           </div>
         ) : (
           <div className="space-y-2">
             {alerts.map((alert, idx) => (
               <div
-                key={`${alert.agentId}-${alert.type}-${idx}`}
+                key={`${alert.userId}-${alert.type}-${idx}`}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-rose-100 bg-rose-50/50 p-2.5"
               >
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-rose-500 mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900">{alert.agentName}</p>
+                    <p className="text-xs font-bold text-slate-900">
+                      {alert.userName}{' '}
+                      {alert.userRole && (
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          ({alert.userRole})
+                        </span>
+                      )}
+                    </p>
                     <p className="text-[11px] text-slate-600">
                       {alert.metricLabel}:{' '}
                       <span className="font-semibold text-rose-600">{alert.realDisplay}</span> vs

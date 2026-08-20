@@ -122,18 +122,36 @@ export default function Atendimentos() {
 
   const loadData = async () => {
     try {
-      const [data, execs, clientsData, usersData, userShares] = await Promise.all([
-        getServiceRecords(backendSort),
+      // Busca segura no nível de query/filter conforme RBAC:
+      // Master vê tudo, consultor/executivo/usuário comum vê apenas próprios + compartilhados
+      const isMaster = user?.role === 'Master' || user?.master_access === true
+      const userSharesPromise = getSharesByUser(user?.id || '').catch(() => [])
+
+      const [userShares, execs, clientsData, usersData] = await Promise.all([
+        userSharesPromise,
         getAccountExecutives(),
         getClients(),
         getUsers(),
-        getSharesByUser(user?.id || '').catch(() => []),
       ])
+
+      const sharedIdsList = (userShares || []).map((s: any) => s.service_record).filter(Boolean)
+      setSharedRecordIds(new Set(sharedIdsList))
+
+      let queryFilter: string | undefined = undefined
+      if (!isMaster && user?.id) {
+        let f = `user_id = "${user.id}" || assigned_user = "${user.id}"`
+        if (sharedIdsList.length > 0) {
+          const sharesFilter = sharedIdsList.map((id: string) => `id = "${id}"`).join(' || ')
+          f = `(${f}) || (${sharesFilter})`
+        }
+        queryFilter = f
+      }
+
+      const data = await getServiceRecords(backendSort, queryFilter)
       setRecords(data)
       setExecutives(execs)
       setClients(clientsData)
       setUsers(usersData)
-      setSharedRecordIds(new Set(userShares.map((s: any) => s.service_record)))
     } catch (err) {
       console.error(err)
     }

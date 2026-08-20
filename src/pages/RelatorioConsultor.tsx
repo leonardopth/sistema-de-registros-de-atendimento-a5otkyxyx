@@ -36,8 +36,9 @@ export default function RelatorioConsultor() {
   }, [loadData])
   useRealtime('service_records', () => loadData())
 
-  const isLeadership = isManagerUser(user) || isMasterUser(user)
-  const shouldAnonymize = !isLeadership
+  const isMaster = isMasterUser(user)
+  const isLeadership = isManagerUser(user) || isMaster
+  const shouldAnonymize = !isMaster && !isLeadership
 
   const allStats = useMemo(() => computeConsultantStats(records, users), [records, users])
   const visibleStats = useMemo(() => filterConsultantsByAccess(allStats, user), [allStats, user])
@@ -86,10 +87,16 @@ export default function RelatorioConsultor() {
   }
 
   const cardStats = isLeadership ? teamAvg : myStats!
-  const title = isLeadership ? 'Relatório da Equipe' : 'Relatório Individual do Consultor'
-  const subtitle = isLeadership
-    ? 'Performance dos consultores do seu grupo de atendimento'
-    : 'Sua performance comparada com a equipe'
+  const title = isMaster
+    ? 'Relatório Geral de Consultores (Master)'
+    : isLeadership
+      ? 'Relatório da Equipe'
+      : 'Relatório Individual do Consultor'
+  const subtitle = isMaster
+    ? 'Performance global de todos os consultores cadastrados no sistema'
+    : isLeadership
+      ? 'Performance dos consultores do seu grupo de atendimento'
+      : 'Sua performance comparada com a equipe'
 
   return (
     <div className="space-y-6">

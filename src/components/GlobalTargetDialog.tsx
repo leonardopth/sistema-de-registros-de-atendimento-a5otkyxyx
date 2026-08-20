@@ -88,7 +88,7 @@ export function GlobalTargetDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            Estas metas padrão se aplicam automaticamente a todos os agentes que{' '}
+            Estas metas padrão se aplicam automaticamente a todos os colaboradores (consultores) que{' '}
             <strong>não</strong> possuam meta individual cadastrada. A meta individual sempre
             prevalece sobre a global.
           </p>

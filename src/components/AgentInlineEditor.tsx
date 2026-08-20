@@ -18,6 +18,7 @@ export function AgentInlineEditor({ agent, onSave, onCancel }: AgentInlineEditor
   const [name, setName] = useState(agent.name)
   const [email, setEmail] = useState(agent.email || '')
   const [phone, setPhone] = useState(agent.phone || '')
+  const [birthday, setBirthday] = useState(agent.birthday ? agent.birthday.substring(0, 10) : '')
   const [saving, setSaving] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const { toast } = useToast()
@@ -35,6 +36,7 @@ export function AgentInlineEditor({ agent, onSave, onCancel }: AgentInlineEditor
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        birthday: birthday || '',
       })
       toast({ title: 'Agente atualizado com sucesso' })
       onSave()
@@ -83,6 +85,15 @@ export function AgentInlineEditor({ agent, onSave, onCancel }: AgentInlineEditor
           />
           {fieldErrors.phone && <p className="text-xs text-red-500">{fieldErrors.phone}</p>}
         </div>
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">Data de Aniversário (opcional)</Label>
+        <Input
+          className="h-8 text-xs"
+          type="date"
+          value={birthday}
+          onChange={(e) => setBirthday(e.target.value)}
+        />
       </div>
       <div className="flex gap-2 pt-1">
         <Button

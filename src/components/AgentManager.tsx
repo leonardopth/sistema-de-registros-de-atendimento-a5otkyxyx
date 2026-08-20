@@ -20,6 +20,7 @@ export function AgentManager({ clientId }: AgentManagerProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [birthday, setBirthday] = useState('')
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
 
@@ -47,6 +48,7 @@ export function AgentManager({ clientId }: AgentManagerProps) {
     setName('')
     setEmail('')
     setPhone('')
+    setBirthday('')
     setEditingId(null)
     setShowForm(false)
   }
@@ -61,6 +63,7 @@ export function AgentManager({ clientId }: AgentManagerProps) {
           name: name.trim(),
           email: email.trim(),
           phone: phone.trim(),
+          birthday: birthday || '',
         })
         toast({ title: 'Agente atualizado com sucesso' })
       } else {
@@ -68,6 +71,7 @@ export function AgentManager({ clientId }: AgentManagerProps) {
           name: name.trim(),
           email: email.trim(),
           phone: phone.trim(),
+          birthday: birthday || undefined,
           client_id: clientId,
         })
         toast({ title: 'Agente adicionado com sucesso' })
@@ -86,6 +90,7 @@ export function AgentManager({ clientId }: AgentManagerProps) {
     setName(agent.name)
     setEmail(agent.email || '')
     setPhone(agent.phone || '')
+    setBirthday(agent.birthday ? agent.birthday.substring(0, 10) : '')
     setShowForm(true)
   }
 
@@ -169,6 +174,15 @@ export function AgentManager({ clientId }: AgentManagerProps) {
               />
             </div>
           </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Data de Aniversário (opcional)</Label>
+            <Input
+              className="h-9 text-xs"
+              type="date"
+              value={birthday}
+              onChange={(e) => setBirthday(e.target.value)}
+            />
+          </div>
           <Button
             type="submit"
             disabled={saving}
@@ -203,6 +217,12 @@ export function AgentManager({ clientId }: AgentManagerProps) {
                 <p className="text-xs font-semibold text-slate-900">{agent.name}</p>
                 {agent.email && <p className="text-[11px] text-slate-500">{agent.email}</p>}
                 {agent.phone && <p className="text-[11px] text-slate-500">{agent.phone}</p>}
+                {agent.birthday && (
+                  <p className="text-[11px] text-indigo-600">
+                    🎂 Aniversário:{' '}
+                    {new Date(agent.birthday).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                  </p>
+                )}
               </div>
               <div className="flex gap-1">
                 <Button

@@ -39,14 +39,19 @@ export function computeConsultantStats(
 
 export function filterConsultantsByAccess(stats: ConsultantStat[], user: any): ConsultantStat[] {
   if (!user) return []
+  // Usuários com papel "Master" ou permissão master_access visualizam TODOS os consultores
   if (isMasterUser(user)) return stats
-  if (!isManagerUser(user)) return stats
-  const groups = getUserServiceGroups(user)
-  if (groups.length === 0) return stats
-  return stats.filter((s) => {
-    const cg = s.user?.service_groups || []
-    return cg.some((g) => groups.includes(g))
-  })
+  // Gestão/Liderança visualiza consultores do seu grupo de atendimento
+  if (isManagerUser(user)) {
+    const groups = getUserServiceGroups(user)
+    if (groups.length === 0) return stats
+    return stats.filter((s) => {
+      const cg = s.user?.service_groups || []
+      return cg.some((g) => groups.includes(g))
+    })
+  }
+  // Consultores não-master visualizam apenas seus próprios dados
+  return stats.filter((s) => s.uid === user.id)
 }
 
 export interface TeamAggregate {

@@ -6,7 +6,13 @@ import type { ServiceRecordShare } from '@/types/service_record'
 export async function getSharesByRecord(recordId: string): Promise<ServiceRecordShare[]> {
   return await pb.collection('service_record_shares').getFullList<ServiceRecordShare>({
     filter: `service_record = "${recordId}"`,
-    expand: 'user,shared_by',
+    expand: 'user,account_executive,shared_by',
+  })
+}
+
+export async function getAllShares(): Promise<ServiceRecordShare[]> {
+  return await pb.collection('service_record_shares').getFullList<ServiceRecordShare>({
+    expand: 'user,account_executive,shared_by',
   })
 }
 
@@ -19,23 +25,26 @@ export async function getSharesByUser(userId: string): Promise<ServiceRecordShar
 
 export async function createShare(data: {
   service_record: string
-  user: string
+  user?: string
+  account_executive?: string
   shared_by: string
   permission: 'Visualizar' | 'Editar'
 }) {
   const share = await pb.collection('service_record_shares').create(data)
 
-  try {
-    const sharerName = pb.authStore.record?.name || 'Um colaborador'
-    await createNotification({
-      user_id: data.user,
-      title: 'Novo Atendimento Compartilhado',
-      message: `${sharerName} compartilhou um atendimento com você.`,
-      type: 'info',
-      link: '/atendimentos',
-    })
-  } catch (err) {
-    console.error('Error creating share notification:', err)
+  if (data.user) {
+    try {
+      const sharerName = pb.authStore.record?.name || 'Um colaborador'
+      await createNotification({
+        user_id: data.user,
+        title: 'Novo Atendimento Compartilhado',
+        message: `${sharerName} compartilhou um atendimento com você.`,
+        type: 'info',
+        link: '/atendimentos',
+      })
+    } catch (err) {
+      console.error('Error creating share notification:', err)
+    }
   }
 
   try {

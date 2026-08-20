@@ -31,22 +31,19 @@ import {
   History,
   Download,
   FileText,
+  UserCheck,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
-import { getAgents } from '@/services/agents'
+import { getUsers } from '@/services/users'
 import { getServiceRecords } from '@/services/service_records'
-import { getAgentTargets, deleteAgentTarget } from '@/services/agent-targets'
+import { getUserTargets, deleteUserTarget, type UserTargetRecord } from '@/services/user-targets'
 import { getGlobalTarget } from '@/services/global-targets'
-import { AgentTargetDialog } from '@/components/AgentTargetDialog'
+import { UserTargetDialog } from '@/components/UserTargetDialog'
 import { GlobalTargetDialog } from '@/components/GlobalTargetDialog'
-import { AgentHistoryDialog } from '@/components/AgentHistoryDialog'
-import type {
-  AgentRecord,
-  AgentTargetRecord,
-  GlobalTargetRecord,
-  ServiceRecord,
-} from '@/types/service_record'
+import { UserHistoryDialog } from '@/components/UserHistoryDialog'
+import { TableColumnFilter } from '@/components/TableColumnFilter'
+import type { UserRecord, GlobalTargetRecord, ServiceRecord } from '@/types/service_record'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -83,31 +80,41 @@ function ProgressBar({ value, max, status }: { value: number; max: number; statu
 export default function MetasDesempenho() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const [agents, setAgents] = useState<AgentRecord[]>([])
-  const [targets, setTargets] = useState<AgentTargetRecord[]>([])
+  const [users, setUsers] = useState<UserRecord[]>([])
+  const [targets, setTargets] = useState<UserTargetRecord[]>([])
   const [globalTarget, setGlobalTarget] = useState<GlobalTargetRecord | null>(null)
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [globalDialogOpen, setGlobalDialogOpen] = useState(false)
-  const [editingTarget, setEditingTarget] = useState<AgentTargetRecord | null>(null)
+  const [editingTarget, setEditingTarget] = useState<UserTargetRecord | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [historyAgent, setHistoryAgent] = useState<AgentRecord | null>(null)
+  const [historyUser, setHistoryUser] = useState<UserRecord | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+
+  // Filtros em colunas
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
+  const [selectedSources, setSelectedSources] = useState<string[]>([])
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
 
   const canManage = canManageTargets(user?.role, user?.master_access)
 
   const loadData = useCallback(async () => {
     try {
-      const [a, t, g, r] = await Promise.all([
-        getAgents(),
-        getAgentTargets(),
+      const [u, t, g, r] = await Promise.all([
+        getUsers(),
+        getUserTargets(),
         getGlobalTarget(),
         getServiceRecords(),
       ])
-      setAgents(a)
+      // Filtra usuários que são colaboradores internos
+      const internalUsers = u.filter((item) =>
+        ['Consultores', 'Líderes', 'Supervisores', 'Gerentes'].includes(item.role),
+      )
+      setUsers(internalUsers)
       setTargets(t)
       setGlobalTarget(g)
       setRecords(r)
@@ -121,21 +128,20 @@ export default function MetasDesempenho() {
   useEffect(() => {
     loadData()
   }, [loadData])
-  useRealtime('agent_targets', () => loadData())
+
+  useRealtime('user_targets', () => loadData())
   useRealtime('service_records', () => loadData())
   useRealtime('global_targets', () => loadData())
 
-  const agentMap = useMemo(() => new Map(agents.map((a) => [a.id, a])), [agents])
+  const realByUser = useMemo(() => computeCurrentMonthStats(records), [records])
 
-  const realByAgent = useMemo(() => computeCurrentMonthStats(records), [records])
-
-  const effectiveByAgent = useMemo(() => {
+  const effectiveByUser = useMemo(() => {
     const map = new Map<string, EffectiveTarget>()
-    for (const a of agents) {
+    for (const u of users) {
       map.set(
-        a.id,
+        u.id,
         resolveEffectiveTarget(
-          a.id,
+          u.id,
           targets,
           globalTarget || {
             id: 'default',
@@ -148,35 +154,56 @@ export default function MetasDesempenho() {
       )
     }
     return map
-  }, [agents, targets, globalTarget])
+  }, [users, targets, globalTarget])
 
-  const rows = useMemo(() => {
-    return agents
-      .map((agent) => {
-        const eff = effectiveByAgent.get(agent.id)
-        const real = realByAgent.get(agent.id) || { total: 0, resolved: 0, rate: 0 }
+  const allRows = useMemo(() => {
+    return users
+      .map((colab) => {
+        const eff = effectiveByUser.get(colab.id)
+        const real = realByUser.get(colab.id) || {
+          total: 0,
+          resolved: 0,
+          rate: 0,
+          avgDuration: 0,
+          avoidableCount: 0,
+          avoidableRate: 0,
+        }
         const attendanceStatus = getAttendanceStatus(
           real.total,
           eff?.monthly_attendance_target || 0,
         )
         const resolutionStatus = getResolutionStatus(real.rate, eff?.min_resolution_rate || 0)
         const overall = getOverallStatus(attendanceStatus, resolutionStatus)
+        const sourceLabel = eff?.source === 'individual' ? 'Individual' : 'Global'
         return {
-          agent,
+          user: colab,
           effective: eff,
           targetRecord: eff?.targetRecord,
           real,
           attendanceStatus,
           resolutionStatus,
           overall,
+          sourceLabel,
+          statusLabel: STATUS_STYLES[overall].label,
         }
       })
-      .sort((a, b) => a.agent.name.localeCompare(b.agent.name))
-  }, [agents, effectiveByAgent, realByAgent])
+      .sort((a, b) => a.user.name.localeCompare(b.user.name))
+  }, [users, effectiveByUser, realByUser])
 
-  const existingAgentIds = useMemo(() => targets.map((t) => t.agent), [targets])
+  // Filtragem multi-colunas
+  const filteredRows = useMemo(() => {
+    return allRows.filter((r) => {
+      if (selectedUsers.length > 0 && !selectedUsers.includes(r.user.name)) return false
+      if (selectedRoles.length > 0 && !selectedRoles.includes(r.user.role)) return false
+      if (selectedSources.length > 0 && !selectedSources.includes(r.sourceLabel)) return false
+      if (selectedStatuses.length > 0 && !selectedStatuses.includes(r.statusLabel)) return false
+      return true
+    })
+  }, [allRows, selectedUsers, selectedRoles, selectedSources, selectedStatuses])
 
-  const handleSaved = (saved: AgentTargetRecord, isEdit: boolean) => {
+  const existingUserIds = useMemo(() => targets.map((t) => t.user), [targets])
+
+  const handleSaved = (saved: UserTargetRecord, isEdit: boolean) => {
     setTargets((prev) => {
       if (isEdit) {
         return prev.map((t) => (t.id === saved.id ? { ...t, ...saved } : t))
@@ -193,11 +220,13 @@ export default function MetasDesempenho() {
     if (!deleteId) return
     setDeleting(true)
     try {
-      await deleteAgentTarget(deleteId)
+      await deleteUserTarget(deleteId)
       setTargets((prev) => prev.filter((t) => t.id !== deleteId))
       setDeleteId(null)
+      toast({ title: 'Meta individual removida com sucesso' })
     } catch (err) {
       console.error(err)
+      toast({ variant: 'destructive', title: 'Erro ao remover meta' })
     } finally {
       setDeleting(false)
     }
@@ -206,7 +235,7 @@ export default function MetasDesempenho() {
   const handleExportCSV = () => {
     try {
       const comparisonRows = buildComparisonRows(
-        agents,
+        users,
         targets,
         globalTarget || {
           id: 'default',
@@ -229,7 +258,7 @@ export default function MetasDesempenho() {
     setExporting(true)
     try {
       const comparisonRows = buildComparisonRows(
-        agents,
+        users,
         targets,
         globalTarget || {
           id: 'default',
@@ -266,8 +295,8 @@ export default function MetasDesempenho() {
 
   const now = currentGMT3Date()
   const monthLbl = monthLabel(now.year, now.month)
-  const globalCount = rows.filter((r) => r.effective?.source === 'global').length
-  const individualCount = rows.filter((r) => r.effective?.source === 'individual').length
+  const globalCount = allRows.filter((r) => r.effective?.source === 'global').length
+  const individualCount = allRows.filter((r) => r.effective?.source === 'individual').length
 
   return (
     <div className="space-y-6">
@@ -277,7 +306,7 @@ export default function MetasDesempenho() {
             <Target className="h-6 w-6 text-indigo-600" /> Metas de Desempenho
           </h2>
           <p className="text-xs text-slate-500">
-            Metas de atendimentos/mês e % mínima de resolução por agente — referência:{' '}
+            Avaliação de colaboradores internos (consultores e lideranças) — referência:{' '}
             <span className="font-semibold capitalize">{monthLbl}</span>
           </p>
         </div>
@@ -290,7 +319,7 @@ export default function MetasDesempenho() {
             variant="outline"
             size="sm"
             onClick={handleExportCSV}
-            disabled={rows.length === 0}
+            disabled={allRows.length === 0}
           >
             <Download className="h-4 w-4 mr-1.5" />
             Exportar CSV
@@ -299,7 +328,7 @@ export default function MetasDesempenho() {
             variant="outline"
             size="sm"
             onClick={handleExportPDF}
-            disabled={rows.length === 0 || exporting}
+            disabled={allRows.length === 0 || exporting}
           >
             <FileText className="h-4 w-4 mr-1.5" />
             Exportar PDF
@@ -342,7 +371,7 @@ export default function MetasDesempenho() {
                 {globalTarget?.min_resolution_rate ?? '—'}% de resolução
               </p>
               <p className="text-[11px] text-slate-500">
-                Aplicada a agentes sem meta individual. Individual prevalece sobre a global.
+                Aplicada aos colaboradores sem meta individual. Individual prevalece sobre a global.
               </p>
             </div>
           </div>
@@ -357,8 +386,8 @@ export default function MetasDesempenho() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="border-slate-200 shadow-subtle">
           <CardContent className="p-4">
-            <p className="text-[10px] font-bold uppercase text-slate-500">Agentes</p>
-            <p className="text-2xl font-black text-slate-900">{agents.length}</p>
+            <p className="text-[10px] font-bold uppercase text-slate-500">Colaboradores</p>
+            <p className="text-2xl font-black text-slate-900">{users.length}</p>
           </CardContent>
         </Card>
         <Card className="border-slate-200 shadow-subtle">
@@ -377,7 +406,7 @@ export default function MetasDesempenho() {
           <CardContent className="p-4">
             <p className="text-[10px] font-bold uppercase text-slate-500">Atingiram geral</p>
             <p className="text-2xl font-black text-emerald-600">
-              {rows.filter((r) => r.overall === 'atingiu').length}
+              {allRows.filter((r) => r.overall === 'atingiu').length}
             </p>
           </CardContent>
         </Card>
@@ -387,11 +416,11 @@ export default function MetasDesempenho() {
         <CardContent className="p-4">
           {loading ? (
             <div className="py-10 text-center text-xs text-slate-400">Carregando metas...</div>
-          ) : rows.length === 0 ? (
+          ) : allRows.length === 0 ? (
             <div className="py-10 text-center">
               <Target className="h-10 w-10 text-slate-300 mx-auto mb-2" />
               <p className="text-xs text-slate-400">
-                Nenhum agente cadastrado. Cadastre agentes para definir metas.
+                Nenhum colaborador encontrado para acompanhamento de metas.
               </p>
             </div>
           ) : (
@@ -399,21 +428,58 @@ export default function MetasDesempenho() {
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead className="text-xs font-bold">Agente</TableHead>
-                    <TableHead className="text-xs font-bold w-[26%]">
-                      Atendimentos (real / meta)
+                    <TableHead className="text-xs font-bold">
+                      <div className="flex items-center justify-between gap-1">
+                        <span>Colaborador / Função</span>
+                        <div className="flex items-center gap-0.5">
+                          <TableColumnFilter
+                            title="Colaborador"
+                            options={Array.from(new Set(allRows.map((r) => r.user.name)))}
+                            selectedValues={selectedUsers.length > 0 ? selectedUsers : undefined}
+                            onSelectionChange={(vals) => setSelectedUsers(vals as string[])}
+                          />
+                          <TableColumnFilter
+                            title="Função"
+                            options={Array.from(new Set(allRows.map((r) => r.user.role)))}
+                            selectedValues={selectedRoles.length > 0 ? selectedRoles : undefined}
+                            onSelectionChange={(vals) => setSelectedRoles(vals as string[])}
+                          />
+                        </div>
+                      </div>
                     </TableHead>
                     <TableHead className="text-xs font-bold w-[24%]">
-                      Resolução (real / mín.)
+                      <div className="flex items-center justify-between gap-1">
+                        <span>Atendimentos (real / meta)</span>
+                      </div>
                     </TableHead>
-                    <TableHead className="text-xs font-bold text-center">Status</TableHead>
-                    <TableHead className="text-xs font-bold text-center w-[130px]">Ações</TableHead>
+                    <TableHead className="text-xs font-bold w-[22%]">
+                      <div className="flex items-center justify-between gap-1">
+                        <span>Resolução (real / mín.)</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-xs font-bold w-[12%] text-center">
+                      Tempo Médio
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Status</span>
+                        <TableColumnFilter
+                          title="Status"
+                          options={['Atingiu', 'Perto', 'Abaixo']}
+                          selectedValues={
+                            selectedStatuses.length > 0 ? selectedStatuses : undefined
+                          }
+                          onSelectionChange={(vals) => setSelectedStatuses(vals as string[])}
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-center w-[120px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map(
+                  {filteredRows.map(
                     ({
-                      agent,
+                      user: colab,
                       effective,
                       targetRecord,
                       real,
@@ -423,15 +489,13 @@ export default function MetasDesempenho() {
                     }) => {
                       const isIndividual = effective?.source === 'individual'
                       return (
-                        <TableRow key={agent.id} className="hover:bg-slate-50 align-top">
+                        <TableRow key={colab.id} className="hover:bg-slate-50 align-top">
                           <TableCell className="text-xs font-semibold">
                             <div className="flex items-center gap-1.5">
-                              {agent.name}
-                              {agent.expand?.client_id && (
-                                <span className="text-[10px] text-slate-400 font-normal">
-                                  — {agent.expand.client_id.name}
-                                </span>
-                              )}
+                              <span className="text-slate-900">{colab.name}</span>
+                              <span className="text-[10px] text-slate-400 font-normal">
+                                ({colab.role})
+                              </span>
                             </div>
                             <Badge
                               variant="secondary"
@@ -488,7 +552,10 @@ export default function MetasDesempenho() {
                               status={resolutionStatus}
                             />
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="text-xs text-center font-medium text-slate-700 pt-3">
+                            {real.avgDuration} min
+                          </TableCell>
+                          <TableCell className="text-center pt-3">
                             <Badge
                               variant="secondary"
                               className={cn('text-[10px] h-5', STATUS_STYLES[overall].badge)}
@@ -496,7 +563,7 @@ export default function MetasDesempenho() {
                               {STATUS_STYLES[overall].label}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="pt-2">
                             <div className="flex items-center justify-center gap-1">
                               <Button
                                 variant="ghost"
@@ -504,7 +571,7 @@ export default function MetasDesempenho() {
                                 className="h-7 w-7"
                                 title="Ver histórico"
                                 onClick={() => {
-                                  setHistoryAgent(agent)
+                                  setHistoryUser(colab)
                                   setHistoryOpen(true)
                                 }}
                               >
@@ -578,12 +645,12 @@ export default function MetasDesempenho() {
         </span>
       </div>
 
-      <AgentTargetDialog
+      <UserTargetDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        agents={agents}
+        users={users}
         editingTarget={editingTarget}
-        existingAgentIds={existingAgentIds}
+        existingUserIds={existingUserIds}
         onSaved={handleSaved}
       />
 
@@ -594,12 +661,12 @@ export default function MetasDesempenho() {
         onSaved={handleGlobalSaved}
       />
 
-      <AgentHistoryDialog
+      <UserHistoryDialog
         open={historyOpen}
         onOpenChange={setHistoryOpen}
-        agent={historyAgent}
+        user={historyUser}
         records={records}
-        effective={historyAgent ? effectiveByAgent.get(historyAgent.id) || null : null}
+        effective={historyUser ? effectiveByUser.get(historyUser.id) || null : null}
       />
 
       <AlertDialog open={Boolean(deleteId)} onOpenChange={(o) => !o && setDeleteId(null)}>
@@ -607,8 +674,8 @@ export default function MetasDesempenho() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir meta individual?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. A meta individual será removida e o agente passará a
-              usar a meta global padrão.
+              Esta ação não pode ser desfeita. A meta individual será removida e o colaborador
+              passará a usar a meta global padrão.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
