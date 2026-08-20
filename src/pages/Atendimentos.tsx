@@ -54,6 +54,7 @@ import {
   Plane,
   AlertTriangle,
   Share2,
+  Mail,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
@@ -66,6 +67,7 @@ import { exportServiceRecordsByExecutiveCSV } from '@/lib/executive-export'
 import { getClients } from '@/services/clients'
 import { getUsers } from '@/services/users'
 import { getSharesByUser, getAllShares } from '@/services/service_record_shares'
+import { getEmailLogs, EmailLogRecord } from '@/services/outlook-integration'
 import { ServiceRecordShare } from '@/types/service_record'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { downloadServiceRecordsCSV } from '@/lib/report-export'
@@ -123,6 +125,9 @@ export default function Atendimentos() {
     new Map(),
   )
   const [colSharedWith, setColSharedWith] = useState<string[]>([])
+  const [emailsByRecordMap, setEmailsByRecordMap] = useState<Map<string, EmailLogRecord[]>>(
+    new Map(),
+  )
 
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -147,13 +152,25 @@ export default function Atendimentos() {
 
       const allSharesPromise = getAllShares().catch(() => [])
 
-      const [userShares, allShares, execs, clientsData, usersData] = await Promise.all([
-        userSharesPromise,
-        allSharesPromise,
-        getAccountExecutives(),
-        getClients(),
-        getUsers(),
-      ])
+      const [userShares, allShares, execs, clientsData, usersData, emailLogsData] =
+        await Promise.all([
+          userSharesPromise,
+          allSharesPromise,
+          getAccountExecutives(),
+          getClients(),
+          getUsers(),
+          getEmailLogs().catch(() => []),
+        ])
+
+      const emailMap = new Map<string, EmailLogRecord[]>()
+      ;(emailLogsData || []).forEach((el: EmailLogRecord) => {
+        if (el.service_record) {
+          const list = emailMap.get(el.service_record) || []
+          list.push(el)
+          emailMap.set(el.service_record, list)
+        }
+      })
+      setEmailsByRecordMap(emailMap)
 
       const sharedIdsList = (userShares || []).map((s: any) => s.service_record).filter(Boolean)
       setSharedRecordIds(new Set(sharedIdsList))
@@ -197,6 +214,10 @@ export default function Atendimentos() {
   })
 
   useRealtime('service_record_shares', () => {
+    loadData()
+  })
+
+  useRealtime('email_analysis_logs', () => {
     loadData()
   })
 
@@ -953,9 +974,25 @@ export default function Atendimentos() {
                       >
                         {r.client_name}
                       </span>
-                      {r.travel_type && (
-                        <TravelTypeBadge travelType={r.travel_type} className="mt-0.5" />
-                      )}
+                      <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                        {r.travel_type && <TravelTypeBadge travelType={r.travel_type} />}
+                        {(() => {
+                          const linkedEmails = emailsByRecordMap.get(r.id) || []
+                          if (linkedEmails.length > 0) {
+                            return (
+                              <Badge
+                                variant="outline"
+                                className="bg-sky-50 text-sky-700 border-sky-200 text-[9px] py-0 px-1 gap-0.5 flex items-center font-medium"
+                                title={`${linkedEmails.length} análise(s) de e-mail Outlook vinculadas`}
+                              >
+                                <Mail className="h-2.5 w-2.5 text-sky-600" />
+                                {linkedEmails.length} e-mail{linkedEmails.length > 1 ? 's' : ''} IA
+                              </Badge>
+                            )
+                          }
+                          return null
+                        })()}
+                      </div>
                     </TableCell>
                     <TableCell className="text-xs text-slate-700">{r.contact_reason}</TableCell>
                     <TableCell>

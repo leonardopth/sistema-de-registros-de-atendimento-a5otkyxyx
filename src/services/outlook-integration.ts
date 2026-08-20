@@ -19,6 +19,7 @@ export interface EmailLogRecord {
   sentiment?: string
   main_topic?: string
   confidence_score?: number
+  outlook_message_id?: string
   client?: string
   service_record?: string
   processed_by?: string
@@ -40,6 +41,54 @@ export interface ProcessEmailPayload {
   body: string
   is_reply?: boolean
   consultant_user_id?: string
+  outlook_message_id?: string
+}
+
+export interface OutlookStatusResponse {
+  configured: boolean
+  has_client_id: boolean
+  has_client_secret: boolean
+  has_tenant_id: boolean
+  total_processed: number
+  recent_logs: EmailLogRecord[]
+  status: 'connected' | 'unconfigured'
+  message: string
+}
+
+export interface OutlookSyncResponse {
+  success: boolean
+  mode?: string
+  processed_count: number
+  skipped_count?: number
+  total_found?: number
+  message: string
+  error?: string
+}
+
+export const getOutlookStatus = async (): Promise<OutlookStatusResponse> => {
+  try {
+    return await pb.send<OutlookStatusResponse>('/backend/v1/outlook-status', {
+      method: 'GET',
+    })
+  } catch (error) {
+    console.error('Error getting outlook status:', error)
+    return {
+      configured: false,
+      has_client_id: false,
+      has_client_secret: false,
+      has_tenant_id: false,
+      total_processed: 0,
+      recent_logs: [],
+      status: 'unconfigured',
+      message: 'Não foi possível consultar o status do Outlook.',
+    }
+  }
+}
+
+export const syncOutlookEmails = async (): Promise<OutlookSyncResponse> => {
+  return pb.send<OutlookSyncResponse>('/backend/v1/outlook-sync', {
+    method: 'POST',
+  })
 }
 
 export const processOutlookEmail = async (
@@ -50,6 +99,7 @@ export const processOutlookEmail = async (
   analysis: EmailAnalysisResult
   client_id?: string
   service_record_id?: string
+  is_client?: boolean
 }> => {
   return pb.send('/backend/v1/outlook-process-email', {
     method: 'POST',
@@ -60,6 +110,20 @@ export const processOutlookEmail = async (
 
 export const getEmailLogs = async (): Promise<EmailLogRecord[]> => {
   try {
+    // Tenta primeiro a coleção oficial email_analysis_logs
+    try {
+      const logs = await pb.collection('email_analysis_logs').getFullList<EmailLogRecord>({
+        sort: '-created',
+        expand: 'client,service_record,processed_by',
+      })
+      if (Array.isArray(logs) && logs.length > 0) {
+        return logs
+      }
+    } catch {
+      /* intentionally ignored */
+    }
+
+    // Fallback para email_logs
     const records = await pb.collection('email_logs').getFullList<EmailLogRecord>({
       sort: '-created',
       expand: 'client,service_record,processed_by',
@@ -67,6 +131,32 @@ export const getEmailLogs = async (): Promise<EmailLogRecord[]> => {
     return Array.isArray(records) ? records : []
   } catch (error) {
     console.error('Error fetching email logs:', error)
+    return []
+  }
+}
+
+export const getEmailLogsByRecord = async (serviceRecordId: string): Promise<EmailLogRecord[]> => {
+  if (!serviceRecordId) return []
+  try {
+    try {
+      const logs = await pb.collection('email_analysis_logs').getFullList<EmailLogRecord>({
+        filter: `service_record = "${serviceRecordId}"`,
+        sort: '-created',
+        expand: 'client,processed_by',
+      })
+      if (Array.isArray(logs) && logs.length > 0) return logs
+    } catch {
+      /* intentionally ignored */
+    }
+
+    const records = await pb.collection('email_logs').getFullList<EmailLogRecord>({
+      filter: `service_record = "${serviceRecordId}"`,
+      sort: '-created',
+      expand: 'client,processed_by',
+    })
+    return Array.isArray(records) ? records : []
+  } catch (err) {
+    console.error('Error getting email logs for record:', err)
     return []
   }
 }

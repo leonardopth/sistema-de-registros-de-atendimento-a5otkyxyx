@@ -60,6 +60,8 @@ import { formatGMT3DateTime, formatGMT3Date, formatGMT3DateTimeAt } from '@/lib/
 import { ShareDialog } from './ShareDialog'
 import { SharedUsersList } from './SharedUsersList'
 import { getSharesByRecord } from '@/services/service_record_shares'
+import { getEmailLogsByRecord, EmailLogRecord } from '@/services/outlook-integration'
+import { Badge } from '@/components/ui/badge'
 
 interface ServiceRecordDetailModalProps {
   record: ServiceRecord | null
@@ -118,6 +120,8 @@ export function ServiceRecordDetailModal({
     null,
   )
   const [analyzing, setAnalyzing] = useState(false)
+  const [linkedEmailLogs, setLinkedEmailLogs] = useState<EmailLogRecord[]>([])
+  const [loadingEmailLogs, setLoadingEmailLogs] = useState(false)
 
   const isOwner = record
     ? record.user_id === user?.id || record.assigned_user === user?.id || user?.role === 'Master'
@@ -151,6 +155,13 @@ export function ServiceRecordDetailModal({
       setClientCompany(record.client_company || '')
       setFieldErrors({})
       setActiveTab('details')
+
+      // Carregar análises de e-mail vinculadas
+      setLoadingEmailLogs(true)
+      getEmailLogsByRecord(record.id)
+        .then((logs) => setLinkedEmailLogs(logs))
+        .catch(() => setLinkedEmailLogs([]))
+        .finally(() => setLoadingEmailLogs(false))
     }
   }, [record])
 
@@ -477,7 +488,7 @@ export function ServiceRecordDetailModal({
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'details' | 'history')}>
           <TabsList className="w-full">
             <TabsTrigger value="details" className="flex-1">
-              Detalhes
+              Detalhes {linkedEmailLogs.length > 0 && `(E-mails: ${linkedEmailLogs.length})`}
             </TabsTrigger>
             <TabsTrigger value="history" className="flex-1">
               Histórico de Alterações
@@ -971,6 +982,82 @@ export function ServiceRecordDetailModal({
                   Justificativa de Reabertura
                 </span>
                 <p className="text-xs text-slate-700 mt-0.5">{record.reopen_justification}</p>
+              </div>
+            )}
+
+            {/* Seção de Análises de E-mail vinculadas (Outlook AI) */}
+            {linkedEmailLogs.length > 0 && (
+              <div className="space-y-2 border-t pt-3">
+                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5 text-sky-600" />
+                  E-mails de Clientes Analisados via Outlook IA ({linkedEmailLogs.length})
+                </span>
+                <div className="space-y-2">
+                  {linkedEmailLogs.map((el) => (
+                    <div
+                      key={el.id}
+                      className="p-3 bg-sky-50/60 border border-sky-100 rounded-lg space-y-1.5 text-xs text-slate-700"
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="font-semibold text-sky-950 flex items-center gap-1.5">
+                          <span className="truncate max-w-[220px]">
+                            {el.sender_name || el.sender_email}
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-normal">
+                            ({el.sender_email})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {el.category && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-white text-indigo-700 border-indigo-200"
+                            >
+                              {el.category}
+                            </Badge>
+                          )}
+                          {el.sentiment && (
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] ${
+                                el.sentiment === 'Positivo'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : el.sentiment === 'Negativo'
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              {el.sentiment}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-slate-800 font-medium">
+                        <strong>Assunto:</strong> {el.subject || 'Sem assunto'}
+                      </div>
+
+                      {el.main_topic && el.main_topic !== el.subject && (
+                        <div className="text-indigo-700 text-[11px]">
+                          <strong>IA Assunto Principal:</strong> {el.main_topic}
+                        </div>
+                      )}
+
+                      {el.body_snippet && (
+                        <p className="text-[11px] text-slate-600 line-clamp-2 italic bg-white/70 p-1.5 rounded border border-sky-100">
+                          "{el.body_snippet}"
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                        <span>Recebido: {formatGMT3DateTime(el.received_at || el.created)}</span>
+                        {el.confidence_score !== undefined && (
+                          <span>Confiança IA: {el.confidence_score}%</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </TabsContent>

@@ -28,6 +28,7 @@ import {
   Crown,
   ShieldCheck,
   Award,
+  SlidersHorizontal,
 } from 'lucide-react'
 
 const MANAGER_ROLES = ['Gerentes', 'Supervisores', 'Líderes']
@@ -93,6 +94,12 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Gestão de Usuários',
     to: '/gestao-usuarios',
     icon: UserCog,
+    visible: (r, masterAccess) => r === 'Master' || masterAccess === true,
+  },
+  {
+    label: 'Integrações',
+    to: '/integracoes',
+    icon: SlidersHorizontal,
     visible: (r, masterAccess) => r === 'Master' || masterAccess === true,
   },
   {

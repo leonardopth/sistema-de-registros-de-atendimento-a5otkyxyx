@@ -18,6 +18,7 @@ import Autonomia from '@/pages/Autonomia'
 import ExecutivosContas from '@/pages/ExecutivosContas'
 import GestaoUsuarios from '@/pages/GestaoUsuarios'
 import DiagnosticoEmail from '@/pages/DiagnosticoEmail'
+import Integracoes from '@/pages/Integracoes'
 import PainelExecutivo from '@/pages/PainelExecutivo'
 import RelatoriosGrupo from '@/pages/RelatoriosGrupo'
 import DashboardGeral from '@/pages/DashboardGeral'
@@ -78,6 +79,14 @@ const App = () => (
                   <GestaoUsuariosRoute>
                     <GestaoUsuarios />
                   </GestaoUsuariosRoute>
+                }
+              />
+              <Route
+                path="/integracoes"
+                element={
+                  <MasterRoute>
+                    <Integracoes />
+                  </MasterRoute>
                 }
               />
               <Route

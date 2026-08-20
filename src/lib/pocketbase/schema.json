@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-20T22:23:27.351Z",
+  "generatedAt": "2026-08-20T22:33:18.007Z",
   "collections": [
     {
       "name": "users",
@@ -248,8 +248,8 @@
       "name": "service_records",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true || @request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || user_id = @request.auth.id || assigned_user = @request.auth.id || @request.auth.id ?= @collection.service_record_shares.user)",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true || @request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || user_id = @request.auth.id || assigned_user = @request.auth.id || @request.auth.id ?= @collection.service_record_shares.user)",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true || user_id = @request.auth.id || assigned_user = @request.auth.id || @request.auth.id ?= @collection.service_record_shares.user)",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true || user_id = @request.auth.id || assigned_user = @request.auth.id || @request.auth.id ?= @collection.service_record_shares.user)",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != ''",
         "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || @request.auth.master_access = true || assigned_user = @request.auth.id || user_id = @request.auth.id)"
@@ -917,8 +917,8 @@
       "name": "service_record_shares",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (user = @request.auth.id || shared_by = @request.auth.id || @request.auth.role = 'Master' || @request.auth.master_access = true || @request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Executivo de contas')",
-        "view": "@request.auth.id != '' && (user = @request.auth.id || shared_by = @request.auth.id || @request.auth.role = 'Master' || @request.auth.master_access = true || @request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Executivo de contas')",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true || user = @request.auth.id || shared_by = @request.auth.id)",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true || user = @request.auth.id || shared_by = @request.auth.id)",
         "create": "@request.auth.id != \"\"",
         "update": "@request.auth.id != \"\"",
         "delete": "@request.auth.id != \"\""
@@ -1505,6 +1505,134 @@
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_user_targets_user ON user_targets (user)"]
+    },
+    {
+      "name": "email_analysis_logs",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true)"
+      },
+      "fields": [
+        {
+          "name": "sender_email",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "sender_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "recipient_email",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "subject",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "body_snippet",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_reply",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sentiment",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "main_topic",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "confidence_score",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "outlook_message_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "client",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "service_record",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "service_records"
+        },
+        {
+          "name": "processed_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "received_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_eal_sender ON email_analysis_logs (sender_email)",
+        "CREATE INDEX idx_eal_category ON email_analysis_logs (category)",
+        "CREATE INDEX idx_eal_client ON email_analysis_logs (client)",
+        "CREATE INDEX idx_eal_sr ON email_analysis_logs (service_record)",
+        "CREATE INDEX idx_eal_created ON email_analysis_logs (created DESC)",
+        "CREATE INDEX idx_eal_msgid ON email_analysis_logs (outlook_message_id)"
+      ]
     }
   ]
 }
