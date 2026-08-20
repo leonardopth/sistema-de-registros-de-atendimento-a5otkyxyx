@@ -28,6 +28,7 @@ import { useIbgeCities } from '@/hooks/use-ibge-cities'
 import { AgentManager } from '@/components/AgentManager'
 import { AgentStatsList } from '@/components/AgentStatsList'
 import { CompanyDetailsModal } from '@/components/CompanyDetailsModal'
+import { TableColumnFilter } from '@/components/TableColumnFilter'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
@@ -95,6 +96,14 @@ export default function Clientes() {
   const [filterState, setFilterState] = useState('')
   const [filterCity, setFilterCity] = useState('')
   const [filterServiceGroup, setFilterServiceGroup] = useState('')
+
+  // Filtros por coluna na tabela
+  const [colCompanies, setColCompanies] = useState<string[]>([])
+  const [colGroups, setColGroups] = useState<string[]>([])
+  const [colStatuses, setColStatuses] = useState<string[]>([])
+  const [colCities, setColCities] = useState<string[]>([])
+  const [colStates, setColStates] = useState<string[]>([])
+  const [colExecs, setColExecs] = useState<string[]>([])
   const normalizedFilterState = normalizeStateValue(filterState)
   const {
     cities: filterCities,
@@ -264,8 +273,30 @@ export default function Clientes() {
     const matchesGroupRestriction =
       !hasGroupRestriction ||
       (c.service_group ? userServiceGroups.includes(c.service_group) : false)
+
+    // Filtros por coluna
+    const compName = c.company || 'Pessoa Física'
+    const matchesColCompany = colCompanies.length === 0 || colCompanies.includes(compName)
+    const grpName = c.service_group ? getServiceGroupLabel(c.service_group) : '—'
+    const matchesColGroup = colGroups.length === 0 || colGroups.includes(grpName)
+    const statusLabel = c.blocked ? 'Bloqueado' : 'Ativo'
+    const matchesColStatus = colStatuses.length === 0 || colStatuses.includes(statusLabel)
+    const matchesColCity = colCities.length === 0 || colCities.includes(c.city || '—')
+    const matchesColState = colStates.length === 0 || colStates.includes(c.state || '—')
+    const matchesColExec = colExecs.length === 0 || colExecs.includes(c.name || '—')
+
     return (
-      matchesSearch && matchesState && matchesCity && matchesServiceGroup && matchesGroupRestriction
+      matchesSearch &&
+      matchesState &&
+      matchesCity &&
+      matchesServiceGroup &&
+      matchesGroupRestriction &&
+      matchesColCompany &&
+      matchesColGroup &&
+      matchesColStatus &&
+      matchesColCity &&
+      matchesColState &&
+      matchesColExec
     )
   })
 
@@ -508,14 +539,70 @@ export default function Clientes() {
               <TableHeader>
                 <TableRow className="bg-slate-50 hover:bg-slate-50">
                   <TableHead className="text-xs font-bold text-slate-600">
-                    Nome da Empresa
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Nome da Empresa</span>
+                      <TableColumnFilter
+                        title="Empresa"
+                        options={safeClients.map((c) => c.company || 'Pessoa Física')}
+                        selectedValues={colCompanies}
+                        onChange={setColCompanies}
+                      />
+                    </div>
                   </TableHead>
-                  <TableHead className="text-xs font-bold text-slate-600">Grupo</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-600">Status</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-600">Cidade</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-600">Estado</TableHead>
                   <TableHead className="text-xs font-bold text-slate-600">
-                    Executivo de Contas
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Grupo</span>
+                      <TableColumnFilter
+                        title="Grupo"
+                        options={SERVICE_GROUP_OPTIONS.map((g) => g.label)}
+                        selectedValues={colGroups}
+                        onChange={setColGroups}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-slate-600">
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Status</span>
+                      <TableColumnFilter
+                        title="Status"
+                        options={['Ativo', 'Bloqueado']}
+                        selectedValues={colStatuses}
+                        onChange={setColStatuses}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-slate-600">
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Cidade</span>
+                      <TableColumnFilter
+                        title="Cidade"
+                        options={safeClients.map((c) => c.city || '—')}
+                        selectedValues={colCities}
+                        onChange={setColCities}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-slate-600">
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Estado</span>
+                      <TableColumnFilter
+                        title="Estado"
+                        options={safeClients.map((c) => c.state || '—')}
+                        selectedValues={colStates}
+                        onChange={setColStates}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-slate-600">
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Executivo</span>
+                      <TableColumnFilter
+                        title="Executivo"
+                        options={safeClients.map((c) => c.name || '—')}
+                        selectedValues={colExecs}
+                        onChange={setColExecs}
+                      />
+                    </div>
                   </TableHead>
                   <TableHead className="text-xs font-bold text-slate-600 text-right w-[260px]">
                     Ações

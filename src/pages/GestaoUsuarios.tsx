@@ -19,6 +19,7 @@ import { UserPlus, Check, X, Trash2, Loader2, Crown, History, Pencil } from 'luc
 import { NewUserDialog } from '@/components/NewUserDialog'
 import { EditUserDialog } from '@/components/EditUserDialog'
 import { MasterAccessHistoryDialog } from '@/components/MasterAccessHistoryDialog'
+import { TableColumnFilter } from '@/components/TableColumnFilter'
 import type { UserRecord, ApprovalStatus } from '@/types/service_record'
 
 function StatusBadge({ status }: { status?: ApprovalStatus }) {
@@ -38,6 +39,11 @@ export default function GestaoUsuarios() {
   const [showHistory, setShowHistory] = useState(false)
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Filtros por coluna
+  const [colRoles, setColRoles] = useState<string[]>([])
+  const [colStatuses, setColStatuses] = useState<string[]>([])
+  const [colGroups, setColGroups] = useState<string[]>([])
 
   const loadUsers = useCallback(async () => {
     try {
@@ -100,7 +106,19 @@ export default function GestaoUsuarios() {
       u.name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()),
   )
-  const visibleUsers = showMasterOnly ? filtered.filter((u) => u.master_access) : filtered
+  const visibleUsers = (showMasterOnly ? filtered.filter((u) => u.master_access) : filtered).filter(
+    (u) => {
+      const matchesRole = colRoles.length === 0 || colRoles.includes(u.role)
+      const matchesStatus = colStatuses.length === 0 || colStatuses.includes(u.approval_status)
+      const groupStr = u.service_groups?.length
+        ? u.service_groups.join(', ')
+        : u.bases?.length
+          ? u.bases.join(', ')
+          : '-'
+      const matchesGroup = colGroups.length === 0 || colGroups.includes(groupStr)
+      return matchesRole && matchesStatus && matchesGroup
+    },
+  )
 
   return (
     <div className="space-y-4 p-4 md:p-6">
@@ -147,9 +165,45 @@ export default function GestaoUsuarios() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>E-mail</TableHead>
-                <TableHead>Cargo</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Grupos / Bases</TableHead>
+                <TableHead>
+                  <div className="flex items-center justify-between gap-1">
+                    <span>Cargo</span>
+                    <TableColumnFilter
+                      title="Cargo"
+                      options={users.map((u) => u.role)}
+                      selectedValues={colRoles}
+                      onChange={setColRoles}
+                    />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center justify-between gap-1">
+                    <span>Status</span>
+                    <TableColumnFilter
+                      title="Status"
+                      options={['Aprovado', 'Pendente', 'Rejeitado']}
+                      selectedValues={colStatuses}
+                      onChange={setColStatuses}
+                    />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center justify-between gap-1">
+                    <span>Grupos / Bases</span>
+                    <TableColumnFilter
+                      title="Grupos"
+                      options={users.map((u) =>
+                        u.service_groups?.length
+                          ? u.service_groups.join(', ')
+                          : u.bases?.length
+                            ? u.bases.join(', ')
+                            : '-',
+                      )}
+                      selectedValues={colGroups}
+                      onChange={setColGroups}
+                    />
+                  </div>
+                </TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>

@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { SortableHeader } from '@/components/SortableHeader'
+import { TableColumnFilter } from '@/components/TableColumnFilter'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   getServiceRecords,
@@ -84,6 +85,14 @@ export default function Atendimentos() {
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const [reasonFilter, setReasonFilter] = useState<string>('todos')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  // Filtros em colunas
+  const [colClients, setColClients] = useState<string[]>([])
+  const [colReasons, setColReasons] = useState<string[]>([])
+  const [colStatuses, setColStatuses] = useState<string[]>([])
+  const [colPriorities, setColPriorities] = useState<string[]>([])
+  const [colAvoidable, setColAvoidable] = useState<string[]>([])
+  const [colConsultants, setColConsultants] = useState<string[]>([])
 
   const [selectedRecord, setSelectedRecord] = useState<ServiceRecord | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -307,6 +316,17 @@ export default function Atendimentos() {
 
     const matchesTravelType = travelTypeFilter === 'todos' || r.travel_type === travelTypeFilter
 
+    // Filtros por coluna
+    const clientNameDisplay = r.client_company ? `${r.client_company} - ${r.client_name}` : r.client_name
+    const matchesColClient = colClients.length === 0 || colClients.includes(clientNameDisplay) || colClients.includes(r.client_company || '') || colClients.includes(r.client_name)
+    const matchesColReason = colReasons.length === 0 || colReasons.includes(r.contact_reason || '')
+    const matchesColStatus = colStatuses.length === 0 || colStatuses.includes(r.status || '')
+    const matchesColPriority = colPriorities.length === 0 || colPriorities.includes(r.priority || '')
+    const avoidableLabel = r.avoidable_contact ? 'Sim' : 'Não'
+    const matchesColAvoidable = colAvoidable.length === 0 || colAvoidable.includes(avoidableLabel)
+    const consultantName = r.expand?.assigned_user?.name || r.assigned_agent || 'Não atribuído'
+    const matchesColConsultant = colConsultants.length === 0 || colConsultants.includes(consultantName)
+
     return (
       matchesSearch &&
       matchesStatus &&
@@ -317,7 +337,13 @@ export default function Atendimentos() {
       matchesExecutive &&
       matchesUser &&
       matchesServiceGroup &&
-      matchesTravelType
+      matchesTravelType &&
+      matchesColClient &&
+      matchesColReason &&
+      matchesColStatus &&
+      matchesColPriority &&
+      matchesColAvoidable &&
+      matchesColConsultant
     )
   })
 
@@ -463,6 +489,12 @@ export default function Atendimentos() {
     setSortDirection('desc')
     setServiceGroupFilter('todos')
     setTravelTypeFilter('todos')
+    setColClients([])
+    setColReasons([])
+    setColStatuses([])
+    setColPriorities([])
+    setColAvoidable([])
+    setColConsultants([])
     if (searchParams.get('avoidable_contact')) {
       searchParams.delete('avoidable_contact')
       setSearchParams(searchParams)
@@ -744,51 +776,76 @@ export default function Atendimentos() {
                   <SortableHeader
                     label="Cliente"
                     field="client_name"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
+                    currentSortField={sortField}
+                    currentSortDirection={sortDirection}
                     onSort={handleSort}
+                    filterOptions={records.map((r) => r.client_company ? `${r.client_company} - ${r.client_name}` : r.client_name)}
+                    filterSelected={colClients}
+                    onFilterChange={setColClients}
                   />
                   <SortableHeader
                     label="Contato"
                     field="contact_reason"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
+                    currentSortField={sortField}
+                    currentSortDirection={sortDirection}
                     onSort={handleSort}
+                    filterOptions={records.map((r) => r.contact_reason).filter(Boolean) as string[]}
+                    filterSelected={colReasons}
+                    onFilterChange={setColReasons}
                   />
                   <SortableHeader
                     label="Status"
                     field="status"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
+                    currentSortField={sortField}
+                    currentSortDirection={sortDirection}
                     onSort={handleSort}
+                    filterOptions={['Aberto', 'Em Andamento', 'Concluído', 'Cancelado']}
+                    filterSelected={colStatuses}
+                    onFilterChange={setColStatuses}
                   />
                   <SortableHeader
                     label="Prioridade"
                     field="priority"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
+                    currentSortField={sortField}
+                    currentSortDirection={sortDirection}
                     onSort={handleSort}
+                    filterOptions={['Baixa', 'Média', 'Alta']}
+                    filterSelected={colPriorities}
+                    onFilterChange={setColPriorities}
                   />
-                  <TableHead className="text-xs font-bold">Evitável</TableHead>
+                  <TableHead className="text-xs font-bold">
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Evitável</span>
+                      <TableColumnFilter
+                        title="Evitável"
+                        options={['Sim', 'Não']}
+                        selectedValues={colAvoidable}
+                        onChange={setColAvoidable}
+                      />
+                    </div>
+                  </TableHead>
                   <SortableHeader
                     label="Duração"
                     field="duration"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
+                    currentSortField={sortField}
+                    currentSortDirection={sortDirection}
                     onSort={handleSort}
                   />
                   <SortableHeader
                     label="Consultor"
                     field="assigned_user"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
+                    currentSortField={sortField}
+                    currentSortDirection={sortDirection}
                     onSort={handleSort}
+                    filterOptions={users.map((u) => u.name).filter(Boolean)}
+                    filterSelected={colConsultants}
+                    onFilterChange={setColConsultants}
                   />
                   <SortableHeader
                     label="Criado em"
                     field="created"
-                    sortField={sortField}
-                    sortDirection={sortDirection}
+                    currentSortField={sortField}
+                    currentSortDirection={sortDirection}
                     onSort={handleSort}
                   />
                   <TableHead className="text-xs font-bold text-right">Ação</TableHead>

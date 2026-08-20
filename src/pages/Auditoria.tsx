@@ -24,6 +24,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ShieldAlert, RefreshCw, Loader2, User, Filter, X } from 'lucide-react'
+import { TableColumnFilter } from '@/components/TableColumnFilter'
 import { ExportMenu } from '@/components/ExportMenu'
 import {
   downloadAuditLogCSV,
@@ -46,6 +47,11 @@ export default function Auditoria() {
   const [selectedEntity, setSelectedEntity] = useState<string>('ALL')
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
+
+  // Filtros por coluna na tabela
+  const [colUsers, setColUsers] = useState<string[]>([])
+  const [colActions, setColActions] = useState<string[]>([])
+  const [colEntities, setColEntities] = useState<string[]>([])
 
   const isMaster = user?.role === 'Master' || user?.master_access === true
 
@@ -80,9 +86,15 @@ export default function Auditoria() {
       if (selectedEntity !== 'ALL' && log.entity !== selectedEntity) return false
       if (startDate && new Date(log.created) < new Date(`${startDate}T00:00:00`)) return false
       if (endDate && new Date(log.created) > new Date(`${endDate}T23:59:59`)) return false
+
+      const uName = log.expand?.user?.name || userNames.get(log.user) || log.user || 'Sistema'
+      if (colUsers.length > 0 && !colUsers.includes(uName)) return false
+      if (colActions.length > 0 && !colActions.includes(log.action)) return false
+      if (colEntities.length > 0 && !colEntities.includes(log.entity)) return false
+
       return true
     })
-  }, [logs, selectedUser, selectedAction, selectedEntity, startDate, endDate])
+  }, [logs, selectedUser, selectedAction, selectedEntity, startDate, endDate, colUsers, colActions, colEntities, userNames])
 
   const userNames = useMemo(() => {
     const m = new Map<string, string>()
@@ -273,9 +285,39 @@ export default function Auditoria() {
             <TableHeader>
               <TableRow className="bg-slate-50">
                 <TableHead className="w-[180px]">Data e Hora</TableHead>
-                <TableHead>Usuário</TableHead>
-                <TableHead>Ação</TableHead>
-                <TableHead>Entidade</TableHead>
+                <TableHead>
+                  <div className="flex items-center justify-between gap-1">
+                    <span>Usuário</span>
+                    <TableColumnFilter
+                      title="Usuário"
+                      options={users.map((u) => u.name)}
+                      selectedValues={colUsers}
+                      onChange={setColUsers}
+                    />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center justify-between gap-1">
+                    <span>Ação</span>
+                    <TableColumnFilter
+                      title="Ação"
+                      options={actions}
+                      selectedValues={colActions}
+                      onChange={setColActions}
+                    />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center justify-between gap-1">
+                    <span>Entidade</span>
+                    <TableColumnFilter
+                      title="Entidade"
+                      options={entities}
+                      selectedValues={colEntities}
+                      onChange={setColEntities}
+                    />
+                  </div>
+                </TableHead>
                 <TableHead>ID da Entidade</TableHead>
                 <TableHead>Detalhes</TableHead>
               </TableRow>

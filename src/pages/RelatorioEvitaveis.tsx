@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
+import { TableColumnFilter } from '@/components/TableColumnFilter'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -31,6 +32,7 @@ export default function RelatorioEvitaveis() {
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [agencyFilter, setAgencyFilter] = useState('todos')
   const [reasonFilter, setReasonFilter] = useState('todos')
+  const [colAgencies, setColAgencies] = useState<string[]>([])
   const { toast } = useToast()
 
   const loadData = async () => {
@@ -155,7 +157,17 @@ export default function RelatorioEvitaveis() {
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead className="text-xs font-bold">Agência</TableHead>
+                <TableHead className="text-xs font-bold">
+                  <div className="flex items-center justify-between gap-1">
+                    <span>Agência</span>
+                    <TableColumnFilter
+                      title="Agência"
+                      options={crossTable.map((r) => r.agency)}
+                      selectedValues={colAgencies}
+                      onChange={setColAgencies}
+                    />
+                  </div>
+                </TableHead>
                 {AVOIDABLE_REASONS.map((r) => (
                   <TableHead key={r} className="text-xs font-bold text-center">
                     {r}
@@ -165,7 +177,7 @@ export default function RelatorioEvitaveis() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {crossTable.map((row) => (
+              {crossTable.filter((row) => colAgencies.length === 0 || colAgencies.includes(row.agency)).map((row) => (
                 <TableRow key={row.agency} className="hover:bg-slate-50">
                   <TableCell className="text-xs font-semibold text-slate-900">
                     {row.agency}

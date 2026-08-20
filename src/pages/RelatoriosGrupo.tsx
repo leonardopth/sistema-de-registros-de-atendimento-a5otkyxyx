@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { getUserServiceGroups } from '@/lib/service-group-access'
 import { ExportMenu } from '@/components/ExportMenu'
+import { TableColumnFilter } from '@/components/TableColumnFilter'
 import {
   downloadGroupReportCSV,
   downloadGroupReportExcel,
@@ -110,8 +111,15 @@ export default function RelatoriosGrupo() {
     })
   }, [clients, records, userGroups])
 
-  const grandTotal = groupStats.reduce((a, g) => a + g.total, 0)
-  const grandAvoidable = groupStats.reduce((a, g) => a + g.avoidable, 0)
+  const [colGroups, setColGroups] = useState<string[]>([])
+
+  const filteredGroupStats = groupStats.filter((stat) => {
+    if (colGroups.length > 0 && !colGroups.includes(stat.label)) return false
+    return true
+  })
+
+  const grandTotal = filteredGroupStats.reduce((a, g) => a + g.total, 0)
+  const grandAvoidable = filteredGroupStats.reduce((a, g) => a + g.avoidable, 0)
   const grandRate = grandTotal > 0 ? Math.round((grandAvoidable / grandTotal) * 100) : 0
 
   return (
@@ -159,7 +167,17 @@ export default function RelatoriosGrupo() {
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead className="text-xs font-bold">Grupo de Atendimento</TableHead>
+                <TableHead className="text-xs font-bold">
+                  <div className="flex items-center justify-between gap-1">
+                    <span>Grupo de Atendimento</span>
+                    <TableColumnFilter
+                      title="Grupo"
+                      options={groupStats.map((g) => g.label)}
+                      selectedValues={colGroups}
+                      onChange={setColGroups}
+                    />
+                  </div>
+                </TableHead>
                 <TableHead className="text-xs font-bold text-center">Total Atendimentos</TableHead>
                 <TableHead className="text-xs font-bold text-center">Evitáveis</TableHead>
                 <TableHead className="text-xs font-bold text-center">Taxa</TableHead>
@@ -171,7 +189,7 @@ export default function RelatoriosGrupo() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {groupStats.map((stat) => (
+              {filteredGroupStats.map((stat) => (
                 <TableRow key={stat.group} className="hover:bg-slate-50">
                   <TableCell className="text-xs font-semibold text-slate-900">
                     <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
