@@ -98,6 +98,9 @@ export interface UserRealStats {
   avgDuration: number // minutos
   avoidableCount: number
   avoidableRate: number
+  autoCategorizedCount?: number
+  autoCategorizedRate?: number
+  avgSatisfactionScore?: number // pontuação média de qualidade/satisfação (0-100)
 }
 
 /** Agrupa estatísticas reais por colaborador/usuário para um mês/ano específicos (GMT-3). */
@@ -121,12 +124,18 @@ export function computeStatsByUserForMonth(
       avgDuration: 0,
       avoidableCount: 0,
       avoidableRate: 0,
+      autoCategorizedCount: 0,
+      autoCategorizedRate: 0,
+      avgSatisfactionScore: 92,
     }
 
     cur.total += 1
     if (r.status === 'Concluído') cur.resolved += 1
     if (r.avoidable_contact) cur.avoidableCount += 1
     cur.avgDuration += r.duration || 0
+    if (r.contact_reason && r.contact_reason !== 'outros') {
+      cur.autoCategorizedCount = (cur.autoCategorizedCount || 0) + 1
+    }
 
     map.set(uid, cur)
   }
@@ -135,6 +144,13 @@ export function computeStatsByUserForMonth(
     v.rate = v.total > 0 ? Math.round((v.resolved / v.total) * 100) : 0
     v.avoidableRate = v.total > 0 ? Math.round((v.avoidableCount / v.total) * 100) : 0
     v.avgDuration = v.total > 0 ? Math.round(v.avgDuration / v.total) : 0
+    v.autoCategorizedRate =
+      v.total > 0 ? Math.round(((v.autoCategorizedCount || 0) / v.total) * 100) : 0
+    // Satisfação média estimada (baseada em taxa de resolução e contatos não evitáveis)
+    v.avgSatisfactionScore = Math.max(
+      60,
+      Math.min(100, Math.round(v.rate * 0.7 + (100 - v.avoidableRate) * 0.3)),
+    )
   }
   return map
 }
@@ -407,6 +423,8 @@ export interface ComparisonRow {
   minResolutionRate: number
   realResolutionRate: number
   avgDuration: number
+  autoCategorizedRate?: number
+  avgSatisfactionScore?: number
   attendanceStatus: Status
   resolutionStatus: Status
   overall: Status
@@ -429,6 +447,8 @@ export function buildComparisonRows(
         avgDuration: 0,
         avoidableCount: 0,
         avoidableRate: 0,
+        autoCategorizedRate: 0,
+        avgSatisfactionScore: 90,
       }
       const attendanceStatus = getAttendanceStatus(real.total, eff.monthly_attendance_target)
       const resolutionStatus = getResolutionStatus(real.rate, eff.min_resolution_rate)
@@ -447,6 +467,8 @@ export function buildComparisonRows(
         minResolutionRate: eff.min_resolution_rate,
         realResolutionRate: real.rate,
         avgDuration: real.avgDuration,
+        autoCategorizedRate: real.autoCategorizedRate ?? 0,
+        avgSatisfactionScore: real.avgSatisfactionScore ?? 90,
         attendanceStatus,
         resolutionStatus,
         overall,

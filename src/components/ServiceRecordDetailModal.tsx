@@ -61,6 +61,7 @@ import { ShareDialog } from './ShareDialog'
 import { SharedUsersList } from './SharedUsersList'
 import { getSharesByRecord } from '@/services/service_record_shares'
 import { getEmailLogsByRecord, EmailLogRecord } from '@/services/outlook-integration'
+import { getCallRecordsByRecord, CallRecord } from '@/services/telephony-integration'
 import { Badge } from '@/components/ui/badge'
 
 interface ServiceRecordDetailModalProps {
@@ -122,6 +123,8 @@ export function ServiceRecordDetailModal({
   const [analyzing, setAnalyzing] = useState(false)
   const [linkedEmailLogs, setLinkedEmailLogs] = useState<EmailLogRecord[]>([])
   const [loadingEmailLogs, setLoadingEmailLogs] = useState(false)
+  const [linkedCallRecords, setLinkedCallRecords] = useState<CallRecord[]>([])
+  const [loadingCallRecords, setLoadingCallRecords] = useState(false)
 
   const isOwner = record
     ? record.user_id === user?.id || record.assigned_user === user?.id || user?.role === 'Master'
@@ -156,12 +159,18 @@ export function ServiceRecordDetailModal({
       setFieldErrors({})
       setActiveTab('details')
 
-      // Carregar análises de e-mail vinculadas
+      // Carregar análises de e-mail e chamadas telefônicas vinculadas
       setLoadingEmailLogs(true)
       getEmailLogsByRecord(record.id)
         .then((logs) => setLinkedEmailLogs(logs))
         .catch(() => setLinkedEmailLogs([]))
         .finally(() => setLoadingEmailLogs(false))
+
+      setLoadingCallRecords(true)
+      getCallRecordsByRecord(record.id)
+        .then((calls) => setLinkedCallRecords(calls))
+        .catch(() => setLinkedCallRecords([]))
+        .finally(() => setLoadingCallRecords(false))
     }
   }, [record])
 
@@ -488,7 +497,7 @@ export function ServiceRecordDetailModal({
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'details' | 'history')}>
           <TabsList className="w-full">
             <TabsTrigger value="details" className="flex-1">
-              Detalhes {linkedEmailLogs.length > 0 && `(E-mails: ${linkedEmailLogs.length})`}
+              Detalhes {(linkedEmailLogs.length > 0 || linkedCallRecords.length > 0) && `(Voz: ${linkedCallRecords.length} | E-mails: ${linkedEmailLogs.length})`}
             </TabsTrigger>
             <TabsTrigger value="history" className="flex-1">
               Histórico de Alterações
@@ -982,6 +991,104 @@ export function ServiceRecordDetailModal({
                   Justificativa de Reabertura
                 </span>
                 <p className="text-xs text-slate-700 mt-0.5">{record.reopen_justification}</p>
+              </div>
+            )}
+
+            {/* Seção de Gravações de Telefonia Vinculadas (Twilio + IA) */}
+            {linkedCallRecords.length > 0 && (
+              <div className="space-y-2 border-t pt-3">
+                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5 text-indigo-600" />
+                  Gravações & Transcrições de Voz Vinculadas ({linkedCallRecords.length})
+                </span>
+                <div className="space-y-2">
+                  {linkedCallRecords.map((cr) => (
+                    <div
+                      key={cr.id}
+                      className="p-3 bg-indigo-50/60 border border-indigo-100 rounded-lg space-y-1.5 text-xs text-slate-700"
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="font-semibold text-indigo-950 flex items-center gap-1.5">
+                          <span>{cr.from_number || 'Telefone do Cliente'}</span>
+                          {cr.duration ? (
+                            <span className="text-[10px] text-slate-500 font-normal">
+                              ({cr.duration}s de áudio)
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {cr.category && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-white text-indigo-700 border-indigo-200"
+                            >
+                              {cr.category}
+                            </Badge>
+                          )}
+                          {cr.sentiment && (
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] ${
+                                cr.sentiment === 'Positivo'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : cr.sentiment === 'Negativo'
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              {cr.sentiment}
+                            </Badge>
+                          )}
+                          {cr.quality_score !== undefined && (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] bg-emerald-100 text-emerald-800"
+                            >
+                              Qualidade: {cr.quality_score}/100
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      {cr.summary && (
+                        <div className="text-slate-800 font-medium">
+                          <strong>Resumo IA:</strong> {cr.summary}
+                        </div>
+                      )}
+
+                      {cr.transcription && (
+                        <div className="space-y-1 bg-white/80 p-2 rounded border border-indigo-100">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                            Transcrição Completa (Speech-to-Text):
+                          </span>
+                          <p className="text-[11px] text-slate-700 italic leading-relaxed">
+                            "{cr.transcription}"
+                          </p>
+                        </div>
+                      )}
+
+                      {cr.keywords && Array.isArray(cr.keywords) && cr.keywords.length > 0 && (
+                        <div className="flex items-center gap-1 text-[10px] text-indigo-600 flex-wrap">
+                          <strong>Palavras-chave:</strong> {cr.keywords.join(', ')}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                        <span>Gravado em: {formatGMT3DateTime(cr.created)}</span>
+                        {cr.recording_url && (
+                          <a
+                            href={cr.recording_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-600 hover:underline font-medium"
+                          >
+                            Ouvir Áudio Original
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

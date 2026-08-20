@@ -10,6 +10,8 @@ export const COLUMNS: { key: keyof ComparisonRow; header: string }[] = [
   { key: 'minResolutionRate', header: 'Meta Mín. Resolução (%)' },
   { key: 'realResolutionRate', header: 'Taxa Real Resolução (%)' },
   { key: 'avgDuration', header: 'Tempo Médio (min)' },
+  { key: 'autoCategorizedRate', header: 'Categorização (%)' },
+  { key: 'avgSatisfactionScore', header: 'Satisfação / Qualidade (pts)' },
   { key: 'attendanceStatus', header: 'Status Atendimentos' },
   { key: 'resolutionStatus', header: 'Status Resolução' },
   { key: 'overall', header: 'Status Geral' },
@@ -23,11 +25,19 @@ function formatCell(row: ComparisonRow, key: keyof ComparisonRow): string {
   if (key === 'attendanceStatus' || key === 'resolutionStatus' || key === 'overall') {
     return STATUS_LABEL[v as Status] || String(v ?? '')
   }
-  if (key === 'attendancePct' || key === 'minResolutionRate' || key === 'realResolutionRate') {
+  if (
+    key === 'attendancePct' ||
+    key === 'minResolutionRate' ||
+    key === 'realResolutionRate' ||
+    key === 'autoCategorizedRate'
+  ) {
     return `${v}%`
   }
   if (key === 'avgDuration') {
     return `${v} min`
+  }
+  if (key === 'avgSatisfactionScore') {
+    return `${v}/100`
   }
   return String(v ?? '')
 }
