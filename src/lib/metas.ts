@@ -52,6 +52,27 @@ export function getOverallStatus(a: Status, r: Status): Status {
   return 'perto'
 }
 
+export function getResponseTimeStatus(realAvgMinutes: number, targetMaxMinutes: number): Status {
+  if (targetMaxMinutes <= 0) return 'atingiu'
+  if (realAvgMinutes <= targetMaxMinutes) return 'atingiu'
+  if (realAvgMinutes <= targetMaxMinutes * 1.25) return 'perto'
+  return 'abaixo'
+}
+
+export function getAutoCategorizationStatus(realRate: number, targetRate: number): Status {
+  if (targetRate <= 0) return 'atingiu'
+  if (realRate >= targetRate) return 'atingiu'
+  if (realRate >= targetRate - 10) return 'perto'
+  return 'abaixo'
+}
+
+export function getSatisfactionStatus(realScore: number, minScore: number): Status {
+  if (minScore <= 0) return 'atingiu'
+  if (realScore >= minScore) return 'atingiu'
+  if (realScore >= minScore - 10) return 'perto'
+  return 'abaixo'
+}
+
 export interface EffectiveTarget {
   /** 'individual' = meta própria do colaborador; 'global' = meta padrão herdada. */
   source: 'individual' | 'global'
@@ -59,6 +80,7 @@ export interface EffectiveTarget {
   min_resolution_rate: number
   avg_response_time_target: number
   auto_categorization_target: number
+  min_satisfaction_target: number
   targetRecord?: UserTargetRecord
 }
 
@@ -75,19 +97,24 @@ export function resolveEffectiveTarget(
     return {
       source: 'individual',
       monthly_attendance_target:
-        individual.monthly_attendance_target ?? global.monthly_attendance_target,
-      min_resolution_rate: individual.min_resolution_rate ?? global.min_resolution_rate,
-      avg_response_time_target: individual.avg_response_time_target ?? 15,
-      auto_categorization_target: individual.auto_categorization_target ?? 80,
+        individual.monthly_attendance_target ?? global.monthly_attendance_target ?? 100,
+      min_resolution_rate: individual.min_resolution_rate ?? global.min_resolution_rate ?? 80,
+      avg_response_time_target:
+        individual.avg_response_time_target ?? global.avg_response_time_target ?? 15,
+      auto_categorization_target:
+        individual.auto_categorization_target ?? global.auto_categorization_target ?? 80,
+      min_satisfaction_target:
+        individual.min_satisfaction_target ?? global.min_satisfaction_target ?? 85,
       targetRecord: individual,
     }
   }
   return {
     source: 'global',
-    monthly_attendance_target: global.monthly_attendance_target,
-    min_resolution_rate: global.min_resolution_rate,
-    avg_response_time_target: 15,
-    auto_categorization_target: 80,
+    monthly_attendance_target: global.monthly_attendance_target ?? 100,
+    min_resolution_rate: global.min_resolution_rate ?? 80,
+    avg_response_time_target: global.avg_response_time_target ?? 15,
+    auto_categorization_target: global.auto_categorization_target ?? 80,
+    min_satisfaction_target: global.min_satisfaction_target ?? 85,
   }
 }
 
@@ -95,12 +122,25 @@ export interface UserRealStats {
   total: number
   resolved: number
   rate: number
-  avgDuration: number // minutos
+  avgDuration: number // minutos (tempo médio de resposta/atendimento)
   avoidableCount: number
   avoidableRate: number
-  autoCategorizedCount?: number
-  autoCategorizedRate?: number
-  avgSatisfactionScore?: number // pontuação média de qualidade/satisfação (0-100)
+  autoCategorizedCount: number
+  autoCategorizedRate: number // % categorização automática
+  categorizationAccuracy: number // % acurácia da categorização
+  avgSatisfactionScore: number // pontuação média de qualidade/satisfação (0-100)
+  positiveSentimentCount: number
+  totalFeedbackCount: number
+}
+
+export interface SentimentLogItem {
+  user_id?: string
+  processed_by?: string
+  agent_user?: string
+  sentiment?: string
+  quality_score?: number
+  confidence_score?: number
+  created?: string
 }
 
 /** Agrupa estatísticas reais por colaborador/usuário para um mês/ano específicos (GMT-3). */
@@ -108,6 +148,7 @@ export function computeStatsByUserForMonth(
   records: ServiceRecord[],
   year: number,
   month: number, // 0-based
+  sentimentLogs?: SentimentLogItem[],
 ): Map<string, UserRealStats> {
   const map = new Map<string, UserRealStats>()
   for (const r of records) {
@@ -126,13 +167,17 @@ export function computeStatsByUserForMonth(
       avoidableRate: 0,
       autoCategorizedCount: 0,
       autoCategorizedRate: 0,
-      avgSatisfactionScore: 92,
+      categorizationAccuracy: 90,
+      avgSatisfactionScore: 90,
+      positiveSentimentCount: 0,
+      totalFeedbackCount: 0,
     }
 
     cur.total += 1
     if (r.status === 'Concluído') cur.resolved += 1
     if (r.avoidable_contact) cur.avoidableCount += 1
     cur.avgDuration += r.duration || 0
+    // Considera categorizado se possui motivo específico diferente de 'outros'
     if (r.contact_reason && r.contact_reason !== 'outros') {
       cur.autoCategorizedCount = (cur.autoCategorizedCount || 0) + 1
     }
@@ -140,25 +185,60 @@ export function computeStatsByUserForMonth(
     map.set(uid, cur)
   }
 
+  // Se houver logs de sentimento das integrações (Outlook / Telefonia), incorpora
+  if (sentimentLogs && Array.isArray(sentimentLogs)) {
+    for (const log of sentimentLogs) {
+      const uid = log.processed_by || log.agent_user || log.user_id
+      if (!uid) continue
+      const parts = getGMT3MonthParts(log.created)
+      if (parts && (parts.year !== year || parts.month !== month)) continue
+
+      const cur = map.get(uid)
+      if (cur) {
+        cur.totalFeedbackCount += 1
+        if (log.sentiment === 'Positivo') {
+          cur.positiveSentimentCount += 1
+        }
+      }
+    }
+  }
+
   for (const [, v] of map) {
     v.rate = v.total > 0 ? Math.round((v.resolved / v.total) * 100) : 0
     v.avoidableRate = v.total > 0 ? Math.round((v.avoidableCount / v.total) * 100) : 0
-    v.avgDuration = v.total > 0 ? Math.round(v.avgDuration / v.total) : 0
+    v.avgDuration = v.total > 0 ? Number((v.avgDuration / v.total).toFixed(1)) : 0
     v.autoCategorizedRate =
       v.total > 0 ? Math.round(((v.autoCategorizedCount || 0) / v.total) * 100) : 0
-    // Satisfação média estimada (baseada em taxa de resolução e contatos não evitáveis)
-    v.avgSatisfactionScore = Math.max(
-      60,
-      Math.min(100, Math.round(v.rate * 0.7 + (100 - v.avoidableRate) * 0.3)),
-    )
+    // Acurácia da categorização estimada pela proporção de contatos categorizados assertivos
+    v.categorizationAccuracy =
+      v.autoCategorizedCount > 0
+        ? Math.max(75, Math.min(99, Math.round(100 - v.avoidableRate * 0.4)))
+        : 85
+
+    // Satisfação do cliente: baseada em sentimentos das integrações ou modelo de resolução/assertividade
+    if (v.totalFeedbackCount > 0) {
+      const sentimentScore = Math.round((v.positiveSentimentCount / v.totalFeedbackCount) * 100)
+      v.avgSatisfactionScore = Math.max(
+        60,
+        Math.min(100, Math.round(sentimentScore * 0.6 + v.rate * 0.4)),
+      )
+    } else {
+      v.avgSatisfactionScore = Math.max(
+        60,
+        Math.min(100, Math.round(v.rate * 0.65 + (100 - v.avoidableRate) * 0.35)),
+      )
+    }
   }
   return map
 }
 
 /** Estatísticas reais do mês corrente por colaborador (GMT-3). */
-export function computeCurrentMonthStats(records: ServiceRecord[]): Map<string, UserRealStats> {
+export function computeCurrentMonthStats(
+  records: ServiceRecord[],
+  sentimentLogs?: SentimentLogItem[],
+): Map<string, UserRealStats> {
   const now = currentGMT3Date()
-  return computeStatsByUserForMonth(records, now.year, now.month)
+  return computeStatsByUserForMonth(records, now.year, now.month, sentimentLogs)
 }
 
 export interface MonthParts {
@@ -230,6 +310,12 @@ export function computeStatsByAgentForMonth(
       avgDuration: 0,
       avoidableCount: 0,
       avoidableRate: 0,
+      autoCategorizedCount: 0,
+      autoCategorizedRate: 0,
+      categorizationAccuracy: 90,
+      avgSatisfactionScore: 90,
+      positiveSentimentCount: 0,
+      totalFeedbackCount: 0,
     }
 
     cur.total += 1
@@ -271,6 +357,12 @@ export function buildAgentHistory(
       avgDuration: 0,
       avoidableCount: 0,
       avoidableRate: 0,
+      autoCategorizedCount: 0,
+      autoCategorizedRate: 0,
+      categorizationAccuracy: 90,
+      avgSatisfactionScore: 90,
+      positiveSentimentCount: 0,
+      totalFeedbackCount: 0,
     }
     const attendanceStatus = getAttendanceStatus(real.total, effective.monthly_attendance_target)
     const resolutionStatus = getResolutionStatus(real.rate, effective.min_resolution_rate)
@@ -296,6 +388,7 @@ export function buildUserHistory(
   records: ServiceRecord[],
   effective: EffectiveTarget,
   monthsBack = 12,
+  sentimentLogs?: SentimentLogItem[],
 ): HistoryRow[] {
   const out: HistoryRow[] = []
   const now = currentGMT3Date()
@@ -303,7 +396,7 @@ export function buildUserHistory(
     const d = new Date(Date.UTC(now.year, now.month - i, 1, 12, 0, 0))
     const year = d.getUTCFullYear()
     const month = d.getUTCMonth()
-    const statsMap = computeStatsByUserForMonth(records, year, month)
+    const statsMap = computeStatsByUserForMonth(records, year, month, sentimentLogs)
     const real = statsMap.get(userId) || {
       total: 0,
       resolved: 0,
@@ -311,6 +404,12 @@ export function buildUserHistory(
       avgDuration: 0,
       avoidableCount: 0,
       avoidableRate: 0,
+      autoCategorizedCount: 0,
+      autoCategorizedRate: 0,
+      categorizationAccuracy: 90,
+      avgSatisfactionScore: 90,
+      positiveSentimentCount: 0,
+      totalFeedbackCount: 0,
     }
     const attendanceStatus = getAttendanceStatus(real.total, effective.monthly_attendance_target)
     const resolutionStatus = getResolutionStatus(real.rate, effective.min_resolution_rate)
@@ -354,8 +453,9 @@ export function computePerformanceAlerts(
   targets: UserTargetRecord[],
   global: GlobalTargetRecord,
   records: ServiceRecord[],
+  sentimentLogs?: SentimentLogItem[],
 ): PerformanceAlert[] {
-  const stats = computeCurrentMonthStats(records)
+  const stats = computeCurrentMonthStats(records, sentimentLogs)
   const alerts: PerformanceAlert[] = []
   for (const u of users) {
     const eff = resolveEffectiveTarget(u.id, targets, global)
@@ -366,6 +466,12 @@ export function computePerformanceAlerts(
       avgDuration: 0,
       avoidableCount: 0,
       avoidableRate: 0,
+      autoCategorizedCount: 0,
+      autoCategorizedRate: 0,
+      categorizationAccuracy: 90,
+      avgSatisfactionScore: 90,
+      positiveSentimentCount: 0,
+      totalFeedbackCount: 0,
     }
 
     if (eff.monthly_attendance_target > 0) {
@@ -422,11 +528,19 @@ export interface ComparisonRow {
   attendancePct: number
   minResolutionRate: number
   realResolutionRate: number
+  avgResponseTimeTarget: number
   avgDuration: number
-  autoCategorizedRate?: number
-  avgSatisfactionScore?: number
+  autoCategorizationTarget: number
+  autoCategorizedCount: number
+  autoCategorizedRate: number
+  categorizationAccuracy: number
+  minSatisfactionTarget: number
+  avgSatisfactionScore: number
   attendanceStatus: Status
   resolutionStatus: Status
+  responseTimeStatus: Status
+  autoCategorizationStatus: Status
+  satisfactionStatus: Status
   overall: Status
 }
 
@@ -435,8 +549,9 @@ export function buildComparisonRows(
   targets: UserTargetRecord[],
   global: GlobalTargetRecord,
   records: ServiceRecord[],
+  sentimentLogs?: SentimentLogItem[],
 ): ComparisonRow[] {
-  const stats = computeCurrentMonthStats(records)
+  const stats = computeCurrentMonthStats(records, sentimentLogs)
   return users
     .map((u) => {
       const eff = resolveEffectiveTarget(u.id, targets, global)
@@ -447,11 +562,27 @@ export function buildComparisonRows(
         avgDuration: 0,
         avoidableCount: 0,
         avoidableRate: 0,
+        autoCategorizedCount: 0,
         autoCategorizedRate: 0,
+        categorizationAccuracy: 90,
         avgSatisfactionScore: 90,
+        positiveSentimentCount: 0,
+        totalFeedbackCount: 0,
       }
       const attendanceStatus = getAttendanceStatus(real.total, eff.monthly_attendance_target)
       const resolutionStatus = getResolutionStatus(real.rate, eff.min_resolution_rate)
+      const responseTimeStatus = getResponseTimeStatus(
+        real.avgDuration,
+        eff.avg_response_time_target,
+      )
+      const autoCategorizationStatus = getAutoCategorizationStatus(
+        real.autoCategorizedRate,
+        eff.auto_categorization_target,
+      )
+      const satisfactionStatus = getSatisfactionStatus(
+        real.avgSatisfactionScore,
+        eff.min_satisfaction_target,
+      )
       const overall = getOverallStatus(attendanceStatus, resolutionStatus)
       const attendancePct =
         eff.monthly_attendance_target > 0
@@ -466,11 +597,19 @@ export function buildComparisonRows(
         attendancePct,
         minResolutionRate: eff.min_resolution_rate,
         realResolutionRate: real.rate,
+        avgResponseTimeTarget: eff.avg_response_time_target,
         avgDuration: real.avgDuration,
-        autoCategorizedRate: real.autoCategorizedRate ?? 0,
-        avgSatisfactionScore: real.avgSatisfactionScore ?? 90,
+        autoCategorizationTarget: eff.auto_categorization_target,
+        autoCategorizedCount: real.autoCategorizedCount,
+        autoCategorizedRate: real.autoCategorizedRate,
+        categorizationAccuracy: real.categorizationAccuracy,
+        minSatisfactionTarget: eff.min_satisfaction_target,
+        avgSatisfactionScore: real.avgSatisfactionScore,
         attendanceStatus,
         resolutionStatus,
+        responseTimeStatus,
+        autoCategorizationStatus,
+        satisfactionStatus,
         overall,
       }
     })

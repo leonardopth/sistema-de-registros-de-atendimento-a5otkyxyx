@@ -264,6 +264,9 @@ export interface GlobalTargetRecord {
   id: string
   monthly_attendance_target: number
   min_resolution_rate: number
+  avg_response_time_target?: number
+  auto_categorization_target?: number
+  min_satisfaction_target?: number
   updated_by?: string
   created: string
   updated: string

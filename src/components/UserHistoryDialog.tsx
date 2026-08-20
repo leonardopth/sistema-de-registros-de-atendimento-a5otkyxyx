@@ -54,11 +54,11 @@ export function UserHistoryDialog({
             <TableHeader className="bg-slate-50 sticky top-0">
               <TableRow>
                 <TableHead className="text-xs font-bold">Mês</TableHead>
-                <TableHead className="text-xs font-bold text-center">Atendimentos</TableHead>
-                <TableHead className="text-xs font-bold text-center">Meta</TableHead>
+                <TableHead className="text-xs font-bold text-center">Volume (Real/Meta)</TableHead>
                 <TableHead className="text-xs font-bold text-center">Tempo Médio</TableHead>
-                <TableHead className="text-xs font-bold text-center">Resolução real</TableHead>
-                <TableHead className="text-xs font-bold text-center">Mín. esperado</TableHead>
+                <TableHead className="text-xs font-bold text-center">Categorização</TableHead>
+                <TableHead className="text-xs font-bold text-center">Satisfação</TableHead>
+                <TableHead className="text-xs font-bold text-center">Resolução</TableHead>
                 <TableHead className="text-xs font-bold text-center">Resultado</TableHead>
               </TableRow>
             </TableHeader>
@@ -66,11 +66,30 @@ export function UserHistoryDialog({
               {history.map((row) => (
                 <TableRow key={`${row.year}-${row.month}`} className="hover:bg-slate-50">
                   <TableCell className="text-xs font-semibold capitalize">{row.label}</TableCell>
-                  <TableCell className="text-xs text-center">{row.real.total}</TableCell>
-                  <TableCell className="text-xs text-center">{row.attendanceTarget}</TableCell>
-                  <TableCell className="text-xs text-center">{row.real.avgDuration} min</TableCell>
-                  <TableCell className="text-xs text-center">{row.real.rate}%</TableCell>
-                  <TableCell className="text-xs text-center">{row.minResolutionRate}%</TableCell>
+                  <TableCell className="text-xs text-center">
+                    <span className="font-semibold text-slate-800">{row.real.total}</span> /{' '}
+                    <span className="text-slate-500">{row.attendanceTarget}</span>
+                  </TableCell>
+                  <TableCell className="text-xs text-center font-medium">
+                    {row.real.avgDuration} min
+                  </TableCell>
+                  <TableCell className="text-xs text-center">
+                    <span className="font-semibold">{row.real.autoCategorizedRate}%</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      ({row.real.autoCategorizedCount} atend.)
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-xs text-center">
+                    <span className="font-semibold text-indigo-700">
+                      {row.real.avgSatisfactionScore} pts
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-xs text-center">
+                    {row.real.rate}%{' '}
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      (mín. {row.minResolutionRate}%)
+                    </span>
+                  </TableCell>
                   <TableCell className="text-center">
                     <Badge
                       variant="secondary"

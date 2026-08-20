@@ -8,6 +8,7 @@ export interface UserTargetRecord {
   min_resolution_rate?: number
   avg_response_time_target?: number // minutos
   auto_categorization_target?: number // %
+  min_satisfaction_target?: number // % ou pontuação 0-100
   created_by?: string
   created: string
   updated: string

@@ -6,6 +6,9 @@ export const DEFAULT_GLOBAL_TARGET: GlobalTargetRecord = {
   id: 'default',
   monthly_attendance_target: 100,
   min_resolution_rate: 80,
+  avg_response_time_target: 15,
+  auto_categorization_target: 80,
+  min_satisfaction_target: 85,
   created: '',
   updated: '',
 }
@@ -44,12 +47,20 @@ export const updateGlobalTarget = async (
 
 /** Cria ou atualiza a meta global (singleton), garantindo que exista sempre no máximo um registro. */
 export const saveGlobalTarget = async (
-  data: Pick<GlobalTargetRecord, 'monthly_attendance_target' | 'min_resolution_rate'>,
+  data: Partial<GlobalTargetRecord>,
   current?: GlobalTargetRecord | null,
 ): Promise<GlobalTargetRecord> => {
-  const payload = {
-    monthly_attendance_target: Math.round(data.monthly_attendance_target),
-    min_resolution_rate: Math.round(data.min_resolution_rate),
+  const payload: Partial<GlobalTargetRecord> = {
+    monthly_attendance_target:
+      data.monthly_attendance_target != null ? Math.round(data.monthly_attendance_target) : 100,
+    min_resolution_rate:
+      data.min_resolution_rate != null ? Math.round(data.min_resolution_rate) : 80,
+    avg_response_time_target:
+      data.avg_response_time_target != null ? Math.round(data.avg_response_time_target) : 15,
+    auto_categorization_target:
+      data.auto_categorization_target != null ? Math.round(data.auto_categorization_target) : 80,
+    min_satisfaction_target:
+      data.min_satisfaction_target != null ? Math.round(data.min_satisfaction_target) : 85,
     updated_by: pb.authStore.record?.id || '',
   }
   if (current && current.id && current.id !== 'default') {

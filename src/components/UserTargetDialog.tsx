@@ -43,6 +43,8 @@ export function UserTargetDialog({
   const [attendanceTarget, setAttendanceTarget] = useState('100')
   const [minResolutionRate, setMinResolutionRate] = useState('80')
   const [avgResponseTime, setAvgResponseTime] = useState('15')
+  const [autoCategorizationTarget, setAutoCategorizationTarget] = useState('80')
+  const [minSatisfactionTarget, setMinSatisfactionTarget] = useState('85')
   const [saving, setSaving] = useState(false)
 
   const isEdit = Boolean(editingTarget)
@@ -53,12 +55,16 @@ export function UserTargetDialog({
       setAttendanceTarget(String(editingTarget.monthly_attendance_target ?? 100))
       setMinResolutionRate(String(editingTarget.min_resolution_rate ?? 80))
       setAvgResponseTime(String(editingTarget.avg_response_time_target ?? 15))
+      setAutoCategorizationTarget(String(editingTarget.auto_categorization_target ?? 80))
+      setMinSatisfactionTarget(String(editingTarget.min_satisfaction_target ?? 85))
     } else {
       const available = users.filter((u) => !existingUserIds.includes(u.id))
       setUserId(available[0]?.id || '')
       setAttendanceTarget('100')
       setMinResolutionRate('80')
       setAvgResponseTime('15')
+      setAutoCategorizationTarget('80')
+      setMinSatisfactionTarget('85')
     }
   }, [editingTarget, open, users, existingUserIds])
 
@@ -71,9 +77,23 @@ export function UserTargetDialog({
     const attendance = Number(attendanceTarget)
     const rate = Number(minResolutionRate)
     const respTime = Number(avgResponseTime)
+    const autoCat = Number(autoCategorizationTarget)
+    const satisf = Number(minSatisfactionTarget)
 
     if (isNaN(attendance) || attendance < 0) {
-      toast({ variant: 'destructive', title: 'Meta de atendimentos inválida' })
+      toast({ variant: 'destructive', title: 'Meta de volume de atendimentos inválida' })
+      return
+    }
+    if (isNaN(respTime) || respTime <= 0) {
+      toast({ variant: 'destructive', title: 'Tempo médio de resposta alvo inválido' })
+      return
+    }
+    if (isNaN(autoCat) || autoCat < 0 || autoCat > 100) {
+      toast({ variant: 'destructive', title: 'Meta de categorização deve estar entre 0 e 100%' })
+      return
+    }
+    if (isNaN(satisf) || satisf < 0 || satisf > 100) {
+      toast({ variant: 'destructive', title: 'Meta de satisfação deve estar entre 0 e 100' })
       return
     }
     if (isNaN(rate) || rate < 0 || rate > 100) {
@@ -88,6 +108,8 @@ export function UserTargetDialog({
           monthly_attendance_target: attendance,
           min_resolution_rate: rate,
           avg_response_time_target: respTime,
+          auto_categorization_target: autoCat,
+          min_satisfaction_target: satisf,
         })
         toast({ title: 'Meta do colaborador atualizada!' })
         onSaved(updated, true)
@@ -97,6 +119,8 @@ export function UserTargetDialog({
           monthly_attendance_target: attendance,
           min_resolution_rate: rate,
           avg_response_time_target: respTime,
+          auto_categorization_target: autoCat,
+          min_satisfaction_target: satisf,
         })
         toast({ title: 'Meta individual cadastrada!' })
         onSaved(created, false)
@@ -149,35 +173,21 @@ export function UserTargetDialog({
             )}
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs">Meta de Atendimentos no Mês</Label>
-            <Input
-              type="number"
-              min="0"
-              className="h-9 text-xs"
-              value={attendanceTarget}
-              onChange={(e) => setAttendanceTarget(e.target.value)}
-              placeholder="Ex: 120"
-              required
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">% Mínima de Resolução</Label>
+              <Label className="text-xs">Volume Mensal (Atendimentos) *</Label>
               <Input
                 type="number"
                 min="0"
-                max="100"
                 className="h-9 text-xs"
-                value={minResolutionRate}
-                onChange={(e) => setMinResolutionRate(e.target.value)}
-                placeholder="Ex: 80"
+                value={attendanceTarget}
+                onChange={(e) => setAttendanceTarget(e.target.value)}
+                placeholder="Ex: 120"
                 required
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Tempo Médio Alvo (min)</Label>
+              <Label className="text-xs">Tempo Médio Máximo (min) *</Label>
               <Input
                 type="number"
                 min="1"
@@ -185,8 +195,51 @@ export function UserTargetDialog({
                 value={avgResponseTime}
                 onChange={(e) => setAvgResponseTime(e.target.value)}
                 placeholder="Ex: 15"
+                required
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Categorização Automática (%) *</Label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                className="h-9 text-xs"
+                value={autoCategorizationTarget}
+                onChange={(e) => setAutoCategorizationTarget(e.target.value)}
+                placeholder="Ex: 80"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Satisfação Mínima (0-100) *</Label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                className="h-9 text-xs"
+                value={minSatisfactionTarget}
+                onChange={(e) => setMinSatisfactionTarget(e.target.value)}
+                placeholder="Ex: 85"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">% Mínima de Resolução</Label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              className="h-9 text-xs"
+              value={minResolutionRate}
+              onChange={(e) => setMinResolutionRate(e.target.value)}
+              placeholder="Ex: 80"
+            />
           </div>
 
           <DialogFooter>

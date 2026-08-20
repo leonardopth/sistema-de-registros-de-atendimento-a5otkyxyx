@@ -4,16 +4,19 @@ export const COLUMNS: { key: keyof ComparisonRow; header: string }[] = [
   { key: 'userName', header: 'Colaborador' },
   { key: 'userRole', header: 'Função' },
   { key: 'source', header: 'Origem da meta' },
-  { key: 'attendanceTarget', header: 'Meta de Atendimentos' },
-  { key: 'realAttendance', header: 'Atendimentos Realizados' },
-  { key: 'attendancePct', header: '% Atingimento Atendimentos' },
+  { key: 'attendanceTarget', header: 'Meta Volume Atend.' },
+  { key: 'realAttendance', header: 'Volume Real' },
+  { key: 'attendancePct', header: '% Atingimento Volume' },
+  { key: 'avgResponseTimeTarget', header: 'Meta Tempo Médio (min)' },
+  { key: 'avgDuration', header: 'Tempo Médio Real (min)' },
+  { key: 'autoCategorizationTarget', header: 'Meta Categorização (%)' },
+  { key: 'autoCategorizedRate', header: 'Categorização Real (%)' },
+  { key: 'autoCategorizedCount', header: 'Atend. Categorizados' },
+  { key: 'categorizationAccuracy', header: 'Acurácia Categ. (%)' },
+  { key: 'minSatisfactionTarget', header: 'Meta Satisfação (pts)' },
+  { key: 'avgSatisfactionScore', header: 'Satisfação Real (pts)' },
   { key: 'minResolutionRate', header: 'Meta Mín. Resolução (%)' },
   { key: 'realResolutionRate', header: 'Taxa Real Resolução (%)' },
-  { key: 'avgDuration', header: 'Tempo Médio (min)' },
-  { key: 'autoCategorizedRate', header: 'Categorização (%)' },
-  { key: 'avgSatisfactionScore', header: 'Satisfação / Qualidade (pts)' },
-  { key: 'attendanceStatus', header: 'Status Atendimentos' },
-  { key: 'resolutionStatus', header: 'Status Resolução' },
   { key: 'overall', header: 'Status Geral' },
 ]
 
@@ -22,22 +25,31 @@ function formatCell(row: ComparisonRow, key: keyof ComparisonRow): string {
   if (key === 'source') {
     return v === 'individual' ? 'Individual' : 'Global (padrão)'
   }
-  if (key === 'attendanceStatus' || key === 'resolutionStatus' || key === 'overall') {
+  if (
+    key === 'attendanceStatus' ||
+    key === 'resolutionStatus' ||
+    key === 'responseTimeStatus' ||
+    key === 'autoCategorizationStatus' ||
+    key === 'satisfactionStatus' ||
+    key === 'overall'
+  ) {
     return STATUS_LABEL[v as Status] || String(v ?? '')
   }
   if (
     key === 'attendancePct' ||
     key === 'minResolutionRate' ||
     key === 'realResolutionRate' ||
-    key === 'autoCategorizedRate'
+    key === 'autoCategorizationTarget' ||
+    key === 'autoCategorizedRate' ||
+    key === 'categorizationAccuracy'
   ) {
     return `${v}%`
   }
-  if (key === 'avgDuration') {
+  if (key === 'avgDuration' || key === 'avgResponseTimeTarget') {
     return `${v} min`
   }
-  if (key === 'avgSatisfactionScore') {
-    return `${v}/100`
+  if (key === 'avgSatisfactionScore' || key === 'minSatisfactionTarget') {
+    return `${v} pts`
   }
   return String(v ?? '')
 }

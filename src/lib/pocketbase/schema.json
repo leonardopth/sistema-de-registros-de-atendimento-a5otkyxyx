@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-20T22:53:39.750Z",
+  "generatedAt": "2026-08-20T23:02:19.864Z",
   "collections": [
     {
       "name": "users",
@@ -1194,6 +1194,24 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "avg_response_time_target",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "auto_categorization_target",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "min_satisfaction_target",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -1502,6 +1520,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "min_satisfaction_target",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_user_targets_user ON user_targets (user)"]

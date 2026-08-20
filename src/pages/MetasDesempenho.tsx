@@ -39,6 +39,8 @@ import { getUsers } from '@/services/users'
 import { getServiceRecords } from '@/services/service_records'
 import { getUserTargets, deleteUserTarget, type UserTargetRecord } from '@/services/user-targets'
 import { getGlobalTarget } from '@/services/global-targets'
+import { getEmailLogs, type EmailLogRecord } from '@/services/outlook-integration'
+import { getCallAnalysisLogs, type CallAnalysisLogRecord } from '@/services/telephony-integration'
 import { UserTargetDialog } from '@/components/UserTargetDialog'
 import { GlobalTargetDialog } from '@/components/GlobalTargetDialog'
 import { UserHistoryDialog } from '@/components/UserHistoryDialog'
@@ -52,6 +54,9 @@ import {
   resolveEffectiveTarget,
   getAttendanceStatus,
   getResolutionStatus,
+  getResponseTimeStatus,
+  getAutoCategorizationStatus,
+  getSatisfactionStatus,
   getOverallStatus,
   STATUS_STYLES,
   monthLabel,
@@ -59,6 +64,7 @@ import {
   buildComparisonRows,
   type EffectiveTarget,
   type Status,
+  type SentimentLogItem,
 } from '@/lib/metas'
 import { exportMetasCSV, exportMetasPDF } from '@/lib/metas-export'
 
@@ -84,6 +90,7 @@ export default function MetasDesempenho() {
   const [targets, setTargets] = useState<UserTargetRecord[]>([])
   const [globalTarget, setGlobalTarget] = useState<GlobalTargetRecord | null>(null)
   const [records, setRecords] = useState<ServiceRecord[]>([])
+  const [sentimentLogs, setSentimentLogs] = useState<SentimentLogItem[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [globalDialogOpen, setGlobalDialogOpen] = useState(false)
@@ -104,11 +111,13 @@ export default function MetasDesempenho() {
 
   const loadData = useCallback(async () => {
     try {
-      const [u, t, g, r] = await Promise.all([
+      const [u, t, g, r, emailLogs, callLogs] = await Promise.all([
         getUsers(),
         getUserTargets(),
         getGlobalTarget(),
         getServiceRecords(),
+        getEmailLogs().catch(() => [] as EmailLogRecord[]),
+        getCallAnalysisLogs().catch(() => [] as CallAnalysisLogRecord[]),
       ])
       // Filtra usuários que são colaboradores internos
       const internalUsers = u.filter((item) =>
@@ -118,6 +127,22 @@ export default function MetasDesempenho() {
       setTargets(t)
       setGlobalTarget(g)
       setRecords(r)
+
+      const sLogs: SentimentLogItem[] = [
+        ...emailLogs.map((el) => ({
+          processed_by: el.processed_by,
+          sentiment: el.sentiment,
+          confidence_score: el.confidence_score,
+          created: el.created,
+        })),
+        ...callLogs.map((cl) => ({
+          processed_by: cl.processed_by,
+          sentiment: cl.sentiment,
+          quality_score: cl.quality_score,
+          created: cl.created,
+        })),
+      ]
+      setSentimentLogs(sLogs)
     } catch (err) {
       console.error(err)
     } finally {
@@ -132,8 +157,13 @@ export default function MetasDesempenho() {
   useRealtime('user_targets', () => loadData())
   useRealtime('service_records', () => loadData())
   useRealtime('global_targets', () => loadData())
+  useRealtime('email_analysis_logs', () => loadData())
+  useRealtime('call_analysis_logs', () => loadData())
 
-  const realByUser = useMemo(() => computeCurrentMonthStats(records), [records])
+  const realByUser = useMemo(
+    () => computeCurrentMonthStats(records, sentimentLogs),
+    [records, sentimentLogs],
+  )
 
   const effectiveByUser = useMemo(() => {
     const map = new Map<string, EffectiveTarget>()
@@ -147,6 +177,9 @@ export default function MetasDesempenho() {
             id: 'default',
             monthly_attendance_target: 100,
             min_resolution_rate: 80,
+            avg_response_time_target: 15,
+            auto_categorization_target: 80,
+            min_satisfaction_target: 85,
             created: '',
             updated: '',
           },
@@ -167,12 +200,30 @@ export default function MetasDesempenho() {
           avgDuration: 0,
           avoidableCount: 0,
           avoidableRate: 0,
+          autoCategorizedCount: 0,
+          autoCategorizedRate: 0,
+          categorizationAccuracy: 90,
+          avgSatisfactionScore: 90,
+          positiveSentimentCount: 0,
+          totalFeedbackCount: 0,
         }
         const attendanceStatus = getAttendanceStatus(
           real.total,
           eff?.monthly_attendance_target || 0,
         )
         const resolutionStatus = getResolutionStatus(real.rate, eff?.min_resolution_rate || 0)
+        const responseTimeStatus = getResponseTimeStatus(
+          real.avgDuration,
+          eff?.avg_response_time_target || 15,
+        )
+        const autoCatStatus = getAutoCategorizationStatus(
+          real.autoCategorizedRate,
+          eff?.auto_categorization_target || 80,
+        )
+        const satisfactionStatus = getSatisfactionStatus(
+          real.avgSatisfactionScore,
+          eff?.min_satisfaction_target || 85,
+        )
         const overall = getOverallStatus(attendanceStatus, resolutionStatus)
         const sourceLabel = eff?.source === 'individual' ? 'Individual' : 'Global'
         return {
@@ -182,6 +233,9 @@ export default function MetasDesempenho() {
           real,
           attendanceStatus,
           resolutionStatus,
+          responseTimeStatus,
+          autoCatStatus,
+          satisfactionStatus,
           overall,
           sourceLabel,
           statusLabel: STATUS_STYLES[overall].label,
@@ -241,10 +295,14 @@ export default function MetasDesempenho() {
           id: 'default',
           monthly_attendance_target: 100,
           min_resolution_rate: 80,
+          avg_response_time_target: 15,
+          auto_categorization_target: 80,
+          min_satisfaction_target: 85,
           created: '',
           updated: '',
         },
         records,
+        sentimentLogs,
       )
       exportMetasCSV(comparisonRows)
       toast({ title: 'CSV exportado com sucesso!' })
@@ -264,10 +322,14 @@ export default function MetasDesempenho() {
           id: 'default',
           monthly_attendance_target: 100,
           min_resolution_rate: 80,
+          avg_response_time_target: 15,
+          auto_categorization_target: 80,
+          min_satisfaction_target: 85,
           created: '',
           updated: '',
         },
         records,
+        sentimentLogs,
       )
       exportMetasPDF(comparisonRows)
       toast({ title: 'PDF gerado! Use a janela de impressão para salvar.' })
@@ -367,8 +429,10 @@ export default function MetasDesempenho() {
                 Meta Global (Padrão)
               </p>
               <p className="text-sm font-bold text-slate-900">
-                {globalTarget?.monthly_attendance_target ?? '—'} atendimentos/mês · mín.{' '}
-                {globalTarget?.min_resolution_rate ?? '—'}% de resolução
+                {globalTarget?.monthly_attendance_target ?? 100} atendimentos/mês · máx.{' '}
+                {globalTarget?.avg_response_time_target ?? 15} min resposta ·{' '}
+                {globalTarget?.auto_categorization_target ?? 80}% categorização · mín.{' '}
+                {globalTarget?.min_satisfaction_target ?? 85} pts satisfação
               </p>
               <p className="text-[11px] text-slate-500">
                 Aplicada aos colaboradores sem meta individual. Individual prevalece sobre a global.
@@ -447,18 +511,21 @@ export default function MetasDesempenho() {
                         </div>
                       </div>
                     </TableHead>
-                    <TableHead className="text-xs font-bold w-[24%]">
+                    <TableHead className="text-xs font-bold w-[18%]">
                       <div className="flex items-center justify-between gap-1">
-                        <span>Atendimentos (real / meta)</span>
+                        <span>Volume (real / meta)</span>
                       </div>
                     </TableHead>
-                    <TableHead className="text-xs font-bold w-[22%]">
-                      <div className="flex items-center justify-between gap-1">
-                        <span>Resolução (real / mín.)</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-xs font-bold w-[12%] text-center">
+                    <TableHead className="text-xs font-bold w-[13%] text-center">
                       Tempo Médio
+                    </TableHead>
+                    <TableHead className="text-xs font-bold w-[18%]">
+                      <div className="flex items-center justify-between gap-1">
+                        <span>Categorização Automática</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-xs font-bold w-[13%] text-center">
+                      Satisfação (IA)
                     </TableHead>
                     <TableHead className="text-xs font-bold text-center">
                       <div className="flex items-center justify-center gap-1">
@@ -484,7 +551,9 @@ export default function MetasDesempenho() {
                       targetRecord,
                       real,
                       attendanceStatus,
-                      resolutionStatus,
+                      responseTimeStatus,
+                      autoCatStatus,
+                      satisfactionStatus,
                       overall,
                     }) => {
                       const isIndividual = effective?.source === 'individual'
@@ -531,29 +600,57 @@ export default function MetasDesempenho() {
                               status={attendanceStatus}
                             />
                           </TableCell>
+                          <TableCell className="text-xs text-center font-medium text-slate-700 pt-3">
+                            <div className="space-y-0.5">
+                              <div>{real.avgDuration} min</div>
+                              <div className="text-[10px] text-slate-400">
+                                Alvo: ≤ {effective?.avg_response_time_target ?? 15} min
+                              </div>
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-[11px] text-slate-500">
-                                {real.rate}% / {effective?.min_resolution_rate ?? 0}%
+                                {real.autoCategorizedRate}% /{' '}
+                                {effective?.auto_categorization_target ?? 80}%
                               </span>
                               <Badge
                                 variant="secondary"
                                 className={cn(
                                   'text-[10px] h-5',
-                                  STATUS_STYLES[resolutionStatus].badge,
+                                  STATUS_STYLES[autoCatStatus].badge,
                                 )}
                               >
-                                {STATUS_STYLES[resolutionStatus].label}
+                                {STATUS_STYLES[autoCatStatus].label}
                               </Badge>
                             </div>
                             <ProgressBar
-                              value={real.rate}
-                              max={effective?.min_resolution_rate || 0}
-                              status={resolutionStatus}
+                              value={real.autoCategorizedRate}
+                              max={effective?.auto_categorization_target || 80}
+                              status={autoCatStatus}
                             />
+                            <span className="text-[10px] text-slate-400 mt-0.5 block">
+                              {real.autoCategorizedCount} atend. · acurácia{' '}
+                              {real.categorizationAccuracy}%
+                            </span>
                           </TableCell>
                           <TableCell className="text-xs text-center font-medium text-slate-700 pt-3">
-                            {real.avgDuration} min
+                            <div className="space-y-0.5">
+                              <span
+                                className={cn(
+                                  'font-bold text-xs',
+                                  real.avgSatisfactionScore >=
+                                    (effective?.min_satisfaction_target ?? 85)
+                                    ? 'text-emerald-600'
+                                    : 'text-amber-600',
+                                )}
+                              >
+                                {real.avgSatisfactionScore} pts
+                              </span>
+                              <div className="text-[10px] text-slate-400">
+                                Mín: {effective?.min_satisfaction_target ?? 85} pts
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell className="text-center pt-3">
                             <Badge
