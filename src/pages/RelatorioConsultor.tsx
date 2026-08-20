@@ -43,8 +43,8 @@ export default function RelatorioConsultor() {
   const allStats = useMemo(() => computeConsultantStats(records, users), [records, users])
   const visibleStats = useMemo(() => filterConsultantsByAccess(allStats, user), [allStats, user])
   const myStats = useMemo(
-    () => visibleStats.find((s) => s.uid === user?.id),
-    [visibleStats, user?.id],
+    () => visibleStats.find((s) => s.uid === user?.id) || allStats.find((s) => s.uid === user?.id),
+    [visibleStats, allStats, user?.id],
   )
   const teamAvg = useMemo(() => computeTeamAverage(visibleStats), [visibleStats])
   const anonymizedNames = useMemo(() => buildAnonymizedNames(visibleStats), [visibleStats])
@@ -55,17 +55,23 @@ export default function RelatorioConsultor() {
     return anonymizedNames.get(stat.uid) || 'Consultor'
   }
 
-  if (visibleStats.length === 0 || (!isLeadership && !myStats)) {
+  if (visibleStats.length === 0 && !myStats) {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-extrabold text-slate-900">
-          {isLeadership ? 'Relatório da Equipe' : 'Meu Relatório'}
+          {isMaster
+            ? 'Relatório Geral de Consultores (Master)'
+            : isLeadership
+              ? 'Relatório da Equipe'
+              : 'Meu Relatório'}
         </h2>
         <Card className="p-8 text-center">
           <p className="text-sm text-slate-400">
-            {isLeadership
-              ? 'Nenhum consultor encontrado no seu grupo de atendimento.'
-              : 'Nenhum atendimento registrado ainda.'}
+            {isMaster
+              ? 'Nenhum consultor cadastrado no sistema.'
+              : isLeadership
+                ? 'Nenhum consultor encontrado no seu grupo de atendimento.'
+                : 'Nenhum atendimento registrado ainda.'}
           </p>
         </Card>
       </div>

@@ -15,14 +15,20 @@ export function computeConsultantStats(
   users: UserRecord[],
 ): ConsultantStat[] {
   const userMap = new Map(users.map((u) => [u.id, u]))
-  const consultantIds = new Set(users.filter((u) => u.role === 'Consultores').map((u) => u.id))
+  const consultants = users.filter((u) => u.role === 'Consultores')
   const map = new Map<string, ServiceRecord[]>()
+
+  // Inicializa mapa para todos os consultores cadastrados (para que mesmo consultores com 0 atendimentos apareçam)
+  for (const c of consultants) {
+    map.set(c.id, [])
+  }
+
   for (const r of records) {
     const uid = r.assigned_user || r.user_id
-    if (!uid || !consultantIds.has(uid)) continue
-    if (!map.has(uid)) map.set(uid, [])
+    if (!uid || !map.has(uid)) continue
     map.get(uid)!.push(r)
   }
+
   return Array.from(map.entries())
     .map(([uid, recs]) => {
       const total = recs.length
@@ -41,16 +47,18 @@ export function filterConsultantsByAccess(stats: ConsultantStat[], user: any): C
   if (!user) return []
   // Usuários com papel "Master" ou permissão master_access visualizam TODOS os consultores
   if (isMasterUser(user)) return stats
-  // Gestão/Liderança visualiza consultores do seu grupo de atendimento
+  // Gestão/Liderança (Gerentes, Supervisores, Líderes) visualiza consultores dos seus grupos de atendimento
   if (isManagerUser(user)) {
     const groups = getUserServiceGroups(user)
     if (groups.length === 0) return stats
     return stats.filter((s) => {
+      // Se for o próprio líder ou consultor da mesma equipe/grupo
+      if (s.uid === user.id) return true
       const cg = s.user?.service_groups || []
       return cg.some((g) => groups.includes(g))
     })
   }
-  // Consultores não-master visualizam apenas seus próprios dados
+  // Consultores não-master e demais usuários comuns visualizam apenas seus próprios dados
   return stats.filter((s) => s.uid === user.id)
 }
 
