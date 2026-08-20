@@ -79,6 +79,12 @@ export default function Auditoria() {
     loadData()
   }, [])
 
+  const userNames = useMemo(() => {
+    const m = new Map<string, string>()
+    users.forEach((u) => m.set(u.id, u.name))
+    return m
+  }, [users])
+
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       if (selectedUser !== 'ALL' && log.user !== selectedUser) return false
@@ -106,12 +112,6 @@ export default function Auditoria() {
     colEntities,
     userNames,
   ])
-
-  const userNames = useMemo(() => {
-    const m = new Map<string, string>()
-    users.forEach((u) => m.set(u.id, u.name))
-    return m
-  }, [users])
 
   const handleExportCSV = () => {
     downloadAuditLogCSV(filteredLogs, userNames)

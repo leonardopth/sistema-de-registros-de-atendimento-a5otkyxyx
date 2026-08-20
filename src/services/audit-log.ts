@@ -60,10 +60,8 @@ export async function getAuditLogs(filter?: AuditLogFilter): Promise<AuditLogRec
 
 export async function getAuditLogActions(): Promise<string[]> {
   try {
-    const logs = await pb.collection('audit_log').getFullList({ fields: 'action' })
-    const actions = new Set(
-      logs.map((l: { action?: string }) => l.action).filter(Boolean) as string[],
-    )
+    const logs = await pb.collection('audit_log').getFullList<AuditLogRecord>({ fields: 'action' })
+    const actions = new Set(logs.map((l) => l.action).filter(Boolean))
     return Array.from(actions)
   } catch {
     return []
@@ -72,10 +70,8 @@ export async function getAuditLogActions(): Promise<string[]> {
 
 export async function getAuditLogEntities(): Promise<string[]> {
   try {
-    const logs = await pb.collection('audit_log').getFullList({ fields: 'entity' })
-    const entities = new Set(
-      logs.map((l: { entity?: string }) => l.entity).filter(Boolean) as string[],
-    )
+    const logs = await pb.collection('audit_log').getFullList<AuditLogRecord>({ fields: 'entity' })
+    const entities = new Set(logs.map((l) => l.entity).filter(Boolean))
     return Array.from(entities)
   } catch {
     return []

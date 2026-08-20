@@ -27,18 +27,23 @@ import type { UserRecord, AccountExecutiveRecord } from '@/types/service_record'
 import { Search, Share2, Loader2, UserCheck, Briefcase } from 'lucide-react'
 
 interface ShareSelectDialogProps {
-  recordIds: string[]
+  recordIds?: string[]
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
+  users?: UserRecord[]
+  selectedIds?: string[]
+  currentUserId?: string
+  onConfirm?: (ids: string[]) => void
 }
 
 export function ShareSelectDialog({
-  recordIds,
+  recordIds = [],
   open,
   onOpenChange,
   onSuccess,
 }: ShareSelectDialogProps) {
+  const safeRecordIds = recordIds || []
   const { user } = useAuth()
   const { toast } = useToast()
   const [users, setUsers] = useState<UserRecord[]>([])
@@ -50,7 +55,7 @@ export function ShareSelectDialog({
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!open || recordIds.length === 0) return
+    if (!open || safeRecordIds.length === 0) return
     const load = async () => {
       setLoading(true)
       try {
@@ -67,7 +72,7 @@ export function ShareSelectDialog({
     setSelectedUserIds([])
     setSelectedExecutiveIds([])
     setSearch('')
-  }, [open, recordIds])
+  }, [open, safeRecordIds])
 
   const availableUsers = useMemo(() => {
     return users.filter((u) => u.id !== user?.id && u.approval_status !== 'Rejeitado')
@@ -105,12 +110,12 @@ export function ShareSelectDialog({
   const totalSelected = selectedUserIds.length + selectedExecutiveIds.length
 
   const handleShare = async () => {
-    if (recordIds.length === 0 || !user?.id || totalSelected === 0) return
+    if (safeRecordIds.length === 0 || !user?.id || totalSelected === 0) return
     setLoading(true)
     try {
       const promises: Promise<any>[] = []
 
-      for (const recordId of recordIds) {
+      for (const recordId of safeRecordIds) {
         for (const userId of selectedUserIds) {
           promises.push(
             createShare({
@@ -137,7 +142,7 @@ export function ShareSelectDialog({
 
       toast({
         title: 'Compartilhamento realizado',
-        description: `${recordIds.length} atendimento(s) compartilhado(s) com ${totalSelected} destinatário(s).`,
+        description: `${safeRecordIds.length} atendimento(s) compartilhado(s) com ${totalSelected} destinatário(s).`,
       })
       onOpenChange(false)
       onSuccess?.()
@@ -159,11 +164,11 @@ export function ShareSelectDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Share2 className="h-5 w-5 text-indigo-600" />
-            Compartilhar {recordIds.length} Atendimento(s)
+            Compartilhar {safeRecordIds.length > 0 ? `${safeRecordIds.length} ` : ''}Atendimento(s)
           </DialogTitle>
           <DialogDescription>
             Selecione consultores ou executivos de contas para dar acesso aos atendimentos
-            selecionados.
+            {safeRecordIds.length > 0 ? ' selecionados' : ''}.
           </DialogDescription>
         </DialogHeader>
 

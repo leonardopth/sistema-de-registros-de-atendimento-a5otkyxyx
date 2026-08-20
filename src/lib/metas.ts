@@ -193,6 +193,88 @@ export interface HistoryRow {
 /**
  * Gera o histórico mensal (últimos N meses) para um colaborador interno.
  */
+/** Agrupa estatísticas reais por agente para um mês/ano específicos (GMT-3). */
+export function computeStatsByAgentForMonth(
+  records: ServiceRecord[],
+  year: number,
+  month: number, // 0-based
+): Map<string, UserRealStats> {
+  const map = new Map<string, UserRealStats>()
+  for (const r of records) {
+    const aid = r.agent
+    if (!aid) continue
+    const parts = getGMT3MonthParts(r.created)
+    if (!parts) continue
+    if (parts.year !== year || parts.month !== month) continue
+
+    const cur = map.get(aid) || {
+      total: 0,
+      resolved: 0,
+      rate: 0,
+      avgDuration: 0,
+      avoidableCount: 0,
+      avoidableRate: 0,
+    }
+
+    cur.total += 1
+    if (r.status === 'Concluído') cur.resolved += 1
+    if (r.avoidable_contact) cur.avoidableCount += 1
+    cur.avgDuration += r.duration || 0
+
+    map.set(aid, cur)
+  }
+
+  for (const [, v] of map) {
+    v.rate = v.total > 0 ? Math.round((v.resolved / v.total) * 100) : 0
+    v.avoidableRate = v.total > 0 ? Math.round((v.avoidableCount / v.total) * 100) : 0
+    v.avgDuration = v.total > 0 ? Math.round(v.avgDuration / v.total) : 0
+  }
+  return map
+}
+
+/**
+ * Gera o histórico mensal (últimos N meses) para um agente externo.
+ */
+export function buildAgentHistory(
+  agentId: string,
+  records: ServiceRecord[],
+  effective: EffectiveTarget,
+  monthsBack = 12,
+): HistoryRow[] {
+  const out: HistoryRow[] = []
+  const now = currentGMT3Date()
+  for (let i = 0; i < monthsBack; i++) {
+    const d = new Date(Date.UTC(now.year, now.month - i, 1, 12, 0, 0))
+    const year = d.getUTCFullYear()
+    const month = d.getUTCMonth()
+    const statsMap = computeStatsByAgentForMonth(records, year, month)
+    const real = statsMap.get(agentId) || {
+      total: 0,
+      resolved: 0,
+      rate: 0,
+      avgDuration: 0,
+      avoidableCount: 0,
+      avoidableRate: 0,
+    }
+    const attendanceStatus = getAttendanceStatus(real.total, effective.monthly_attendance_target)
+    const resolutionStatus = getResolutionStatus(real.rate, effective.min_resolution_rate)
+    const overall = getOverallStatus(attendanceStatus, resolutionStatus)
+    out.push({
+      year,
+      month,
+      label: monthLabel(year, month),
+      attendanceTarget: effective.monthly_attendance_target,
+      minResolutionRate: effective.min_resolution_rate,
+      real,
+      attendanceStatus,
+      resolutionStatus,
+      overall,
+      hit: attendanceStatus !== 'abaixo' && resolutionStatus !== 'abaixo',
+    })
+  }
+  return out
+}
+
 export function buildUserHistory(
   userId: string,
   records: ServiceRecord[],

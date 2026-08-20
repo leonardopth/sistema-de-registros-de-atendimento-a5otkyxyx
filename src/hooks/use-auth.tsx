@@ -5,9 +5,17 @@ interface AuthContextType {
   user: any
   isAuthenticated: boolean
   isMaster: boolean
-  signUp: (email: string, password: string) => Promise<{ error: any }>
-  signIn: (email: string, password: string) => Promise<{ error: any }>
+  signUp: (
+    email: string,
+    password: string,
+    name?: string,
+    role?: string,
+    serviceGroups?: string[],
+    bases?: string[],
+  ) => Promise<{ error: any }>
+  signIn: (email: string, password: string) => Promise<{ error: any; approvalStatus?: string }>
   signOut: () => void
+  requestPasswordReset?: (email: string) => Promise<{ error: any }>
   loading: boolean
 }
 
@@ -45,10 +53,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    name?: string,
+    role?: string,
+    serviceGroups?: string[],
+    bases?: string[],
+  ) => {
     try {
-      await pb.collection('users').create({ email, password, passwordConfirm: password })
-      await pb.collection('users').authWithPassword(email, password)
+      await pb.collection('users').create({
+        email,
+        password,
+        passwordConfirm: password,
+        name: name || '',
+        role: role || 'Consultor',
+        service_groups: serviceGroups || [],
+        bases: bases || [],
+        approval_status: 'Pendente',
+      })
       return { error: null }
     } catch (error) {
       return { error }
@@ -57,15 +80,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      await pb.collection('users').authWithPassword(email, password)
+      const res = await pb.collection('users').authWithPassword(email, password)
+      if (res.record?.approval_status === 'Pendente') {
+        pb.authStore.clear()
+        return { error: new Error('Pendente'), approvalStatus: 'Pendente' }
+      }
+      if (res.record?.approval_status === 'Rejeitado') {
+        pb.authStore.clear()
+        return { error: new Error('Rejeitado'), approvalStatus: 'Rejeitado' }
+      }
       return { error: null }
-    } catch (error) {
-      return { error }
+    } catch (error: any) {
+      return { error, approvalStatus: error?.data?.approval_status }
     }
   }
 
   const signOut = () => {
     pb.authStore.clear()
+  }
+
+  const requestPasswordReset = async (email: string) => {
+    try {
+      await pb.collection('users').requestPasswordReset(email)
+      return { error: null }
+    } catch (error) {
+      return { error }
+    }
   }
 
   return (
@@ -77,6 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signUp,
         signIn,
         signOut,
+        requestPasswordReset,
         loading,
       }}
     >

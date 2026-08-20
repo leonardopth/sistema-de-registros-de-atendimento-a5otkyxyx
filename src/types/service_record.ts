@@ -173,6 +173,7 @@ export interface NotificationRecord {
   message: string
   type: NotificationType
   read: boolean
+  resolved?: boolean
   link?: string
   created: string
   updated: string

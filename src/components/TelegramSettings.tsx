@@ -29,9 +29,10 @@ export function TelegramSettings({ onSaved }: { onSaved?: () => void }) {
   }
 
   const handleTest = async () => {
+    if (!user?.id) return
     setTesting(true)
     try {
-      await testTelegram()
+      await testTelegram(user.id)
       toast({ title: 'Mensagem de teste enviada!' })
     } catch {
       toast({ title: 'Falha no teste. Verifique seu Telegram ID.', variant: 'destructive' })

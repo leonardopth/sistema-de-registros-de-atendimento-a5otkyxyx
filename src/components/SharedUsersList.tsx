@@ -48,7 +48,7 @@ export function SharedUsersList({ recordId }: SharedUsersListProps) {
 
   useRealtime('service_record_shares', () => loadData(), !!recordId)
 
-  const handlePermissionChange = async (shareId: string, permission: string) => {
+  const handlePermissionChange = async (shareId: string, permission: 'Visualizar' | 'Editar') => {
     try {
       await updateSharePermission(shareId, permission)
       toast({ title: 'Permissão atualizada' })
@@ -108,7 +108,7 @@ export function SharedUsersList({ recordId }: SharedUsersListProps) {
           </div>
           <Select
             value={share.permission}
-            onValueChange={(v) => handlePermissionChange(share.id, v)}
+            onValueChange={(v) => handlePermissionChange(share.id, v as 'Visualizar' | 'Editar')}
           >
             <SelectTrigger className="h-7 w-[120px] text-xs">
               <SelectValue />
