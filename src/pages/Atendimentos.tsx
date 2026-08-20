@@ -55,6 +55,7 @@ import {
   AlertTriangle,
   Share2,
   Mail,
+  Phone,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
@@ -68,6 +69,7 @@ import { getClients } from '@/services/clients'
 import { getUsers } from '@/services/users'
 import { getSharesByUser, getAllShares } from '@/services/service_record_shares'
 import { getEmailLogs, EmailLogRecord } from '@/services/outlook-integration'
+import { getCallAnalysisLogs, CallAnalysisLogRecord } from '@/services/telephony-integration'
 import { ServiceRecordShare } from '@/types/service_record'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { downloadServiceRecordsCSV } from '@/lib/report-export'
@@ -128,6 +130,9 @@ export default function Atendimentos() {
   const [emailsByRecordMap, setEmailsByRecordMap] = useState<Map<string, EmailLogRecord[]>>(
     new Map(),
   )
+  const [callsByRecordMap, setCallsByRecordMap] = useState<Map<string, CallAnalysisLogRecord[]>>(
+    new Map(),
+  )
 
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -152,7 +157,7 @@ export default function Atendimentos() {
 
       const allSharesPromise = getAllShares().catch(() => [])
 
-      const [userShares, allShares, execs, clientsData, usersData, emailLogsData] =
+      const [userShares, allShares, execs, clientsData, usersData, emailLogsData, callLogsData] =
         await Promise.all([
           userSharesPromise,
           allSharesPromise,
@@ -160,6 +165,7 @@ export default function Atendimentos() {
           getClients(),
           getUsers(),
           getEmailLogs().catch(() => []),
+          getCallAnalysisLogs().catch(() => []),
         ])
 
       const emailMap = new Map<string, EmailLogRecord[]>()
@@ -171,6 +177,16 @@ export default function Atendimentos() {
         }
       })
       setEmailsByRecordMap(emailMap)
+
+      const callMap = new Map<string, CallAnalysisLogRecord[]>()
+      ;(callLogsData || []).forEach((cl: CallAnalysisLogRecord) => {
+        if (cl.service_record) {
+          const list = callMap.get(cl.service_record) || []
+          list.push(cl)
+          callMap.set(cl.service_record, list)
+        }
+      })
+      setCallsByRecordMap(callMap)
 
       const sharedIdsList = (userShares || []).map((s: any) => s.service_record).filter(Boolean)
       setSharedRecordIds(new Set(sharedIdsList))
@@ -218,6 +234,10 @@ export default function Atendimentos() {
   })
 
   useRealtime('email_analysis_logs', () => {
+    loadData()
+  })
+
+  useRealtime('call_analysis_logs', () => {
     loadData()
   })
 
@@ -977,20 +997,38 @@ export default function Atendimentos() {
                       <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                         {r.travel_type && <TravelTypeBadge travelType={r.travel_type} />}
                         {(() => {
+                          const linkedCalls = callsByRecordMap.get(r.id) || []
                           const linkedEmails = emailsByRecordMap.get(r.id) || []
-                          if (linkedEmails.length > 0) {
-                            return (
-                              <Badge
-                                variant="outline"
-                                className="bg-sky-50 text-sky-700 border-sky-200 text-[9px] py-0 px-1 gap-0.5 flex items-center font-medium"
-                                title={`${linkedEmails.length} análise(s) de e-mail Outlook vinculadas`}
-                              >
-                                <Mail className="h-2.5 w-2.5 text-sky-600" />
-                                {linkedEmails.length} e-mail{linkedEmails.length > 1 ? 's' : ''} IA
-                              </Badge>
-                            )
-                          }
-                          return null
+                          return (
+                            <>
+                              {linkedCalls.length > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[9px] py-0 px-1 gap-0.5 flex items-center font-medium"
+                                  title={`${linkedCalls.length} gravação(ões) de voz analisada(s) por IA vinculada(s)`}
+                                >
+                                  <Phone className="h-2.5 w-2.5 text-indigo-600" />
+                                  {linkedCalls.length} voz IA
+                                  {linkedCalls[0]?.quality_score !== undefined && (
+                                    <span className="font-semibold text-emerald-700 ml-0.5">
+                                      ({linkedCalls[0].quality_score}pts)
+                                    </span>
+                                  )}
+                                </Badge>
+                              )}
+                              {linkedEmails.length > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-sky-50 text-sky-700 border-sky-200 text-[9px] py-0 px-1 gap-0.5 flex items-center font-medium"
+                                  title={`${linkedEmails.length} análise(s) de e-mail Outlook vinculadas`}
+                                >
+                                  <Mail className="h-2.5 w-2.5 text-sky-600" />
+                                  {linkedEmails.length} e-mail{linkedEmails.length > 1 ? 's' : ''}{' '}
+                                  IA
+                                </Badge>
+                              )}
+                            </>
+                          )
                         })()}
                       </div>
                     </TableCell>

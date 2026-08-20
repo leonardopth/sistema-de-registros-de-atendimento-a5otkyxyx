@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -6,6 +6,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -35,12 +42,15 @@ import {
 import {
   getTelephonyStatus,
   syncTelephonyCalls,
-  processTelephonyCall,
-  getCallRecords,
-  CallRecord,
+  processTelephonyRecording,
+  getCallAnalysisLogs,
+  CallAnalysisLogRecord,
   TelephonyStatusResponse,
   CallAnalysisResult,
 } from '@/services/telephony-integration'
+import { getClients } from '@/services/clients'
+import { getServiceRecords } from '@/services/service_records'
+import { ClientRecord, ServiceRecord } from '@/types/service_record'
 import { formatGMT3DateTime } from '@/lib/timezone'
 import {
   Mail,
@@ -53,20 +63,21 @@ import {
   Loader2,
   MessageSquare,
   Bot,
-  SlidersHorizontal,
   Headphones,
-  FileAudio,
-  Activity,
-  Mic,
   Tag,
-  Star,
+  Search,
+  SlidersHorizontal,
+  Mic,
+  Server,
+  Building2,
+  UploadCloud,
 } from 'lucide-react'
 
 export default function Integracoes() {
   const { user } = useAuth()
   const { toast } = useToast()
 
-  const [activeTab, setActiveTab] = useState<'outlook' | 'telephony'>('telephony')
+  const [activeTab, setActiveTab] = useState<'telephony' | 'outlook'>('telephony')
 
   // Outlook States
   const [statusData, setStatusData] = useState<OutlookStatusResponse | null>(null)
@@ -83,17 +94,31 @@ export default function Integracoes() {
   )
   const [lastAnalysis, setLastAnalysis] = useState<any>(null)
 
-  // Telephony / Twilio States
+  // Telephony States
   const [telephonyStatus, setTelephonyStatus] = useState<TelephonyStatusResponse | null>(null)
-  const [callRecords, setCallRecords] = useState<CallRecord[]>([])
+  const [callRecords, setCallRecords] = useState<CallAnalysisLogRecord[]>([])
+  const [clientsList, setClientsList] = useState<ClientRecord[]>([])
+  const [serviceRecordsList, setServiceRecordsList] = useState<ServiceRecord[]>([])
   const [loadingTelephony, setLoadingTelephony] = useState(true)
   const [syncingTelephony, setSyncingTelephony] = useState(false)
+
+  // Telephony Filter & Search States
+  const [callSearch, setCallSearch] = useState('')
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all')
+  const [selectedSentimentFilter, setSelectedSentimentFilter] = useState<string>('all')
+
+  // Telephony Test Modal States
   const [callModalOpen, setCallModalOpen] = useState(false)
   const [testingCallAi, setTestingCallAi] = useState(false)
+  const [testProvider, setTestProvider] = useState<'twilio' | 'vonage' | 'internal' | 'simulation'>(
+    'twilio',
+  )
   const [testFromNumber, setTestFromNumber] = useState('+55 11 98765-4321')
   const [testToNumber, setTestToNumber] = useState('+55 11 3000-0000')
   const [testAudioDuration, setTestAudioDuration] = useState('145')
   const [testRecordingUrl, setTestRecordingUrl] = useState('https://api.twilio.com/cowbell.mp3')
+  const [testSelectedClient, setTestSelectedClient] = useState<string>('')
+  const [testSelectedServiceRecord, setTestSelectedServiceRecord] = useState<string>('')
   const [testTranscription, setTestTranscription] = useState(
     'Olá bom dia! Aqui é o Marcos da Agência Viagens Brasil. Estou com um passageiro no aeroporto com problema para embarque por causa da franquia de bagagem que não consta no bilhete eletrônico. Preciso de auxílio urgente para verificar a emissão.',
   )
@@ -115,9 +140,16 @@ export default function Integracoes() {
   const loadTelephonyData = async () => {
     setLoadingTelephony(true)
     try {
-      const [telSt, calls] = await Promise.all([getTelephonyStatus(), getCallRecords()])
+      const [telSt, calls, clients, srs] = await Promise.all([
+        getTelephonyStatus(),
+        getCallAnalysisLogs(),
+        getClients().catch(() => []),
+        getServiceRecords().catch(() => []),
+      ])
       setTelephonyStatus(telSt)
       setCallRecords(calls)
+      setClientsList(clients)
+      setServiceRecordsList(srs)
     } catch (err) {
       console.error('Erro ao carregar dados de telefonia:', err)
     } finally {
@@ -212,17 +244,17 @@ export default function Integracoes() {
       const res = await syncTelephonyCalls()
       if (res.success) {
         toast({
-          title: 'Sincronização Twilio concluída',
+          title: 'Sincronização de Telefonia concluída',
           description:
             res.processed_count > 0
               ? `${res.processed_count} gravação(ões) verificada(s).`
-              : res.message || 'Nenhuma nova gravação encontrada.',
+              : res.message || 'Nenhuma nova gravação pendente.',
         })
         loadTelephonyData()
       } else {
         toast({
           variant: 'destructive',
-          title: 'Falha na sincronização Twilio',
+          title: 'Falha na sincronização',
           description: res.error || res.message,
         })
       }
@@ -241,19 +273,22 @@ export default function Integracoes() {
     e.preventDefault()
     setTestingCallAi(true)
     try {
-      const res = await processTelephonyCall({
+      const res = await processTelephonyRecording({
+        provider: testProvider,
         from_number: testFromNumber,
         to_number: testToNumber,
         duration: Number(testAudioDuration) || 120,
         recording_url: testRecordingUrl,
         transcription: testTranscription,
+        client_id: testSelectedClient || undefined,
+        service_record_id: testSelectedServiceRecord || undefined,
         agent_user_id: user?.id,
       })
 
       if (res.success) {
         setLastCallAnalysis(res.analysis)
         toast({
-          title: 'Chamada processada com sucesso!',
+          title: 'Gravação processada com sucesso!',
           description: `Categoria: ${res.analysis.category} | Sentimento: ${res.analysis.sentiment} | Score: ${res.analysis.quality_score}/100`,
         })
         loadTelephonyData()
@@ -307,6 +342,57 @@ export default function Integracoes() {
     }
   }
 
+  // Filtragem dos logs de chamadas
+  const filteredCallRecords = useMemo(() => {
+    return callRecords.filter((c) => {
+      const matchesSearch =
+        !callSearch ||
+        (c.from_number || '').toLowerCase().includes(callSearch.toLowerCase()) ||
+        (c.to_number || '').toLowerCase().includes(callSearch.toLowerCase()) ||
+        (c.transcription || '').toLowerCase().includes(callSearch.toLowerCase()) ||
+        (c.summary || '').toLowerCase().includes(callSearch.toLowerCase()) ||
+        (Array.isArray(c.keywords) &&
+          c.keywords.some((k) => k.toLowerCase().includes(callSearch.toLowerCase())))
+
+      const matchesCategory =
+        selectedCategoryFilter === 'all' ||
+        (c.category || '').toLowerCase() === selectedCategoryFilter.toLowerCase()
+
+      const matchesSentiment =
+        selectedSentimentFilter === 'all' ||
+        (c.sentiment || '').toLowerCase() === selectedSentimentFilter.toLowerCase()
+
+      return matchesSearch && matchesCategory && matchesSentiment
+    })
+  }, [callRecords, callSearch, selectedCategoryFilter, selectedSentimentFilter])
+
+  // Estatísticas de processamento de telefonia
+  const telephonyStats = useMemo(() => {
+    const total = callRecords.length
+    if (total === 0) return { total: 0, avgQuality: 0, positiveCount: 0, topCategory: '—' }
+
+    const qualitySum = callRecords.reduce((acc, c) => acc + (c.quality_score || 0), 0)
+    const avgQuality = Math.round(qualitySum / total)
+
+    const positiveCount = callRecords.filter((c) => c.sentiment === 'Positivo').length
+
+    const catCounts: Record<string, number> = {}
+    callRecords.forEach((c) => {
+      if (c.category) catCounts[c.category] = (catCounts[c.category] || 0) + 1
+    })
+
+    let topCategory = '—'
+    let maxCat = 0
+    Object.entries(catCounts).forEach(([cat, cnt]) => {
+      if (cnt > maxCat) {
+        maxCat = cnt
+        topCategory = cat
+      }
+    })
+
+    return { total, avgQuality, positiveCount, topCategory }
+  }, [callRecords])
+
   const isAnyLoading = loadingOutlook || loadingTelephony
 
   return (
@@ -317,8 +403,9 @@ export default function Integracoes() {
             Painel de Integrações
           </h2>
           <p className="text-xs text-slate-500">
-            Gerencie conexões de telefonia (Twilio), e-mails corporativos (Microsoft Outlook Graph
-            API) e inteligência artificial para transcrição e análise.
+            Gerencie conexões modulares de Telefonia (Twilio, Vonage ou API Interna), e-mails
+            corporativos (Microsoft Outlook Graph API) e inteligência artificial para transcrição e
+            análise.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -339,7 +426,7 @@ export default function Integracoes() {
         <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="telephony" className="text-xs flex items-center gap-1.5">
             <PhoneCall className="h-3.5 w-3.5 text-indigo-600" />
-            Telefonia & Gravações (Twilio)
+            Telefonia & Gravações (Twilio / Modular)
           </TabsTrigger>
           <TabsTrigger value="outlook" className="text-xs flex items-center gap-1.5">
             <Mail className="h-3.5 w-3.5 text-sky-600" />
@@ -347,7 +434,7 @@ export default function Integracoes() {
           </TabsTrigger>
         </TabsList>
 
-        {/* ================= ABA TELEFONIA (TWILIO) ================= */}
+        {/* ================= ABA TELEFONIA MODULAR ================= */}
         <TabsContent value="telephony" className="space-y-6 mt-4">
           <Card className="border-slate-200 shadow-subtle">
             <CardHeader className="pb-3 border-b border-slate-100">
@@ -358,10 +445,11 @@ export default function Integracoes() {
                   </div>
                   <div>
                     <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-900">
-                      Telefonia & Gravações com Twilio
+                      Telefonia, Gravações & IA
                       {telephonyStatus?.configured ? (
                         <Badge className="bg-emerald-500 text-white hover:bg-emerald-600 text-[10px] gap-1">
-                          <CheckCircle2 className="h-3 w-3" /> Conectado à Twilio
+                          <CheckCircle2 className="h-3 w-3" /> Provedor Conectado (
+                          {telephonyStatus.provider_label || 'Twilio'})
                         </Badge>
                       ) : (
                         <Badge
@@ -373,9 +461,9 @@ export default function Integracoes() {
                       )}
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
-                      Captura gravações de chamadas de voz, converte áudio em texto
-                      (speech-to-text) e realiza análise completa com IA (resumo, sentimento,
-                      palavras-chave e nota de qualidade).
+                      Estrutura modular com suporte a Twilio, Vonage ou API Interna. Captura
+                      gravações de chamadas, transcreve áudio (Speech-to-Text), analisa sentimento,
+                      categoria, palavras-chave e avaliação de qualidade com IA.
                     </CardDescription>
                   </div>
                 </div>
@@ -393,7 +481,7 @@ export default function Integracoes() {
                     ) : (
                       <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                     )}
-                    Sincronizar Gravações
+                    Sincronização Manual
                   </Button>
 
                   <Dialog open={callModalOpen} onOpenChange={setCallModalOpen}>
@@ -403,23 +491,41 @@ export default function Integracoes() {
                         className="text-xs h-8 gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
                       >
                         <Sparkles className="h-3.5 w-3.5" />
-                        Simular Transcrição & IA
+                        Simular Gravação & IA
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[580px]">
+                    <DialogContent className="sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-base">
                           <Headphones className="h-5 w-5 text-indigo-600" />
-                          Simulação de Chamada Telefônica e Análise IA
+                          Simulação e Upload de Gravação de Chamada
                         </DialogTitle>
                         <DialogDescription className="text-xs">
-                          Envie um registro de chamada de voz com áudio/transcrição para processar
-                          via Speech-to-Text e IA analítica.
+                          Envie um registro de áudio/gravação de chamada para o endpoint modular
+                          transcrever (Speech-to-Text) e analisar com IA (resumo, sentimento,
+                          categoria e scoring).
                         </DialogDescription>
                       </DialogHeader>
 
                       <form onSubmit={handleRunCallTest} className="space-y-3.5 py-2">
                         <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Provedor de Telefonia</Label>
+                            <Select
+                              value={testProvider}
+                              onValueChange={(val: any) => setTestProvider(val)}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Selecione o provedor" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="twilio">Twilio Voice</SelectItem>
+                                <SelectItem value="vonage">Vonage Voice API</SelectItem>
+                                <SelectItem value="internal">API Telefonia Interna</SelectItem>
+                                <SelectItem value="simulation">Simulação / Webhook</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                           <div className="space-y-1">
                             <Label className="text-xs">Telefone de Origem (Cliente) *</Label>
                             <Input
@@ -428,6 +534,18 @@ export default function Integracoes() {
                               onChange={(e) => setTestFromNumber(e.target.value)}
                               placeholder="+55 11 98765-4321"
                               required
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Telefone de Destino</Label>
+                            <Input
+                              className="h-8 text-xs"
+                              value={testToNumber}
+                              onChange={(e) => setTestToNumber(e.target.value)}
+                              placeholder="+55 11 3000-0000"
                             />
                           </div>
                           <div className="space-y-1">
@@ -442,26 +560,76 @@ export default function Integracoes() {
                           </div>
                         </div>
 
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Vincular a Cliente (Opcional)</Label>
+                            <Select
+                              value={testSelectedClient}
+                              onValueChange={(val) =>
+                                setTestSelectedClient(val === 'none' ? '' : val)
+                              }
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Identificação automática ou escolha" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">
+                                  Identificar automaticamente pelo telefone
+                                </SelectItem>
+                                {clientsList.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {c.name} {c.company ? `(${c.company})` : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Vincular a Atendimento (Opcional)</Label>
+                            <Select
+                              value={testSelectedServiceRecord}
+                              onValueChange={(val) =>
+                                setTestSelectedServiceRecord(val === 'none' ? '' : val)
+                              }
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Vínculo automático ou escolha" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">
+                                  Vincular ao atendimento aberto mais recente
+                                </SelectItem>
+                                {serviceRecordsList.slice(0, 10).map((sr) => (
+                                  <SelectItem key={sr.id} value={sr.id}>
+                                    #{sr.id.substring(0, 6)} - {sr.client_name || 'Sem cliente'} (
+                                    {sr.status})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
                         <div className="space-y-1">
-                          <Label className="text-xs">URL da Gravação de Áudio (Twilio MP3/WAV)</Label>
+                          <Label className="text-xs">URL da Gravação de Áudio (MP3/WAV)</Label>
                           <Input
                             className="h-8 text-xs font-mono"
                             value={testRecordingUrl}
                             onChange={(e) => setTestRecordingUrl(e.target.value)}
-                            placeholder="https://api.twilio.com/..."
+                            placeholder="https://api.twilio.com/cowbell.mp3"
                           />
                         </div>
 
                         <div className="space-y-1">
                           <Label className="text-xs">
-                            Transcrição do Áudio (Speech-to-Text) *
+                            Áudio / Transcrição da Chamada (Speech-to-Text) *
                           </Label>
                           <Textarea
-                            rows={4}
+                            rows={3}
                             className="text-xs"
                             value={testTranscription}
                             onChange={(e) => setTestTranscription(e.target.value)}
-                            placeholder="Texto transcrito da chamada de voz..."
+                            placeholder="Texto transcrito do áudio da chamada..."
                             required
                           />
                         </div>
@@ -483,7 +651,7 @@ export default function Integracoes() {
                                 <strong>Sentimento:</strong> {lastCallAnalysis.sentiment}
                               </div>
                               <div>
-                                <strong>Qualidade do Atendimento:</strong>{' '}
+                                <strong>Avaliação de Qualidade:</strong>{' '}
                                 <span className="font-bold text-emerald-700">
                                   {lastCallAnalysis.quality_score}/100
                                 </span>
@@ -515,9 +683,9 @@ export default function Integracoes() {
                             {testingCallAi ? (
                               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                             ) : (
-                              <Mic className="h-3.5 w-3.5 mr-1.5" />
+                              <UploadCloud className="h-3.5 w-3.5 mr-1.5" />
                             )}
-                            Processar Áudio & IA
+                            Processar Gravação & IA
                           </Button>
                         </div>
                       </form>
@@ -527,7 +695,7 @@ export default function Integracoes() {
               </div>
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="p-3.5 rounded-lg border border-slate-100 bg-slate-50 space-y-1">
                   <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
                     Status da Conexão
@@ -538,8 +706,8 @@ export default function Integracoes() {
                     />
                     <span className="font-bold text-sm text-slate-800">
                       {telephonyStatus?.configured
-                        ? 'Twilio REST API Operacional'
-                        : 'Modular / Fallback Ativo'}
+                        ? `${telephonyStatus.provider_label || 'Telefonia'} Operacional`
+                        : 'Modo Modular / Fallback'}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500">{telephonyStatus?.message}</p>
@@ -547,98 +715,143 @@ export default function Integracoes() {
 
                 <div className="p-3.5 rounded-lg border border-slate-100 bg-slate-50 space-y-1">
                   <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                    Variáveis de Ambiente / Segredos
+                    Provedores Suportados
                   </span>
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-600 font-mono text-[11px]">
-                        TWILIO_ACCOUNT_SID
-                      </span>
+                      <span className="text-slate-600 font-medium">Twilio</span>
                       {telephonyStatus?.has_account_sid ? (
                         <Badge
                           variant="outline"
                           className="text-emerald-700 bg-emerald-50 text-[10px]"
                         >
-                          Configurado
+                          Conectado
                         </Badge>
                       ) : (
                         <Badge
                           variant="outline"
                           className="text-slate-400 bg-slate-100 text-[10px]"
                         >
-                          Ausente
+                          Modular
                         </Badge>
                       )}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-600 font-mono text-[11px]">
-                        TWILIO_AUTH_TOKEN
-                      </span>
-                      {telephonyStatus?.has_auth_token ? (
+                      <span className="text-slate-600 font-medium">Vonage (Nexmo)</span>
+                      {telephonyStatus?.providers?.vonage?.configured ? (
                         <Badge
                           variant="outline"
                           className="text-emerald-700 bg-emerald-50 text-[10px]"
                         >
-                          Configurado
+                          Conectado
                         </Badge>
                       ) : (
                         <Badge
                           variant="outline"
                           className="text-slate-400 bg-slate-100 text-[10px]"
                         >
-                          Ausente
+                          Modular
                         </Badge>
                       )}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-600 font-mono text-[11px]">
-                        TWILIO_PHONE_NUMBER
-                      </span>
-                      {telephonyStatus?.has_phone_number ? (
-                        <Badge
-                          variant="outline"
-                          className="text-emerald-700 bg-emerald-50 text-[10px]"
-                        >
-                          {telephonyStatus.twilio_phone || 'Configurado'}
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="text-slate-400 bg-slate-100 text-[10px]"
-                        >
-                          Opcional
-                        </Badge>
-                      )}
+                      <span className="text-slate-600 font-medium">API Interna / Webhook</span>
+                      <Badge variant="outline" className="text-indigo-700 bg-indigo-50 text-[10px]">
+                        Ativo
+                      </Badge>
                     </div>
                   </div>
                 </div>
 
                 <div className="p-3.5 rounded-lg border border-slate-100 bg-slate-50 space-y-1">
                   <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                    Estatísticas de Telefonia
+                    Total Processado
                   </span>
                   <div className="text-2xl font-black text-indigo-700">
-                    {telephonyStatus?.total_processed || callRecords.length}
+                    {telephonyStatus?.total_processed || telephonyStats.total}
                   </div>
                   <p className="text-[11px] text-slate-500">
-                    Gravações transcritas e analisadas por IA vinculadas a atendimentos.
+                    Gravações transcritas e analisadas por IA na coleção{' '}
+                    <code className="font-mono text-[10px] bg-slate-200/60 px-1 py-0.5 rounded">
+                      call_analysis_logs
+                    </code>
+                    .
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-lg border border-slate-100 bg-slate-50 space-y-1">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                    Média de Qualidade IA
+                  </span>
+                  <div className="text-2xl font-black text-emerald-600">
+                    {telephonyStats.avgQuality > 0 ? `${telephonyStats.avgQuality}/100` : '—'}
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Categoria principal: <strong>{telephonyStats.topCategory}</strong> (
+                    {telephonyStats.positiveCount} sentimento positivo).
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Histórico e Logs de Chamadas */}
+          {/* Histórico e Logs de Chamadas com Busca e Filtros */}
           <Card className="border-slate-200 shadow-subtle overflow-hidden">
             <CardHeader className="bg-slate-50/70 border-b border-slate-100 py-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Headphones className="h-4 w-4 text-indigo-600" />
                   <CardTitle className="text-sm font-bold text-slate-900">
-                    Logs e Transcrições de Telefonia ({callRecords.length})
+                    Histórico de Logs de Análise de Telefonia ({filteredCallRecords.length})
                   </CardTitle>
                 </div>
-                <span className="text-xs text-slate-400">Coleção: call_records</span>
+
+                {/* Filtros e Busca */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-48 sm:w-60">
+                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                    <Input
+                      placeholder="Buscar por telefone, transcrição, resumo..."
+                      value={callSearch}
+                      onChange={(e) => setCallSearch(e.target.value)}
+                      className="h-8 pl-8 text-xs"
+                    />
+                  </div>
+
+                  <Select
+                    value={selectedCategoryFilter}
+                    onValueChange={(val) => setSelectedCategoryFilter(val)}
+                  >
+                    <SelectTrigger className="h-8 w-32 text-xs">
+                      <SelectValue placeholder="Categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas Categorias</SelectItem>
+                      <SelectItem value="Suporte">Suporte</SelectItem>
+                      <SelectItem value="Venda">Venda</SelectItem>
+                      <SelectItem value="Reclamação">Reclamação</SelectItem>
+                      <SelectItem value="Informação">Informação</SelectItem>
+                      <SelectItem value="Bagagem">Bagagem</SelectItem>
+                      <SelectItem value="Cancelamento">Cancelamento</SelectItem>
+                      <SelectItem value="Assento">Assento</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={selectedSentimentFilter}
+                    onValueChange={(val) => setSelectedSentimentFilter(val)}
+                  >
+                    <SelectTrigger className="h-8 w-32 text-xs">
+                      <SelectValue placeholder="Sentimento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos Sentimentos</SelectItem>
+                      <SelectItem value="Positivo">Positivo</SelectItem>
+                      <SelectItem value="Neutro">Neutro</SelectItem>
+                      <SelectItem value="Negativo">Negativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
             <div className="overflow-x-auto">
@@ -651,12 +864,12 @@ export default function Integracoes() {
                     <TableHead className="text-xs font-bold">Resumo & Transcrição</TableHead>
                     <TableHead className="text-xs font-bold">Categoria</TableHead>
                     <TableHead className="text-xs font-bold">Sentimento</TableHead>
-                    <TableHead className="text-xs font-bold">Qualidade</TableHead>
+                    <TableHead className="text-xs font-bold">Qualidade IA</TableHead>
                     <TableHead className="text-xs font-bold">Atendimento Vinculado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {callRecords.map((c) => (
+                  {filteredCallRecords.map((c) => (
                     <TableRow key={c.id} className="hover:bg-slate-50 text-xs">
                       <TableCell className="text-slate-500 whitespace-nowrap">
                         {c.created ? formatGMT3DateTime(c.created) : '—'}
@@ -668,11 +881,16 @@ export default function Integracoes() {
                         {c.to_number && (
                           <div className="text-[10px] text-slate-400">Para: {c.to_number}</div>
                         )}
+                        {c.provider && (
+                          <span className="text-[9px] uppercase font-mono text-indigo-600 block mt-0.5">
+                            {c.provider}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-slate-600 whitespace-nowrap">
                         {c.duration ? `${c.duration}s` : '—'}
                       </TableCell>
-                      <TableCell className="max-w-[280px]">
+                      <TableCell className="max-w-[300px]">
                         <div
                           className="font-medium text-slate-800 truncate"
                           title={c.summary || c.transcription}
@@ -710,11 +928,12 @@ export default function Integracoes() {
                     </TableRow>
                   ))}
 
-                  {callRecords.length === 0 && (
+                  {filteredCallRecords.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-10 text-slate-400 text-xs">
-                        Nenhuma chamada registrada ainda. Clique em "Simular Transcrição & IA" para
-                        testar o processamento de áudio ou aguarde chamadas recebidas da Twilio.
+                        Nenhuma gravação de chamada encontrada para os filtros selecionados. Clique
+                        em "Simular Gravação & IA" para testar o fluxo de captura, transcrição e
+                        análise.
                       </TableCell>
                     </TableRow>
                   )}

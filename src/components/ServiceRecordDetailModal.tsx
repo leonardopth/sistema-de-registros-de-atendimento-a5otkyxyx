@@ -61,7 +61,7 @@ import { ShareDialog } from './ShareDialog'
 import { SharedUsersList } from './SharedUsersList'
 import { getSharesByRecord } from '@/services/service_record_shares'
 import { getEmailLogsByRecord, EmailLogRecord } from '@/services/outlook-integration'
-import { getCallRecordsByRecord, CallRecord } from '@/services/telephony-integration'
+import { getCallRecordsByRecord, CallAnalysisLogRecord } from '@/services/telephony-integration'
 import { Badge } from '@/components/ui/badge'
 
 interface ServiceRecordDetailModalProps {
@@ -123,7 +123,7 @@ export function ServiceRecordDetailModal({
   const [analyzing, setAnalyzing] = useState(false)
   const [linkedEmailLogs, setLinkedEmailLogs] = useState<EmailLogRecord[]>([])
   const [loadingEmailLogs, setLoadingEmailLogs] = useState(false)
-  const [linkedCallRecords, setLinkedCallRecords] = useState<CallRecord[]>([])
+  const [linkedCallRecords, setLinkedCallRecords] = useState<CallAnalysisLogRecord[]>([])
   const [loadingCallRecords, setLoadingCallRecords] = useState(false)
 
   const isOwner = record
@@ -497,7 +497,9 @@ export function ServiceRecordDetailModal({
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'details' | 'history')}>
           <TabsList className="w-full">
             <TabsTrigger value="details" className="flex-1">
-              Detalhes {(linkedEmailLogs.length > 0 || linkedCallRecords.length > 0) && `(Voz: ${linkedCallRecords.length} | E-mails: ${linkedEmailLogs.length})`}
+              Detalhes{' '}
+              {(linkedEmailLogs.length > 0 || linkedCallRecords.length > 0) &&
+                `(Voz: ${linkedCallRecords.length} | E-mails: ${linkedEmailLogs.length})`}
             </TabsTrigger>
             <TabsTrigger value="history" className="flex-1">
               Histórico de Alterações
