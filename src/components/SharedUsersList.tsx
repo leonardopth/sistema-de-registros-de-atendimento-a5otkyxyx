@@ -94,9 +94,15 @@ export function SharedUsersList({ recordId }: SharedUsersListProps) {
           <div className="flex-1 flex flex-col gap-0.5">
             <div className="flex items-center gap-1.5 text-xs font-medium text-slate-800">
               <User className="h-3 w-3 text-slate-400" />
-              {share.expand?.user?.name || 'Usuário'}
+              {share.expand?.account_executive?.name ||
+                share.expand?.user?.name ||
+                'Usuário / Executivo'}
               <span className="text-[10px] text-slate-400 font-normal">
-                ({share.expand?.user?.role || ''})
+                (
+                {share.account_executive || share.expand?.account_executive
+                  ? 'Executivo de contas'
+                  : share.expand?.user?.role || 'Colaborador'}
+                )
               </span>
             </div>
             <div className="text-[10px] text-slate-500">
@@ -106,23 +112,34 @@ export function SharedUsersList({ recordId }: SharedUsersListProps) {
                 : ''}
             </div>
           </div>
-          <Select
-            value={share.permission}
-            onValueChange={(v) => handlePermissionChange(share.id, v as 'Visualizar' | 'Editar')}
-          >
-            <SelectTrigger className="h-7 w-[120px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Visualizar">Visualizar</SelectItem>
-              <SelectItem value="Editar">Editar</SelectItem>
-            </SelectContent>
-          </Select>
+          {share.account_executive || share.expand?.account_executive ? (
+            <span className="text-[11px] font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 px-2.5 py-1 rounded">
+              Apenas Visualizar
+            </span>
+          ) : (
+            <Select
+              value={share.permission}
+              onValueChange={(v) => handlePermissionChange(share.id, v as 'Visualizar' | 'Editar')}
+            >
+              <SelectTrigger className="h-7 w-[120px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Visualizar">Visualizar</SelectItem>
+                <SelectItem value="Editar">Editar</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Button
             variant="ghost"
             size="icon"
             className="h-7 w-7 text-red-500 hover:text-red-700"
-            onClick={() => handleRevoke(share.id, share.expand?.user?.name || 'Usuário')}
+            onClick={() =>
+              handleRevoke(
+                share.id,
+                share.expand?.account_executive?.name || share.expand?.user?.name || 'Destinatário',
+              )
+            }
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

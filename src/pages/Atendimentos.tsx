@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -52,6 +53,7 @@ import {
   Play,
   Plane,
   AlertTriangle,
+  Share2,
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
@@ -63,7 +65,8 @@ import { getAccountExecutives } from '@/services/account_executives'
 import { exportServiceRecordsByExecutiveCSV } from '@/lib/executive-export'
 import { getClients } from '@/services/clients'
 import { getUsers } from '@/services/users'
-import { getSharesByUser } from '@/services/service_record_shares'
+import { getSharesByUser, getAllShares } from '@/services/service_record_shares'
+import { ServiceRecordShare } from '@/types/service_record'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { downloadServiceRecordsCSV } from '@/lib/report-export'
 import {
@@ -116,6 +119,10 @@ export default function Atendimentos() {
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [users, setUsers] = useState<UserRecord[]>([])
   const [sharedRecordIds, setSharedRecordIds] = useState<Set<string>>(new Set())
+  const [sharesByRecordMap, setSharesByRecordMap] = useState<Map<string, ServiceRecordShare[]>>(
+    new Map(),
+  )
+  const [colSharedWith, setColSharedWith] = useState<string[]>([])
 
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -138,8 +145,11 @@ export default function Atendimentos() {
       const isMaster = user?.role === 'Master' || user?.master_access === true
       const userSharesPromise = getSharesByUser(user?.id || '').catch(() => [])
 
-      const [userShares, execs, clientsData, usersData] = await Promise.all([
+      const allSharesPromise = getAllShares().catch(() => [])
+
+      const [userShares, allShares, execs, clientsData, usersData] = await Promise.all([
         userSharesPromise,
+        allSharesPromise,
         getAccountExecutives(),
         getClients(),
         getUsers(),
@@ -147,6 +157,16 @@ export default function Atendimentos() {
 
       const sharedIdsList = (userShares || []).map((s: any) => s.service_record).filter(Boolean)
       setSharedRecordIds(new Set(sharedIdsList))
+
+      const sharesMap = new Map<string, ServiceRecordShare[]>()
+      ;(allShares || []).forEach((share: ServiceRecordShare) => {
+        if (share.service_record) {
+          const list = sharesMap.get(share.service_record) || []
+          list.push(share)
+          sharesMap.set(share.service_record, list)
+        }
+      })
+      setSharesByRecordMap(sharesMap)
 
       let queryFilter: string | undefined = undefined
       if (!isMaster && user?.id) {
@@ -177,13 +197,7 @@ export default function Atendimentos() {
   })
 
   useRealtime('service_record_shares', () => {
-    if (user?.id) {
-      getSharesByUser(user.id)
-        .then((shares) => {
-          setSharedRecordIds(new Set(shares.map((s: any) => s.service_record)))
-        })
-        .catch(() => {})
-    }
+    loadData()
   })
 
   const timerStateRef = useRef({ timerRunning, timerStart, activeTimerRecordId, accumulatedMs })
@@ -342,6 +356,17 @@ export default function Atendimentos() {
     const matchesColCreated =
       colCreatedDates.length === 0 || colCreatedDates.includes(createdDateFormatted)
 
+    const recordShares = sharesByRecordMap.get(r.id) || []
+    const isSharedRecord = recordShares.length > 0
+    const matchesColShared =
+      colSharedWith.length === 0 ||
+      (colSharedWith.includes('Compartilhado') && isSharedRecord) ||
+      (colSharedWith.includes('Não compartilhado') && !isSharedRecord) ||
+      recordShares.some((s) => {
+        const name = s.expand?.account_executive?.name || s.expand?.user?.name
+        return name && colSharedWith.includes(name)
+      })
+
     return (
       matchesSearch &&
       matchesStatus &&
@@ -360,7 +385,8 @@ export default function Atendimentos() {
       matchesColAvoidable &&
       matchesColDuration &&
       matchesColConsultant &&
-      matchesColCreated
+      matchesColCreated &&
+      matchesColShared
     )
   })
 
@@ -514,6 +540,7 @@ export default function Atendimentos() {
     setColDurations([])
     setColConsultants([])
     setColCreatedDates([])
+    setColSharedWith([])
     if (searchParams.get('avoidable_contact')) {
       searchParams.delete('avoidable_contact')
       setSearchParams(searchParams)
@@ -879,6 +906,17 @@ export default function Atendimentos() {
                     filterSelected={colCreatedDates}
                     onFilterChange={setColCreatedDates}
                   />
+                  <TableHead className="text-xs font-bold">
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Compartilhado com</span>
+                      <TableColumnFilter
+                        title="Compartilhado com"
+                        options={['Compartilhado', 'Não compartilhado']}
+                        selectedValues={colSharedWith}
+                        onChange={setColSharedWith}
+                      />
+                    </div>
+                  </TableHead>
                   <TableHead className="text-xs font-bold text-right">Ação</TableHead>
                 </TableRow>
               </TableHeader>
@@ -946,6 +984,42 @@ export default function Atendimentos() {
                     <TableCell className="text-xs text-slate-500">
                       {r.created ? formatGMT3DateTime(r.created) : '-'}
                     </TableCell>
+                    <TableCell className="text-xs">
+                      {(() => {
+                        const recShares = sharesByRecordMap.get(r.id) || []
+                        if (recShares.length === 0) {
+                          return <span className="text-slate-400 text-[11px]">—</span>
+                        }
+                        return (
+                          <div className="flex flex-wrap items-center gap-1 max-w-[200px]">
+                            {recShares.map((s) => {
+                              const isExec = Boolean(
+                                s.account_executive || s.expand?.account_executive,
+                              )
+                              const name =
+                                s.expand?.account_executive?.name ||
+                                s.expand?.user?.name ||
+                                (isExec ? 'Executivo' : 'Usuário')
+                              return (
+                                <Badge
+                                  key={s.id}
+                                  variant="outline"
+                                  className={`text-[10px] py-0 px-1.5 flex items-center gap-1 ${
+                                    isExec
+                                      ? 'border-cyan-300 bg-cyan-50 text-cyan-800'
+                                      : 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                                  }`}
+                                  title={`${name} (${isExec ? 'Executivo - Visualização' : s.permission || 'Visualizar'})`}
+                                >
+                                  <Share2 className="h-2.5 w-2.5" />
+                                  <span className="truncate max-w-[90px]">{name}</span>
+                                </Badge>
+                              )
+                            })}
+                          </div>
+                        )
+                      })()}
+                    </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
                         {r.status === 'Em Andamento' &&
@@ -980,7 +1054,7 @@ export default function Atendimentos() {
                 ))}
                 {displayRecords.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-12 text-slate-400 text-xs">
+                    <TableCell colSpan={11} className="text-center py-12 text-slate-400 text-xs">
                       Nenhum atendimento encontrado para os filtros selecionados.
                     </TableCell>
                   </TableRow>

@@ -597,17 +597,41 @@ export default function NovoAtendimento() {
             </div>
           </div>
 
-          {form.selectedShareUserIds.length > 0 && (
+          {(form.selectedShareUserIds.length > 0 || form.selectedShareExecutiveIds.length > 0) && (
             <div className="space-y-1 pt-1 bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100">
               <span className="text-xs font-semibold text-indigo-900 block">
-                Compartilhado com ({form.selectedShareUserIds.length}):
+                Compartilhado com (
+                {form.selectedShareUserIds.length + form.selectedShareExecutiveIds.length}):
               </span>
               <div className="flex flex-wrap gap-1.5">
+                {form.selectedShareExecutiveIds.map((id) => {
+                  const exec = form.allExecutives.find((e) => e.id === id)
+                  return (
+                    <span
+                      key={`exec-${id}`}
+                      className="inline-flex items-center gap-1.5 bg-cyan-100 text-cyan-900 border border-cyan-300 text-xs px-2.5 py-1 rounded-full font-medium"
+                    >
+                      <User className="h-3 w-3 text-cyan-700" />
+                      {exec?.name || 'Executivo'} (Executivo)
+                      <button
+                        type="button"
+                        className="hover:text-red-600 transition-colors ml-0.5"
+                        onClick={() =>
+                          form.setSelectedShareExecutiveIds(
+                            form.selectedShareExecutiveIds.filter((i) => i !== id),
+                          )
+                        }
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  )
+                })}
                 {form.selectedShareUserIds.map((id) => {
                   const u = form.users.find((u) => u.id === id)
                   return (
                     <span
-                      key={id}
+                      key={`user-${id}`}
                       className="inline-flex items-center gap-1.5 bg-indigo-100 text-indigo-800 text-xs px-2.5 py-1 rounded-full font-medium"
                     >
                       <User className="h-3 w-3 text-indigo-600" />
@@ -793,10 +817,13 @@ export default function NovoAtendimento() {
           onOpenChange={setShareOpen}
           users={form.users}
           selectedIds={form.selectedShareUserIds}
+          selectedExecutiveIds={form.selectedShareExecutiveIds}
           currentUserId={user?.id}
           onConfirm={(ids) => {
             form.setSelectedShareUserIds(ids)
-            setShareOpen(false)
+          }}
+          onConfirmExecutives={(execIds) => {
+            form.setSelectedShareExecutiveIds(execIds)
           }}
         />
 

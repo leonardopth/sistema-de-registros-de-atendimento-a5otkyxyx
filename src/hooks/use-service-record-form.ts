@@ -74,6 +74,7 @@ export function useServiceRecordForm(
   const [users, setUsers] = useState<UserRecord[]>([])
   const [assignedUserId, setAssignedUserId] = useState(user?.id || '')
   const [selectedShareUserIds, setSelectedShareUserIds] = useState<string[]>([])
+  const [selectedShareExecutiveIds, setSelectedShareExecutiveIds] = useState<string[]>([])
   const [channelError, setChannelError] = useState('')
   const [timerStart, setTimerStart] = useState<string | null>(null)
   const [timerRunning, setTimerRunning] = useState(false)
@@ -114,6 +115,8 @@ export function useServiceRecordForm(
           setAvoidableContactExplanation(s.avoidableContactExplanation)
         if (s.assignedUserId !== undefined) setAssignedUserId(s.assignedUserId)
         if (s.selectedShareUserIds !== undefined) setSelectedShareUserIds(s.selectedShareUserIds)
+        if (s.selectedShareExecutiveIds !== undefined)
+          setSelectedShareExecutiveIds(s.selectedShareExecutiveIds)
         if (s.newTaskTitle !== undefined) setNewTaskTitle(s.newTaskTitle)
         if (s.newTaskResponsible !== undefined) setNewTaskResponsible(s.newTaskResponsible)
         if (s.newTaskDueDate !== undefined) setNewTaskDueDate(s.newTaskDueDate)
@@ -156,6 +159,7 @@ export function useServiceRecordForm(
         avoidableContactExplanation,
         assignedUserId,
         selectedShareUserIds,
+        selectedShareExecutiveIds,
         newTaskTitle,
         newTaskResponsible,
         newTaskDueDate,
@@ -191,6 +195,7 @@ export function useServiceRecordForm(
     avoidableContactExplanation,
     assignedUserId,
     selectedShareUserIds,
+    selectedShareExecutiveIds,
     newTaskTitle,
     newTaskResponsible,
     newTaskDueDate,
@@ -428,6 +433,7 @@ export function useServiceRecordForm(
     setClientFieldErrors({})
     setAssignedUserId(user?.id || '')
     setSelectedShareUserIds([])
+    setSelectedShareExecutiveIds([])
     setChannelError('')
   }
 
@@ -554,17 +560,27 @@ export function useServiceRecordForm(
         timer_start: finalTimerStart || undefined,
         timer_running: finalTimerRunning,
       })
-      if (selectedShareUserIds.length > 0 && createdRecord?.id) {
-        await Promise.all(
-          selectedShareUserIds.map((userId) =>
-            createShare({
-              service_record: createdRecord.id,
-              user: userId,
-              shared_by: user?.id || '',
-              permission: 'Visualizar',
-            }),
-          ),
+      if (
+        (selectedShareUserIds.length > 0 || selectedShareExecutiveIds.length > 0) &&
+        createdRecord?.id
+      ) {
+        const userPromises = selectedShareUserIds.map((userId) =>
+          createShare({
+            service_record: createdRecord.id,
+            user: userId,
+            shared_by: user?.id || '',
+            permission: 'Visualizar',
+          }),
         )
+        const execPromises = selectedShareExecutiveIds.map((execId) =>
+          createShare({
+            service_record: createdRecord.id,
+            account_executive: execId,
+            shared_by: user?.id || '',
+            permission: 'Visualizar',
+          }),
+        )
+        await Promise.all([...userPromises, ...execPromises])
       }
       toast({ title: 'Atendimento registrado com sucesso!' })
       return true
@@ -660,6 +676,8 @@ export function useServiceRecordForm(
     setAssignedUserId,
     selectedShareUserIds,
     setSelectedShareUserIds,
+    selectedShareExecutiveIds,
+    setSelectedShareExecutiveIds,
     timerStart,
     timerRunning,
     accumulatedMs,

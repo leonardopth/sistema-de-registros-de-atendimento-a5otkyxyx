@@ -35,6 +35,8 @@ interface ShareSelectDialogProps {
   selectedIds?: string[]
   currentUserId?: string
   onConfirm?: (ids: string[]) => void
+  selectedExecutiveIds?: string[]
+  onConfirmExecutives?: (execIds: string[]) => void
 }
 
 export function ShareSelectDialog({
@@ -42,6 +44,11 @@ export function ShareSelectDialog({
   open,
   onOpenChange,
   onSuccess,
+  users: propUsers,
+  selectedIds: propSelectedIds,
+  onConfirm,
+  selectedExecutiveIds: propSelectedExecIds,
+  onConfirmExecutives,
 }: ShareSelectDialogProps) {
   const safeRecordIds = recordIds || []
   const { user } = useAuth()
@@ -55,7 +62,7 @@ export function ShareSelectDialog({
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!open || safeRecordIds.length === 0) return
+    if (!open) return
     const load = async () => {
       setLoading(true)
       try {
@@ -69,10 +76,18 @@ export function ShareSelectDialog({
       }
     }
     load()
-    setSelectedUserIds([])
-    setSelectedExecutiveIds([])
+    if (propSelectedIds) {
+      setSelectedUserIds(propSelectedIds)
+    } else {
+      setSelectedUserIds([])
+    }
+    if (propSelectedExecIds) {
+      setSelectedExecutiveIds(propSelectedExecIds)
+    } else {
+      setSelectedExecutiveIds([])
+    }
     setSearch('')
-  }, [open, safeRecordIds])
+  }, [open, propSelectedIds, propSelectedExecIds])
 
   const availableUsers = useMemo(() => {
     return users.filter((u) => u.id !== user?.id && u.approval_status !== 'Rejeitado')
@@ -110,6 +125,13 @@ export function ShareSelectDialog({
   const totalSelected = selectedUserIds.length + selectedExecutiveIds.length
 
   const handleShare = async () => {
+    if (onConfirm || onConfirmExecutives) {
+      onConfirm?.(selectedUserIds)
+      onConfirmExecutives?.(selectedExecutiveIds)
+      onOpenChange(false)
+      return
+    }
+
     if (safeRecordIds.length === 0 || !user?.id || totalSelected === 0) return
     setLoading(true)
     try {

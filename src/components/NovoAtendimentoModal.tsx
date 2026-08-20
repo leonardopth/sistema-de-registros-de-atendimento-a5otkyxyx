@@ -442,19 +442,42 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                 <Share2 className="h-3.5 w-3.5 mr-1" />
                 Compartilhar
               </Button>
-              {form.selectedShareUserIds.length > 0 && (
+              {form.selectedShareUserIds.length + form.selectedShareExecutiveIds.length > 0 && (
                 <span className="text-xs text-slate-500">
-                  {form.selectedShareUserIds.length} usuário(s)
+                  {form.selectedShareUserIds.length + form.selectedShareExecutiveIds.length}{' '}
+                  selecionado(s)
                 </span>
               )}
             </div>
-            {form.selectedShareUserIds.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
+            {(form.selectedShareUserIds.length > 0 ||
+              form.selectedShareExecutiveIds.length > 0) && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {form.selectedShareExecutiveIds.map((id) => {
+                  const exec = form.allExecutives.find((e) => e.id === id)
+                  return (
+                    <span
+                      key={`exec-${id}`}
+                      className="inline-flex items-center gap-1 bg-cyan-50 text-cyan-800 border border-cyan-200 text-xs px-2 py-0.5 rounded-full"
+                    >
+                      {exec?.name || 'Executivo'} (Executivo)
+                      <button
+                        type="button"
+                        onClick={() =>
+                          form.setSelectedShareExecutiveIds(
+                            form.selectedShareExecutiveIds.filter((i) => i !== id),
+                          )
+                        }
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )
+                })}
                 {form.selectedShareUserIds.map((id) => {
                   const u = form.users.find((u) => u.id === id)
                   return (
                     <span
-                      key={id}
+                      key={`user-${id}`}
                       className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2 py-0.5 rounded-full"
                     >
                       {u?.name || 'Usuário'}
@@ -760,10 +783,13 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             onOpenChange={setShareOpen}
             users={form.users}
             selectedIds={form.selectedShareUserIds}
+            selectedExecutiveIds={form.selectedShareExecutiveIds}
             currentUserId={user?.id}
             onConfirm={(ids) => {
               form.setSelectedShareUserIds(ids)
-              setShareOpen(false)
+            }}
+            onConfirmExecutives={(execIds) => {
+              form.setSelectedShareExecutiveIds(execIds)
             }}
           />
 

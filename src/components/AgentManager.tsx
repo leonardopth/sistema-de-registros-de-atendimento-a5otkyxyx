@@ -217,12 +217,6 @@ export function AgentManager({ clientId }: AgentManagerProps) {
                 <p className="text-xs font-semibold text-slate-900">{agent.name}</p>
                 {agent.email && <p className="text-[11px] text-slate-500">{agent.email}</p>}
                 {agent.phone && <p className="text-[11px] text-slate-500">{agent.phone}</p>}
-                {agent.birthday && (
-                  <p className="text-[11px] text-indigo-600">
-                    🎂 Aniversário:{' '}
-                    {new Date(agent.birthday).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                  </p>
-                )}
               </div>
               <div className="flex gap-1">
                 <Button
