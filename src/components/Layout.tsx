@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Briefcase,
   DollarSign,
+  Target,
   UserCog,
   LogOut,
   Menu,
@@ -68,6 +69,13 @@ const NAV_ITEMS: NavItem[] = [
     to: '/evolucao-treinamento',
     icon: TrendingUp,
     visible: (r) => MANAGER_ROLES.includes(r) || r === 'Master',
+  },
+  {
+    label: 'Metas de Desempenho',
+    to: '/metas-desempenho',
+    icon: Target,
+    visible: (r, masterAccess) =>
+      MANAGER_ROLES.includes(r) || r === 'Master' || masterAccess === true,
   },
   {
     label: 'Executivos',
