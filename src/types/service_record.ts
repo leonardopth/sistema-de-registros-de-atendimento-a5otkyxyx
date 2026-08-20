@@ -240,3 +240,30 @@ export interface ServiceRecordHistory {
     service_record?: ServiceRecord
   }
 }
+
+export interface AgentTargetRecord {
+  id: string
+  agent: string
+  monthly_attendance_target: number
+  min_resolution_rate: number
+  created_by?: string
+  created: string
+  updated: string
+  expand?: {
+    agent?: AgentRecord
+    created_by?: UserRecord
+  }
+}
+
+/** Registro único (singleton) com as metas globais padrão do sistema. */
+export interface GlobalTargetRecord {
+  id: string
+  monthly_attendance_target: number
+  min_resolution_rate: number
+  updated_by?: string
+  created: string
+  updated: string
+  expand?: {
+    updated_by?: UserRecord
+  }
+}

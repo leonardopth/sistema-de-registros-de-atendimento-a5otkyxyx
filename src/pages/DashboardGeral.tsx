@@ -43,6 +43,7 @@ import { ComparativeView } from '@/components/ComparativeView'
 import { PeriodComparisonView } from '@/components/PeriodComparisonView'
 import { ThresholdSuggestionPanel } from '@/components/ThresholdSuggestionPanel'
 import { TravelTypeReportPanel } from '@/components/TravelTypeReportPanel'
+import { PerformanceAlerts } from '@/components/PerformanceAlerts'
 
 const PRIVILEGED_ROLES = ['Master', 'Gerentes', 'Supervisores', 'Líderes']
 
@@ -201,6 +202,8 @@ export default function DashboardGeral() {
       </div>
 
       <DashboardAdvancedFilters filters={filters} onChange={setFilters} />
+
+      <PerformanceAlerts records={accessibleRecords} />
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
