@@ -23,7 +23,7 @@ export function isManagerUser(user: UserRecord | null): boolean {
 
 export function isExecutivoContas(user: UserRecord | null): boolean {
   if (!user) return false
-  return user.role === 'Executivo de contas'
+  return user.role === 'Executivo de Contas'
 }
 
 export function isGestorComercial(user: UserRecord | null): boolean {
