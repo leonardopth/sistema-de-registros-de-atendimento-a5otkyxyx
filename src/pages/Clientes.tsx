@@ -463,96 +463,94 @@ export default function Clientes() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex-1 min-w-[200px] relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Buscar por empresa ou executivo..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-9 text-xs"
-              />
+          <Card className="p-3 border-slate-200 shadow-subtle space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-2 items-center">
+              {/* Busca por empresa ou executivo */}
+              <div className="sm:col-span-2 md:col-span-2 lg:col-span-4 relative">
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                <Input
+                  placeholder="Buscar por empresa ou executivo..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-8 h-8 text-xs w-full"
+                />
+              </div>
+
+              {/* Estado */}
+              <div className="sm:col-span-1 md:col-span-1 lg:col-span-2">
+                <SearchableSelect
+                  options={STATE_OPTIONS}
+                  value={normalizedFilterState}
+                  onValueChange={(v) => {
+                    setFilterState(v)
+                    setFilterCity('')
+                  }}
+                  placeholder="Estado (Todos)"
+                  emptyText="Nenhum estado encontrado."
+                  className="h-8 text-xs w-full"
+                />
+              </div>
+
+              {/* Cidade */}
+              <div className="sm:col-span-1 md:col-span-1 lg:col-span-3">
+                <SearchableSelect
+                  options={filterCities}
+                  value={filterCity}
+                  onValueChange={setFilterCity}
+                  placeholder={
+                    !normalizedFilterState
+                      ? 'Cidade (selecione UF)'
+                      : filterCitiesLoading
+                        ? 'Carregando cidades...'
+                        : 'Cidade (Todas)'
+                  }
+                  emptyText="Nenhuma cidade encontrada."
+                  className="h-8 text-xs w-full"
+                  disabled={!normalizedFilterState || filterCitiesLoading}
+                />
+                {filterCitiesError && (
+                  <p className="text-[10px] text-red-500 mt-0.5">Erro ao carregar cidades IBGE.</p>
+                )}
+              </div>
+
+              {/* Grupo de Atendimento */}
+              <div className="sm:col-span-2 md:col-span-2 lg:col-span-3">
+                <SearchableSelect
+                  options={SERVICE_GROUP_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                  value={filterServiceGroup}
+                  onValueChange={setFilterServiceGroup}
+                  placeholder="Grupo (Todos)"
+                  emptyText="Nenhum grupo encontrado."
+                  className="h-8 text-xs w-full"
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-600">Estado</label>
-              <SearchableSelect
-                options={STATE_OPTIONS}
-                value={normalizedFilterState}
-                onValueChange={(v) => {
-                  setFilterState(v)
-                  setFilterCity('')
-                }}
-                placeholder="Todos"
-                emptyText="Nenhum estado encontrado."
-                className="h-9 text-xs w-[180px]"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-600">Cidade</label>
-              <SearchableSelect
-                options={filterCities}
-                value={filterCity}
-                onValueChange={setFilterCity}
-                placeholder={
-                  !normalizedFilterState
-                    ? 'Selecione um estado primeiro'
-                    : filterCitiesLoading
-                      ? 'Carregando cidades...'
-                      : 'Todas'
-                }
-                emptyText="Nenhuma cidade encontrada."
-                className="h-9 text-xs w-[200px]"
-                disabled={!normalizedFilterState || filterCitiesLoading}
-              />
-              {filterCitiesError && (
-                <p className="text-xs text-red-500">Erro ao carregar cidades. Tente novamente.</p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-600">Grupo de Atendimento</label>
-              <SearchableSelect
-                options={SERVICE_GROUP_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-                value={filterServiceGroup}
-                onValueChange={setFilterServiceGroup}
-                placeholder="Todos"
-                emptyText="Nenhum grupo encontrado."
-                className="h-9 text-xs w-[180px]"
-              />
-            </div>
-            {(filterState || filterCity || filterServiceGroup) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs h-9 text-slate-500"
-                onClick={() => {
-                  setFilterState('')
-                  setFilterCity('')
-                  setFilterServiceGroup('')
-                  setColCompanies([])
-                  setColGroups([])
-                  setColStatuses([])
-                  setColCities([])
-                  setColStates([])
-                  setColExecs([])
-                }}
-              >
-                <FilterX className="h-3.5 w-3.5 mr-1" /> Limpar filtros
-              </Button>
-            )}
-            {(colCompanies.length > 0 ||
+
+            {/* Linha de status/limpeza de filtros */}
+            {(search ||
+              filterState ||
+              filterCity ||
+              filterServiceGroup ||
+              colCompanies.length > 0 ||
               colGroups.length > 0 ||
               colStatuses.length > 0 ||
               colCities.length > 0 ||
               colStates.length > 0 ||
-              colExecs.length > 0) &&
-              !filterState &&
-              !filterCity &&
-              !filterServiceGroup && (
+              colExecs.length > 0) && (
+              <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px] text-slate-500">
+                <span>
+                  Filtros ativos ({filteredClients.length} de {safeClients.length} clientes
+                  exibidos)
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-xs h-9 text-slate-500"
+                  className="text-xs h-7 text-slate-500 hover:text-slate-900 px-2"
                   onClick={() => {
+                    setSearch('')
+                    setFilterState('')
+                    setFilterCity('')
+                    setFilterServiceGroup('')
                     setColCompanies([])
                     setColGroups([])
                     setColStatuses([])
@@ -561,10 +559,11 @@ export default function Clientes() {
                     setColExecs([])
                   }}
                 >
-                  <FilterX className="h-3.5 w-3.5 mr-1" /> Limpar filtros de coluna
+                  <FilterX className="h-3.5 w-3.5 mr-1" /> Limpar todos os filtros
                 </Button>
-              )}
-          </div>
+              </div>
+            )}
+          </Card>
           <Card className="border-slate-200 overflow-hidden">
             <Table>
               <TableHeader>

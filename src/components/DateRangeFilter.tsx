@@ -82,18 +82,38 @@ export function DateRangeFilter({
   const activeQuickPeriod = getActiveQuickPeriod()
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-slate-600">Período rápido:</span>
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1">
+        <Calendar className="h-3.5 w-3.5 text-slate-400 mr-0.5" />
+        <Input
+          type="date"
+          className="h-8 text-xs w-[130px]"
+          value={dateFrom}
+          placeholder="De"
+          title="Data inicial"
+          onChange={(e) => handleFromChange(e.target.value)}
+        />
+        <span className="text-xs text-slate-400 px-0.5">até</span>
+        <Input
+          type="date"
+          className="h-8 text-xs w-[130px]"
+          value={dateTo}
+          placeholder="Até"
+          title="Data final"
+          onChange={(e) => handleToChange(e.target.value)}
+        />
+      </div>
+
+      <div className="flex items-center gap-1">
         {QUICK_PERIODS.map((period) => (
           <Button
             key={period.label}
             variant={activeQuickPeriod === period.label ? 'default' : 'outline'}
             size="sm"
             className={cn(
-              'h-8 text-xs font-semibold transition-all',
+              'h-8 text-xs font-medium px-2.5 transition-all',
               activeQuickPeriod === period.label
-                ? 'bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 text-white border-transparent'
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
                 : 'text-slate-600 hover:text-slate-900',
             )}
             onClick={() => handleQuickPeriod(period.days)}
@@ -101,37 +121,15 @@ export function DateRangeFilter({
             {period.label}
           </Button>
         ))}
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs text-slate-600 flex items-center gap-1">
-            <Calendar className="h-3 w-3" /> Período: De
-          </Label>
-          <Input
-            type="date"
-            className="h-9 text-xs w-[150px]"
-            value={dateFrom}
-            onChange={(e) => handleFromChange(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs text-slate-600">Até</Label>
-          <Input
-            type="date"
-            className="h-9 text-xs w-[150px]"
-            value={dateTo}
-            onChange={(e) => handleToChange(e.target.value)}
-          />
-        </div>
         {hasActiveFilter && (
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 text-xs text-slate-500"
+            className="h-8 text-xs text-slate-500 px-2"
             onClick={onClear}
+            title="Limpar período"
           >
-            <X className="h-3.5 w-3.5 mr-1" /> Limpar período
+            <X className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>

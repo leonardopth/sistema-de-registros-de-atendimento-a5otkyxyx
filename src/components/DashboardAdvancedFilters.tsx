@@ -41,44 +41,52 @@ export function DashboardAdvancedFilters({ filters, onChange }: Props) {
     onChange({ ...filters, [key]: value })
 
   return (
-    <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
-      <div className="flex items-center gap-2">
-        <SlidersHorizontal className="h-4 w-4 text-slate-600" />
-        <span className="text-xs font-bold text-slate-700">Filtros Avançados</span>
+    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="h-4 w-4 text-indigo-600" />
+          <span className="text-xs font-bold text-slate-800">Filtros do Painel</span>
+        </div>
         {active && (
           <Button
             variant="ghost"
             size="sm"
-            className="text-xs h-7 ml-auto"
+            className="text-xs h-7 text-slate-500 hover:text-slate-900 px-2"
             onClick={() => onChange(DEFAULT_FILTERS)}
           >
             <FilterX className="h-3.5 w-3.5 mr-1" /> Limpar filtros
           </Button>
         )}
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <div className="space-y-1">
-          <Label className="text-[10px] text-slate-500">De</Label>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2 items-center">
+        {/* De */}
+        <div className="space-y-0.5">
+          <Label className="text-[10px] font-medium text-slate-500">De</Label>
           <Input
             type="date"
-            className="h-8 text-xs"
+            className="h-8 text-xs w-full"
             value={filters.dateFrom}
             onChange={(e) => update('dateFrom', e.target.value)}
           />
         </div>
-        <div className="space-y-1">
-          <Label className="text-[10px] text-slate-500">Até</Label>
+
+        {/* Até */}
+        <div className="space-y-0.5">
+          <Label className="text-[10px] font-medium text-slate-500">Até</Label>
           <Input
             type="date"
-            className="h-8 text-xs"
+            className="h-8 text-xs w-full"
             value={filters.dateTo}
             onChange={(e) => update('dateTo', e.target.value)}
           />
         </div>
-        <div className="space-y-1">
-          <Label className="text-[10px] text-slate-500">Status</Label>
+
+        {/* Status */}
+        <div className="space-y-0.5">
+          <Label className="text-[10px] font-medium text-slate-500">Status</Label>
           <Select value={filters.status} onValueChange={(v) => update('status', v)}>
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-8 text-xs w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -90,10 +98,12 @@ export function DashboardAdvancedFilters({ filters, onChange }: Props) {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
-          <Label className="text-[10px] text-slate-500">Prioridade</Label>
+
+        {/* Prioridade */}
+        <div className="space-y-0.5">
+          <Label className="text-[10px] font-medium text-slate-500">Prioridade</Label>
           <Select value={filters.priority} onValueChange={(v) => update('priority', v)}>
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-8 text-xs w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -105,10 +115,12 @@ export function DashboardAdvancedFilters({ filters, onChange }: Props) {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
-          <Label className="text-[10px] text-slate-500">Grupo</Label>
+
+        {/* Grupo */}
+        <div className="space-y-0.5">
+          <Label className="text-[10px] font-medium text-slate-500">Grupo</Label>
           <Select value={filters.serviceGroup} onValueChange={(v) => update('serviceGroup', v)}>
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-8 text-xs w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -121,10 +133,12 @@ export function DashboardAdvancedFilters({ filters, onChange }: Props) {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
-          <Label className="text-[10px] text-slate-500">Canal</Label>
+
+        {/* Canal */}
+        <div className="space-y-0.5">
+          <Label className="text-[10px] font-medium text-slate-500">Canal</Label>
           <Select value={filters.channel} onValueChange={(v) => update('channel', v)}>
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-8 text-xs w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -136,13 +150,15 @@ export function DashboardAdvancedFilters({ filters, onChange }: Props) {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
-          <Label className="text-[10px] text-slate-500">Tipo de Viagem</Label>
+
+        {/* Tipo de Viagem */}
+        <div className="space-y-0.5">
+          <Label className="text-[10px] font-medium text-slate-500">Viagem</Label>
           <Select
             value={filters.travelType || 'Todos'}
             onValueChange={(v) => update('travelType', v)}
           >
-            <SelectTrigger className="h-8 text-xs">
+            <SelectTrigger className="h-8 text-xs w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -152,12 +168,12 @@ export function DashboardAdvancedFilters({ filters, onChange }: Props) {
             </SelectContent>
           </Select>
         </div>
-      </div>
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="space-y-1">
-          <Label className="text-[10px] text-slate-500">Motivo do Contato</Label>
+
+        {/* Motivo do Contato */}
+        <div className="space-y-0.5">
+          <Label className="text-[10px] font-medium text-slate-500">Motivo</Label>
           <Select value={filters.contactReason} onValueChange={(v) => update('contactReason', v)}>
-            <SelectTrigger className="h-8 text-xs w-[180px]">
+            <SelectTrigger className="h-8 text-xs w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -169,12 +185,21 @@ export function DashboardAdvancedFilters({ filters, onChange }: Props) {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2 pb-1.5">
+      </div>
+
+      <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-xs">
+        <div className="flex items-center gap-2">
           <Switch
+            id="avoidable-filter"
             checked={filters.avoidableOnly}
             onCheckedChange={(v) => update('avoidableOnly', v)}
           />
-          <Label className="text-xs text-slate-600">Apenas contatos evitáveis</Label>
+          <Label
+            htmlFor="avoidable-filter"
+            className="text-xs text-slate-600 font-medium cursor-pointer"
+          >
+            Apenas contatos evitáveis
+          </Label>
         </div>
       </div>
     </div>
