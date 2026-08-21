@@ -5,9 +5,9 @@ migrate(
     app.save(col)
 
     var testUsers = [
-      { name: 'Teste Diagnostico 1', email: 'teste1@rexturadvance.com.br', role: 'Consultores' },
-      { name: 'Teste Diagnostico 2', email: 'teste2@rexturadvance.com.br', role: 'Supervisores' },
-      { name: 'Teste Diagnostico 3', email: 'teste3@rexturadvance.com.br', role: 'Gerentes' },
+      { name: 'Teste Diagnostico 1', email: 'teste1@rexturadvance.com.br', role: 'Consultor' },
+      { name: 'Teste Diagnostico 2', email: 'teste2@rexturadvance.com.br', role: 'Supervisor' },
+      { name: 'Teste Diagnostico 3', email: 'teste3@rexturadvance.com.br', role: 'Gerente' },
     ]
 
     var created = 0

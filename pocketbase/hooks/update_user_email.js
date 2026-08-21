@@ -6,7 +6,7 @@ routerAdd(
     if (!authId) return e.unauthorizedError('auth required')
 
     var authRole = e.auth.getString('role')
-    if (authRole !== 'Master' && authRole !== 'Gerentes') {
+    if (authRole !== 'Master' && authRole !== 'Gerente') {
       return e.forbiddenError('access denied')
     }
 
@@ -28,7 +28,7 @@ routerAdd(
       return e.notFoundError('user not found')
     }
 
-    if (authRole === 'Gerentes') {
+    if (authRole === 'Gerente') {
       var managerGroups = e.auth.get('service_groups') || []
       if (managerGroups.length === 0) {
         return e.forbiddenError('access denied')

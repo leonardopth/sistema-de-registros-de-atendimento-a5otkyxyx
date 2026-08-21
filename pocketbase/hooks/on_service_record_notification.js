@@ -22,7 +22,7 @@ onRecordAfterCreateSuccess((e) => {
     try {
       var managers = $app.findRecordsByFilter(
         'users',
-        "role = 'Gerentes' || role = 'Supervisores' || role = 'Líderes' || role = 'Master'",
+        "role = 'Gerente' || role = 'Supervisor' || role = 'Líder' || role = 'Master'",
         '',
         0,
         0,

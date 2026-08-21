@@ -161,9 +161,9 @@ migrate(
     }
 
     var userData = [
-      { name: 'Marcelo Ribeiro', email: 'marcelo.ribeiro@rextur.com.br', role: 'Gerentes' },
-      { name: 'Juliana Freitas', email: 'juliana.freitas@rextur.com.br', role: 'Supervisores' },
-      { name: 'Gustavo Pinto', email: 'gustavo.pinto@rextur.com.br', role: 'Líderes' },
+      { name: 'Marcelo Ribeiro', email: 'marcelo.ribeiro@rextur.com.br', role: 'Gerente' },
+      { name: 'Juliana Freitas', email: 'juliana.freitas@rextur.com.br', role: 'Supervisor' },
+      { name: 'Gustavo Pinto', email: 'gustavo.pinto@rextur.com.br', role: 'Líder' },
     ]
     var userIds = []
     for (var ui = 0; ui < userData.length; ui++) {

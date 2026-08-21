@@ -135,35 +135,34 @@ migrate(
 
       var usersCol = txApp.findCollectionByNameOrId('_pb_users_auth_')
       var userData = [
-        { name: 'Marcelo Ribeiro', email: 'marcelo.ribeiro@rextur.com.br', role: 'Gerentes' },
-        { name: 'Ana Paula Costa', email: 'ana.costa@rextur.com.br', role: 'Gerentes' },
-        { name: 'Felipe Alves', email: 'felipe.alves@rextur.com.br', role: 'Gerentes' },
-        { name: 'Juliana Freitas', email: 'juliana.freitas@rextur.com.br', role: 'Supervisores' },
-        { name: 'Ricardo Nunes', email: 'ricardo.nunes@rextur.com.br', role: 'Supervisores' },
-        { name: 'Patrícia Santos', email: 'patricia.santos@rextur.com.br', role: 'Supervisores' },
-        { name: 'Gustavo Pinto', email: 'gustavo.pinto@rextur.com.br', role: 'Líderes' },
-        { name: 'Camila Ferreira', email: 'camila.ferreira@rextur.com.br', role: 'Líderes' },
-        { name: 'Lucas Oliveira', email: 'lucas.oliveira@rextur.com.br', role: 'Líderes' },
-        { name: 'Bruno Carvalho', email: 'bruno.carvalho@rextur.com.br', role: 'Consultores' },
-        { name: 'Daniela Martins', email: 'daniela.martins@rextur.com.br', role: 'Consultores' },
-        { name: 'Eduardo Gomes', email: 'eduardo.gomes@rextur.com.br', role: 'Consultores' },
-        {
-          name: 'Ana Carolina Pereira',
-          email: 'ana.pereira@rextur.com.br',
-          role: 'Executivo de contas',
-        },
+        { name: 'Marcelo Ribeiro', email: 'marcelo.ribeiro@rextur.com.br', role: 'Gerente' },
+        { name: 'Ana Paula Costa', email: 'ana.costa@rextur.com.br', role: 'Gerente' },
+        { name: 'Felipe Alves', email: 'felipe.alves@rextur.com.br', role: 'Gerente' },
+        { name: 'Juliana Freitas', email: 'juliana.freitas@rextur.com.br', role: 'Supervisor' },
+        { name: 'Ricardo Nunes', email: 'ricardo.nunes@rextur.com.br', role: 'Supervisor' },
+        { name: 'Patrícia Santos', email: 'patricia.santos@rextur.com.br', role: 'Supervisor' },
+        { name: 'Gustavo Pinto', email: 'gustavo.pinto@rextur.com.br', role: 'Líder' },
+        { name: 'Camila Ferreira', email: 'camila.ferreira@rextur.com.br', role: 'Líder' },
+        { name: 'Lucas Oliveira', email: 'lucas.oliveira@rextur.com.br', role: 'Líder' },
+        { name: 'Bruno Carvalho', email: 'bruno.carvalho@rextur.com.br', role: 'Consultor' },
+        { name: 'Daniela Martins', email: 'daniela.martins@rextur.com.br', role: 'Consultor' },
+        { name: 'Eduardo Gomes', email: 'eduardo.gomes@rextur.com.br', role: 'Consultor' },
         {
           name: 'Roberto Mendes',
           email: 'roberto.mendes@rextur.com.br',
-          role: 'Executivo de contas',
+          role: 'Executivo de Contas',
+        },
+        {
+          name: 'Ana Carolina Pereira',
+          email: 'ana.pereira@rextur.com.br',
+          role: 'Executivo de Contas',
         },
         {
           name: 'Fernanda Lima',
           email: 'fernanda.lima@rextur.com.br',
-          role: 'Executivo de contas',
+          role: 'Executivo de Contas',
         },
-      ]
-      for (var ui = 0; ui < userData.length; ui++) {
+      ]      for (var ui = 0; ui < userData.length; ui++) {
         var ud = userData[ui]
         try {
           txApp.findAuthRecordByEmail('_pb_users_auth_', ud.email)

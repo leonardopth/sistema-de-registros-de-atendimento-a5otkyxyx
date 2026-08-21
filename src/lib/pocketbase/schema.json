@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T02:56:29.813Z",
+  "generatedAt": "2026-08-21T03:19:41.396Z",
   "collections": [
     {
       "name": "users",
@@ -101,21 +101,6 @@
           ]
         },
         {
-          "name": "role",
-          "type": "select",
-          "required": true,
-          "system": false,
-          "selectValues": [
-            "Gerentes",
-            "Supervisores",
-            "Líderes",
-            "Consultores",
-            "Executivo de contas",
-            "Master",
-            "Gestor Comercial"
-          ]
-        },
-        {
           "name": "bases",
           "type": "select",
           "required": false,
@@ -136,6 +121,27 @@
           "type": "bool",
           "required": false,
           "system": false
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Gerente",
+            "Supervisor",
+            "Líder",
+            "Consultor",
+            "Executivo de Contas",
+            "Master",
+            "Gestor Comercial"
+          ]
+        },
+        {
+          "name": "departments",
+          "type": "json",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -154,7 +160,7 @@
         "view": "@request.auth.id != ''",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
       },
       "fields": [
         {
@@ -293,7 +299,7 @@
         "view": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true || user_id = @request.auth.id || assigned_user = @request.auth.id || @request.auth.id ?= @collection.service_record_shares.user)",
         "create": "@request.auth.id != ''",
         "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || @request.auth.master_access = true || assigned_user = @request.auth.id || user_id = @request.auth.id)"
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true || assigned_user = @request.auth.id || user_id = @request.auth.id)"
       },
       "fields": [
         {
@@ -535,9 +541,9 @@
       "apiRules": {
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != '' && (@request.auth.role != 'Consultores' || @request.auth.master_access = true)",
-        "update": "@request.auth.id != '' && (@request.auth.role != 'Consultores' || @request.auth.master_access = true)",
-        "delete": "@request.auth.id != '' && (@request.auth.role != 'Consultores' || @request.auth.master_access = true)"
+        "create": "@request.auth.id != '' && (@request.auth.role != 'Consultor' || @request.auth.master_access = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role != 'Consultor' || @request.auth.master_access = true)",
+        "delete": "@request.auth.id != '' && (@request.auth.role != 'Consultor' || @request.auth.master_access = true)"
       },
       "fields": [
         {
@@ -601,9 +607,9 @@
       "apiRules": {
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
-        "update": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
-        "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
+        "create": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
       },
       "fields": [
         {
@@ -671,8 +677,8 @@
         "list": "@request.auth.id != \"\"",
         "view": "@request.auth.id != \"\"",
         "create": "@request.auth.id != \"\"",
-        "update": "@request.auth.id != \"\" && (@request.auth.role = \"Gerentes\" || @request.auth.role = \"Supervisores\" || @request.auth.role = \"Líderes\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)",
-        "delete": "@request.auth.id != \"\" && (@request.auth.role = \"Gerentes\" || @request.auth.role = \"Supervisores\" || @request.auth.role = \"Líderes\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)"
+        "update": "@request.auth.id != \"\" && (@request.auth.role = \"Gerente\" || @request.auth.role = \"Supervisor\" || @request.auth.role = \"Líder\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)",
+        "delete": "@request.auth.id != \"\" && (@request.auth.role = \"Gerente\" || @request.auth.role = \"Supervisor\" || @request.auth.role = \"Líder\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)"
       },
       "fields": [
         {
@@ -1262,9 +1268,9 @@
       "apiRules": {
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
-        "update": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
-        "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
+        "create": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
       },
       "fields": [
         {
@@ -1323,8 +1329,8 @@
       "apiRules": {
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
-        "update": "@request.auth.id != '' && (@request.auth.role = 'Gerentes' || @request.auth.role = 'Supervisores' || @request.auth.role = 'Líderes' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
         "delete": null
       },
       "fields": [
@@ -1645,9 +1651,9 @@
       "apiRules": {
         "list": "@request.auth.id != \"\"",
         "view": "@request.auth.id != \"\"",
-        "create": "@request.auth.id != \"\" && (@request.auth.role = \"Gerentes\" || @request.auth.role = \"Supervisores\" || @request.auth.role = \"Líderes\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)",
-        "update": "@request.auth.id != \"\" && (@request.auth.role = \"Gerentes\" || @request.auth.role = \"Supervisores\" || @request.auth.role = \"Líderes\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)",
-        "delete": "@request.auth.id != \"\" && (@request.auth.role = \"Gerentes\" || @request.auth.role = \"Supervisores\" || @request.auth.role = \"Líderes\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)"
+        "create": "@request.auth.id != \"\" && (@request.auth.role = \"Gerente\" || @request.auth.role = \"Supervisor\" || @request.auth.role = \"Líder\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)",
+        "update": "@request.auth.id != \"\" && (@request.auth.role = \"Gerente\" || @request.auth.role = \"Supervisor\" || @request.auth.role = \"Líder\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)",
+        "delete": "@request.auth.id != \"\" && (@request.auth.role = \"Gerente\" || @request.auth.role = \"Supervisor\" || @request.auth.role = \"Líder\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)"
       },
       "fields": [
         {
