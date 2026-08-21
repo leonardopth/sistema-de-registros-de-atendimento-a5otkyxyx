@@ -31,8 +31,10 @@ export function AutonomyScorecard({ records = [] }: AutonomyScorecardProps) {
     if (r.avoidable_contact) entry.avoidable++
   })
 
-  const clientAutonomies: ClientAutonomy[] = Array.from(clientMap.entries())
-    .filter(([, v]) => v.total >= 2)
+  const entriesWithMin = Array.from(clientMap.entries()).filter(([, v]) => v.total >= 2)
+  const pool = entriesWithMin.length > 0 ? entriesWithMin : Array.from(clientMap.entries())
+
+  const clientAutonomies: ClientAutonomy[] = pool
     .map(([name, v]) => ({
       name,
       total: v.total,
@@ -42,8 +44,8 @@ export function AutonomyScorecard({ records = [] }: AutonomyScorecardProps) {
     .sort((a, b) => b.autonomyRate - a.autonomyRate)
 
   const showTop3 = clientAutonomies.length > 3
-  const top3 = showTop3 ? clientAutonomies.slice(0, 3) : []
-  const bottom3 = clientAutonomies.slice(-3).reverse()
+  const top3 = showTop3 ? clientAutonomies.slice(0, 3) : clientAutonomies
+  const bottom3 = showTop3 ? clientAutonomies.slice(-3).reverse() : []
 
   return (
     <Card className="border-slate-200 shadow-subtle">

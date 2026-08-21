@@ -1,34 +1,95 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
 import { getServiceRecords } from '@/services/service_records'
 import { getClients } from '@/services/clients'
-import { ServiceRecord, ClientRecord } from '@/types/service_record'
+import { getAccountExecutives } from '@/services/account_executives'
+import { getUsers } from '@/services/users'
+import { getTrainings } from '@/services/trainings'
+import {
+  ServiceRecord,
+  ClientRecord,
+  AccountExecutiveRecord,
+  UserRecord,
+} from '@/types/service_record'
+import type { TrainingRecord } from '@/types/training'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { DashboardStats } from '@/components/DashboardStats'
 import { ConsultantGamification } from '@/components/ConsultantGamification'
 import { AutonomyScorecard } from '@/components/AutonomyScorecard'
 import { TrainingPanel } from '@/components/TrainingPanel'
+import { PerformanceAlerts } from '@/components/PerformanceAlerts'
 import { StatusBadge } from '@/components/StatusBadge'
 import { filterClientsByUserAccess, filterRecordsByUserAccess } from '@/lib/service-group-access'
-import { Zap, PlusCircle, Headset, Keyboard, AlertCircle, RefreshCw } from 'lucide-react'
+import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
+import { getGMT3DateString } from '@/lib/timezone'
+import {
+  Zap,
+  PlusCircle,
+  Headset,
+  Keyboard,
+  AlertCircle,
+  RefreshCw,
+  Building2,
+  Users2,
+  GraduationCap,
+  Award,
+  TrendingUp,
+  BarChart3,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Layers,
+  ArrowRight,
+  ShieldAlert,
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 export default function Index() {
   const { user } = useAuth()
   const navigate = useNavigate()
+
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [clients, setClients] = useState<ClientRecord[]>([])
+  const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
+  const [users, setUsers] = useState<UserRecord[]>([])
+  const [trainings, setTrainings] = useState<TrainingRecord[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [commercialPeriod, setCommercialPeriod] = useState<'all' | 'month' | 'today' | '7days'>(
+    'month',
+  )
 
   const loadData = async () => {
     try {
       setLoadError(null)
-      const [r, c] = await Promise.all([
-        getServiceRecords().catch((err: any) => {
+      const [r, c, e, u, t] = await Promise.all([
+        getServiceRecords('', '-created').catch((err: any) => {
           console.warn('Non-blocking error fetching service records:', err)
           return []
         }),
@@ -36,14 +97,32 @@ export default function Index() {
           console.warn('Non-blocking error fetching clients:', err)
           return []
         }),
+        getAccountExecutives().catch((err: any) => {
+          console.warn('Non-blocking error fetching executives:', err)
+          return []
+        }),
+        getUsers().catch((err: any) => {
+          console.warn('Non-blocking error fetching users:', err)
+          return []
+        }),
+        getTrainings().catch((err: any) => {
+          console.warn('Non-blocking error fetching trainings:', err)
+          return []
+        }),
       ])
       setRecords(Array.isArray(r) ? r : [])
       setClients(Array.isArray(c) ? c : [])
+      setExecutives(Array.isArray(e) ? e : [])
+      setUsers(Array.isArray(u) ? u : [])
+      setTrainings(Array.isArray(t) ? t : [])
     } catch (err: any) {
-      console.error('Error loading index data:', err)
+      console.error('Error loading dashboard data:', err)
       setLoadError('Não foi possível sincronizar todos os dados. Exibindo informações locais.')
       setRecords([])
       setClients([])
+      setExecutives([])
+      setUsers([])
+      setTrainings([])
     }
   }
 
@@ -53,6 +132,8 @@ export default function Index() {
 
   useRealtime('service_records', () => loadData())
   useRealtime('clients', () => loadData())
+  useRealtime('trainings', () => loadData())
+  useRealtime('account_executives', () => loadData())
 
   const safeFormatDate = (dateStr?: string) => {
     if (!dateStr) return ''
@@ -65,49 +146,401 @@ export default function Index() {
     }
   }
 
-  // Guaranteed defensive array checks
   const safeRecords = Array.isArray(records) ? records : []
   const safeClients = Array.isArray(clients) ? clients : []
 
-  const accessibleRecords = filterRecordsByUserAccess(safeRecords, user)
-  const accessibleClients = filterClientsByUserAccess(safeClients, user)
+  // Papéis de acesso
+  const userRole = user?.role || 'Consultor'
+  const isMaster = userRole === 'Master' || user?.master_access === true
+  const isGerente = userRole === 'Gerente'
+  const isSupervisorOrLider = userRole === 'Supervisor' || userRole === 'Líder'
+  const isConsultor = userRole === 'Consultor'
+  const isExecutivoContas = userRole === 'Executivo de Contas'
+  const isGestorComercial = userRole === 'Gestor Comercial'
+
+  // Perfil mestre/gerente: visão completa
+  const isFullView = isMaster || isGerente
+
+  // Registros acessíveis com base nas permissões
+  const accessibleRecords = useMemo(
+    () => filterRecordsByUserAccess(safeRecords, user),
+    [safeRecords, user],
+  )
+  const accessibleClients = useMemo(
+    () => filterClientsByUserAccess(safeClients, user),
+    [safeClients, user],
+  )
 
   const todayStr = new Date().toISOString().substring(0, 10)
-  const todayRecords = accessibleRecords.filter(
-    (r) => r && typeof r.created === 'string' && r.created.startsWith(todayStr),
-  )
-  const myRecords = accessibleRecords.filter(
-    (r) => r && (r.assigned_user === user?.id || r.user_id === user?.id),
-  )
-  const recentRecords = accessibleRecords.slice(0, 3)
 
-  const stats = {
-    todayCount: todayRecords.length,
-    totalCount: accessibleRecords.length,
-    inProgressCount: accessibleRecords.filter((r) => r?.status === 'Em Andamento').length,
-    completedTodayCount: todayRecords.filter((r) => r?.status === 'Concluído').length,
-    avgDuration:
-      accessibleRecords.length > 0
+  const firstName = user?.name ? user.name.split(' ')[0] : 'Usuário'
+
+  // ==========================================
+  // DADOS ESPECÍFICOS POR PERFIL
+  // ==========================================
+
+  // --- 1. CONSULTOR ---
+  const consultantRecords = useMemo(() => {
+    return safeRecords.filter((r) => r && (r.assigned_user === user?.id || r.user_id === user?.id))
+  }, [safeRecords, user?.id])
+
+  const consultantTodayRecords = useMemo(() => {
+    return consultantRecords.filter((r) => {
+      const recDate = getGMT3DateString(r.created)
+      return recDate === todayStr || (r.created && r.created.startsWith(todayStr))
+    })
+  }, [consultantRecords, todayStr])
+
+  const consultantRecentRecords = useMemo(() => {
+    return consultantRecords.slice(0, 5)
+  }, [consultantRecords])
+
+  const consultantStats = useMemo(() => {
+    const inProgress = consultantRecords.filter((r) => r.status === 'Em Andamento').length
+    const completedToday = consultantTodayRecords.filter((r) => r.status === 'Concluído').length
+    const avgDuration =
+      consultantRecords.length > 0
         ? Math.round(
-            accessibleRecords.reduce((a, r) => a + (Number(r?.duration) || 0), 0) /
-              accessibleRecords.length,
+            consultantRecords.reduce((a, r) => a + (Number(r?.duration) || 0), 0) /
+              consultantRecords.length,
           )
-        : 0,
-    wrongDeptCount: accessibleRecords.filter((r) => Boolean(r?.avoidable_contact)).length,
+        : 0
+    const avoidableCount = consultantRecords.filter((r) => Boolean(r?.avoidable_contact)).length
+
+    return {
+      todayCount: consultantTodayRecords.length,
+      totalCount: consultantRecords.length,
+      inProgressCount: inProgress,
+      completedTodayCount: completedToday,
+      avgDuration,
+      wrongDeptCount: avoidableCount,
+    }
+  }, [consultantRecords, consultantTodayRecords])
+
+  // Clientes atendidos pelo consultor
+  const consultantClientCompanyNames = useMemo(() => {
+    const names = new Set<string>()
+    consultantRecords.forEach((r) => {
+      if (r.client_company) names.add(r.client_company)
+      if (r.client_name) names.add(r.client_name)
+    })
+    return names
+  }, [consultantRecords])
+
+  const consultantClients = useMemo(() => {
+    return safeClients.filter(
+      (c) =>
+        consultantClientCompanyNames.has(c.company) || consultantClientCompanyNames.has(c.name),
+    )
+  }, [safeClients, consultantClientCompanyNames])
+
+  // --- 2. SUPERVISOR / LÍDER (Equipe) ---
+  const teamUsers = useMemo(() => {
+    if (!user) return []
+    const userGroups = (user.service_groups as string[] | undefined) || []
+    if (userGroups.length === 0) {
+      return users.filter((u) => u.role === 'Consultor')
+    }
+    return users.filter((u) => {
+      if (u.role !== 'Consultor') return false
+      const groups = (u.service_groups as string[] | undefined) || []
+      return groups.some((g) => userGroups.includes(g))
+    })
+  }, [users, user])
+
+  const teamRecords = useMemo(() => {
+    return accessibleRecords
+  }, [accessibleRecords])
+
+  const teamTodayRecords = useMemo(() => {
+    return teamRecords.filter((r) => {
+      const recDate = getGMT3DateString(r.created)
+      return recDate === todayStr || (r.created && r.created.startsWith(todayStr))
+    })
+  }, [teamRecords, todayStr])
+
+  const teamStats = useMemo(() => {
+    const inProgress = teamRecords.filter((r) => r.status === 'Em Andamento').length
+    const completedToday = teamTodayRecords.filter((r) => r.status === 'Concluído').length
+    const avgDuration =
+      teamRecords.length > 0
+        ? Math.round(
+            teamRecords.reduce((a, r) => a + (Number(r?.duration) || 0), 0) / teamRecords.length,
+          )
+        : 0
+    const avoidable = teamRecords.filter((r) => Boolean(r?.avoidable_contact)).length
+
+    return {
+      todayCount: teamTodayRecords.length,
+      totalCount: teamRecords.length,
+      inProgressCount: inProgress,
+      completedTodayCount: completedToday,
+      avgDuration,
+      wrongDeptCount: avoidable,
+    }
+  }, [teamRecords, teamTodayRecords])
+
+  const teamRecentRecords = useMemo(() => {
+    return teamRecords.slice(0, 5)
+  }, [teamRecords])
+
+  // --- 3. EXECUTIVO DE CONTAS ---
+  const currentExecutive = useMemo(() => {
+    if (!isExecutivoContas) return null
+    return executives.find((e) => e.email === user?.email || e.name === user?.name) || null
+  }, [executives, user, isExecutivoContas])
+
+  const executiveClients = useMemo(() => {
+    if (!isExecutivoContas) return accessibleClients
+    if (currentExecutive) {
+      return safeClients.filter(
+        (c) =>
+          c.account_executive_rel === currentExecutive.id ||
+          c.account_executive === currentExecutive.name,
+      )
+    }
+    // Fallback por bases do usuário
+    const userBases = (user?.bases as string[] | undefined) || []
+    if (userBases.length > 0) {
+      return safeClients.filter((c) => {
+        const execRel = c.expand?.account_executive_rel
+        if (execRel && Array.isArray(execRel.bases)) {
+          return execRel.bases.some((b) => userBases.includes(b))
+        }
+        return false
+      })
+    }
+    return accessibleClients
+  }, [safeClients, currentExecutive, isExecutivoContas, user?.bases, accessibleClients])
+
+  const executiveClientIds = useMemo(() => {
+    return new Set(executiveClients.map((c) => c.id))
+  }, [executiveClients])
+
+  const executiveClientCompanies = useMemo(() => {
+    return new Set(executiveClients.map((c) => c.company).filter(Boolean))
+  }, [executiveClients])
+
+  const executiveRecords = useMemo(() => {
+    return safeRecords.filter((r) => {
+      const cid = r.client || r.expand?.client?.id
+      if (cid && executiveClientIds.has(cid)) return true
+      if (r.client_company && executiveClientCompanies.has(r.client_company)) return true
+      if (
+        currentExecutive &&
+        (r.account_executive === currentExecutive.name ||
+          r.expand?.account_executive?.id === currentExecutive.id)
+      )
+        return true
+      return false
+    })
+  }, [safeRecords, executiveClientIds, executiveClientCompanies, currentExecutive])
+
+  const executiveActiveClients = useMemo(() => {
+    return executiveClients.filter((c) => !c.blocked)
+  }, [executiveClients])
+
+  const executiveInactiveClients = useMemo(() => {
+    return executiveClients.filter((c) => Boolean(c.blocked))
+  }, [executiveClients])
+
+  const executiveRecentRecords = useMemo(() => {
+    return executiveRecords.slice(0, 5)
+  }, [executiveRecords])
+
+  // Treinamentos pendentes dos clientes do executivo
+  // Considera clientes que precisam de treinamento (com chamados evitáveis ou cadastrados em trainings)
+  const executivePendingTrainings = useMemo(() => {
+    const list: { clientName: string; avoidableCount: number; lastDate?: string }[] = []
+    executiveClients.forEach((client) => {
+      const recs = executiveRecords.filter(
+        (r) =>
+          r.client === client.id ||
+          r.expand?.client?.id === client.id ||
+          r.client_company === client.company,
+      )
+      const avoidable = recs.filter((r) => r.avoidable_contact).length
+      const clientTrainings = trainings.filter(
+        (t) => t.client === client.id || t.expand?.client?.id === client.id,
+      )
+      if (avoidable > 0 || clientTrainings.length > 0) {
+        list.push({
+          clientName: client.company || client.name,
+          avoidableCount: avoidable,
+          lastDate: clientTrainings[0]?.training_date,
+        })
+      }
+    })
+    return list.sort((a, b) => b.avoidableCount - a.avoidableCount)
+  }, [executiveClients, executiveRecords, trainings])
+
+  // --- 4. GESTOR COMERCIAL ---
+  const commercialFilteredRecords = useMemo(() => {
+    const userBases = (user?.bases as string[] | undefined) || []
+    let baseFiltered = safeRecords
+    if (userBases.length > 0 && !isMaster) {
+      const baseExecIds = executives
+        .filter((e) => {
+          const execBases = (e.bases as string[] | undefined) || []
+          return execBases.some((b) => userBases.includes(b))
+        })
+        .map((e) => e.id)
+      const baseClients = safeClients.filter(
+        (c) => c.account_executive_rel && baseExecIds.includes(c.account_executive_rel),
+      )
+      const baseClientIds = new Set(baseClients.map((c) => c.id))
+      const baseCompanyNames = new Set(baseClients.map((c) => c.company))
+      baseFiltered = safeRecords.filter((r) => {
+        const cid = r.client || r.expand?.client?.id
+        if (cid && baseClientIds.has(cid)) return true
+        if (r.client_company && baseCompanyNames.has(r.client_company)) return true
+        return false
+      })
+    }
+
+    const now = new Date()
+    const nowIso = now.toISOString()
+    const today = nowIso.substring(0, 10)
+    const month = nowIso.substring(0, 7)
+
+    if (commercialPeriod === 'today') {
+      return baseFiltered.filter((r) => getGMT3DateString(r.created) === today)
+    }
+    if (commercialPeriod === 'month') {
+      return baseFiltered.filter((r) => {
+        const d = getGMT3DateString(r.created)
+        return d.startsWith(month)
+      })
+    }
+    if (commercialPeriod === '7days') {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .substring(0, 10)
+      return baseFiltered.filter((r) => {
+        const d = getGMT3DateString(r.created)
+        return d >= sevenDaysAgo
+      })
+    }
+    return baseFiltered
+  }, [safeRecords, user?.bases, isMaster, executives, safeClients, commercialPeriod])
+
+  const commercialClients = useMemo(() => {
+    return accessibleClients
+  }, [accessibleClients])
+
+  const commercialActiveClients = useMemo(() => {
+    return commercialClients.filter((c) => !c.blocked)
+  }, [commercialClients])
+
+  const commercialAutonomyRate = useMemo(() => {
+    const total = commercialFilteredRecords.length
+    if (total === 0) return 100
+    const avoidable = commercialFilteredRecords.filter((r) => r.avoidable_contact).length
+    const avoidableRate = Math.round((avoidable / total) * 100)
+    return 100 - avoidableRate
+  }, [commercialFilteredRecords])
+
+  // Comparativo entre grupos de serviço para o Gestor Comercial
+  const commercialGroupComparison = useMemo(() => {
+    const coMap = new Map<string, string>()
+    for (const c of safeClients) {
+      if (c.company) coMap.set(c.company, c.service_group || '')
+    }
+    const clientMap = new Map(safeClients.map((c) => [c.id, c]))
+
+    return SERVICE_GROUP_OPTIONS.map((group) => {
+      const gr = commercialFilteredRecords.filter((r) => {
+        const cid = r.client || r.expand?.client?.id
+        if (cid) {
+          const cl = clientMap.get(cid)
+          if (cl?.service_group === group.value) return true
+        }
+        if (r.client_company && coMap.get(r.client_company) === group.value) return true
+        return false
+      })
+      const total = gr.length
+      const avoidable = gr.filter((r) => r.avoidable_contact).length
+      const rate = total > 0 ? Math.round((avoidable / total) * 100) : 0
+      const autonomy = 100 - rate
+
+      return {
+        group: group.value,
+        name: group.label,
+        total,
+        avoidable,
+        autonomy,
+        rate,
+      }
+    })
+  }, [safeClients, commercialFilteredRecords])
+
+  const commercialChartConfig: ChartConfig = {
+    total: { label: 'Total de Atendimentos', color: '#6366f1' },
+    avoidable: { label: 'Contatos Evitáveis', color: '#f43f5e' },
   }
 
-  const firstName = user?.name ? user.name.split(' ')[0] : 'Consultor'
+  // --- 5. GERENTE / MASTER (Geral) ---
+  const generalTodayRecords = useMemo(() => {
+    return accessibleRecords.filter((r) => {
+      const recDate = getGMT3DateString(r.created)
+      return recDate === todayStr || (r.created && r.created.startsWith(todayStr))
+    })
+  }, [accessibleRecords, todayStr])
+
+  const generalStats = useMemo(() => {
+    return {
+      todayCount: generalTodayRecords.length,
+      totalCount: accessibleRecords.length,
+      inProgressCount: accessibleRecords.filter((r) => r?.status === 'Em Andamento').length,
+      completedTodayCount: generalTodayRecords.filter((r) => r?.status === 'Concluído').length,
+      avgDuration:
+        accessibleRecords.length > 0
+          ? Math.round(
+              accessibleRecords.reduce((a, r) => a + (Number(r?.duration) || 0), 0) /
+                accessibleRecords.length,
+            )
+          : 0,
+      wrongDeptCount: accessibleRecords.filter((r) => Boolean(r?.avoidable_contact)).length,
+    }
+  }, [accessibleRecords, generalTodayRecords])
+
+  const generalRecentRecords = useMemo(() => {
+    return accessibleRecords.slice(0, 5)
+  }, [accessibleRecords])
+
+  // Subtítulo do cabeçalho de acordo com o papel
+  const roleSubtitle = useMemo(() => {
+    if (isMaster)
+      return 'Visão Executiva Global — Gerenciamento completo de atendimentos e métricas'
+    if (isGerente) return 'Visão Gerencial — Controle completo da operação de atendimento e suporte'
+    if (isSupervisorOrLider)
+      return 'Visão de Equipe — Gestão de desempenho e atendimentos dos liderados'
+    if (isConsultor) return 'Meu Desempenho — Acompanhe seus atendimentos, gamificação e clientes'
+    if (isExecutivoContas) return 'Gestão de Contas — Carteira de clientes gerenciados e autonomia'
+    if (isGestorComercial)
+      return 'Visão de Negócios — Volume de atendimentos, clientes e análise de grupos'
+    return 'Acompanhe seus atendimentos e indicadores'
+  }, [isMaster, isGerente, isSupervisorOrLider, isConsultor, isExecutivoContas, isGestorComercial])
 
   return (
     <div className="space-y-6">
+      {/* CABEÇALHO DO DASHBOARD */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-            Olá, {firstName}! 👋
-          </h2>
-          <p className="text-xs text-slate-500">Acompanhe seus atendimentos e desempenho</p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
+              Olá, {firstName}! 👋
+            </h2>
+            <Badge
+              variant="outline"
+              className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200"
+            >
+              {userRole}
+            </Badge>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">{roleSubtitle}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => window.dispatchEvent(new CustomEvent('open-quick-log'))}
             className="bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-700 hover:to-indigo-700 font-bold"
@@ -148,47 +581,626 @@ export default function Index() {
         </span>
       </div>
 
-      <DashboardStats {...stats} />
+      {/* ========================================================================= */}
+      {/* 1. GERENTE / MASTER: VISÃO COMPLETA                                      */}
+      {/* ========================================================================= */}
+      {isFullView && (
+        <div className="space-y-6">
+          {/* Cards de estatísticas */}
+          <DashboardStats {...generalStats} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <ConsultantGamification records={myRecords} userName={user?.name || ''} />
-        <Card className="lg:col-span-2 border-slate-200 shadow-subtle">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Headset className="h-4 w-4 text-indigo-600" /> Atendimentos Recentes
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {recentRecords.length === 0 && (
-              <p className="text-xs text-slate-400 text-center py-4">Nenhum atendimento recente.</p>
-            )}
-            {recentRecords.map((r, idx) => (
-              <div
-                key={r?.id || `recent-${idx}`}
-                className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-slate-900 truncate">
-                    {r.client_company || r.client_name || 'Cliente'}
+          {/* Alertas de Desempenho */}
+          <PerformanceAlerts records={accessibleRecords} />
+
+          {/* Grid com Gamificação e Atendimentos Recentes */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <ConsultantGamification records={consultantRecords} userName={user?.name || ''} />
+            <Card className="lg:col-span-2 border-slate-200 shadow-subtle">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Headset className="h-4 w-4 text-indigo-600" /> Atendimentos Recentes
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/atendimentos')}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
+                  >
+                    Ver todos <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {generalRecentRecords.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-4">
+                    Nenhum atendimento recente.
                   </p>
-                  <p className="text-[10px] text-slate-500 truncate">
-                    {r.contact_reason || 'Atendimento'} — {(r.description || '').substring(0, 60)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <StatusBadge status={r.status || 'Aberto'} />
-                  <span className="text-[10px] text-slate-400">{safeFormatDate(r.created)}</span>
-                </div>
+                )}
+                {generalRecentRecords.map((r, idx) => (
+                  <div
+                    key={r?.id || `recent-${idx}`}
+                    className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100/80 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-900 truncate">
+                        {r.client_company || r.client_name || 'Cliente'}
+                      </p>
+                      <p className="text-[10px] text-slate-500 truncate">
+                        {r.contact_reason || 'Atendimento'} —{' '}
+                        {(r.description || '').substring(0, 60)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge status={r.status || 'Aberto'} />
+                      <span className="text-[10px] text-slate-400">
+                        {safeFormatDate(r.created)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Scorecard de autonomia e Painel de Treinamentos */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <AutonomyScorecard records={accessibleRecords} clients={accessibleClients} />
+            <TrainingPanel records={accessibleRecords} clients={accessibleClients} />
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. SUPERVISOR / LÍDER: FOCO EM DESEMPENHO DA EQUIPE                      */}
+      {/* ========================================================================= */}
+      {!isFullView && isSupervisorOrLider && (
+        <div className="space-y-6">
+          {/* Header descritivo do foco da equipe */}
+          <div className="bg-gradient-to-r from-indigo-50 via-white to-indigo-50 border border-indigo-100 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                <Users2 className="h-5 w-5" />
               </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Painel de Liderança da Equipe</h3>
+                <p className="text-xs text-slate-500">
+                  Monitorando{' '}
+                  {teamUsers.length > 0
+                    ? `${teamUsers.length} consultores`
+                    : 'sua equipe de atendimento'}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/relatorio-consultor')}
+              className="text-xs text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+            >
+              Relatório Individual <ArrowRight className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <AutonomyScorecard records={accessibleRecords} clients={accessibleClients} />
-        <TrainingPanel records={accessibleRecords} clients={accessibleClients} />
-      </div>
+          {/* Cards de estatísticas da equipe */}
+          <DashboardStats {...teamStats} />
+
+          {/* Alertas de Desempenho dos Liderados */}
+          <PerformanceAlerts records={teamRecords} />
+
+          {/* Scorecard de Autonomia e Atendimentos Recentes da Equipe */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <AutonomyScorecard records={teamRecords} clients={accessibleClients} />
+
+            <Card className="border-slate-200 shadow-subtle">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Headset className="h-4 w-4 text-indigo-600" /> Atendimentos Recentes da Equipe
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/atendimentos')}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
+                  >
+                    Ver todos <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {teamRecentRecords.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-6">
+                    Nenhum atendimento registrado pela equipe até o momento.
+                  </p>
+                )}
+                {teamRecentRecords.map((r, idx) => (
+                  <div
+                    key={r?.id || `team-${idx}`}
+                    className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100/80 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-bold text-slate-900 truncate">
+                          {r.client_company || r.client_name || 'Cliente'}
+                        </p>
+                        {r.expand?.assigned_user?.name && (
+                          <span className="text-[10px] text-slate-400 truncate">
+                            • {r.expand.assigned_user.name}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 truncate">
+                        {r.contact_reason || 'Atendimento'} —{' '}
+                        {(r.description || '').substring(0, 60)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge status={r.status || 'Aberto'} />
+                      <span className="text-[10px] text-slate-400">
+                        {safeFormatDate(r.created)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. CONSULTOR: FOCO NO PRÓPRIO DESEMPENHO                                 */}
+      {/* ========================================================================= */}
+      {!isFullView && isConsultor && (
+        <div className="space-y-6">
+          {/* Cards com suas próprias estatísticas */}
+          <DashboardStats {...consultantStats} />
+
+          {/* Grid com Gamificação e Seus Atendimentos Recentes */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <ConsultantGamification records={consultantRecords} userName={user?.name || ''} />
+
+            <Card className="lg:col-span-2 border-slate-200 shadow-subtle">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Headset className="h-4 w-4 text-indigo-600" /> Meus Atendimentos Recentes
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/atendimentos')}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
+                  >
+                    Ver todos <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {consultantRecentRecords.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-6">
+                    Você ainda não possui atendimentos registrados hoje.
+                  </p>
+                )}
+                {consultantRecentRecords.map((r, idx) => (
+                  <div
+                    key={r?.id || `mine-${idx}`}
+                    className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100/80 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-900 truncate">
+                        {r.client_company || r.client_name || 'Cliente'}
+                      </p>
+                      <p className="text-[10px] text-slate-500 truncate">
+                        {r.contact_reason || 'Atendimento'} —{' '}
+                        {(r.description || '').substring(0, 60)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge status={r.status || 'Aberto'} />
+                      <span className="text-[10px] text-slate-400">
+                        {safeFormatDate(r.created)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Scorecard de autonomia dos clientes que o consultor atende */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <AutonomyScorecard records={consultantRecords} clients={consultantClients} />
+            <TrainingPanel records={consultantRecords} clients={consultantClients} />
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. EXECUTIVO DE CONTAS: FOCO NOS CLIENTES QUE GERENCIA                   */}
+      {/* ========================================================================= */}
+      {!isFullView && isExecutivoContas && (
+        <div className="space-y-6">
+          {/* Banner de Identificação */}
+          <div className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Carteira de Clientes do Executivo
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {currentExecutive
+                    ? `Visão dedicada das contas gerenciadas por ${currentExecutive.name}`
+                    : 'Visão dedicada da sua carteira de clientes'}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/painel-executivo')}
+              className="text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+            >
+              Abrir Painel Executivo <ArrowRight className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
+
+          {/* Cards de Total de Clientes, Ativos e Inativos */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Total de Clientes</p>
+                  <p className="text-2xl font-extrabold text-slate-900 mt-1">
+                    {executiveClients.length}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Sob sua gestão comercial</p>
+                </div>
+                <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                  <Building2 className="h-6 w-6" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Clientes Ativos</p>
+                  <p className="text-2xl font-extrabold text-emerald-600 mt-1">
+                    {executiveActiveClients.length}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Operando normalmente</p>
+                </div>
+                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">
+                    Clientes Inativos / Bloqueados
+                  </p>
+                  <p className="text-2xl font-extrabold text-rose-600 mt-1">
+                    {executiveInactiveClients.length}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Com pendência ou bloqueio</p>
+                </div>
+                <div className="p-3 rounded-xl bg-rose-50 text-rose-600 shrink-0">
+                  <XCircle className="h-6 w-6" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Scorecard de autonomia completo (Top 3 e Bottom 3) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <AutonomyScorecard records={executiveRecords} clients={executiveClients} />
+
+            {/* Treinamentos pendentes dos seus clientes */}
+            <Card className="border-slate-200 shadow-subtle">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4 text-indigo-600" /> Treinamentos Pendentes dos
+                    Seus Clientes
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/painel-treinamento')}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
+                  >
+                    Ver detalhes <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {executivePendingTrainings.length === 0 ? (
+                  <div className="p-4 bg-slate-50 rounded-lg text-center">
+                    <CheckCircle2 className="h-6 w-6 text-emerald-500 mx-auto mb-1.5" />
+                    <p className="text-xs text-slate-600 font-medium">
+                      Nenhuma agência com demanda crítica de treinamento
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Seus clientes estão com baixo volume de dúvidas evitáveis.
+                    </p>
+                  </div>
+                ) : (
+                  executivePendingTrainings.slice(0, 5).map((item, idx) => (
+                    <div
+                      key={`exec-train-${idx}`}
+                      className="flex items-center justify-between p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-900 truncate">
+                          {item.clientName}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          {item.avoidableCount} chamados evitáveis registrados
+                          {item.lastDate ? ` • Último: ${safeFormatDate(item.lastDate)}` : ''}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] bg-white text-indigo-700 border-indigo-200 shrink-0 ml-2"
+                      >
+                        Sugerir Treinamento
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Últimos atendimentos dos seus clientes */}
+          <Card className="border-slate-200 shadow-subtle">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Headset className="h-4 w-4 text-indigo-600" /> Últimos Atendimentos dos Seus
+                  Clientes
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/atendimentos')}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
+                >
+                  Ver todos <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {executiveRecentRecords.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">
+                  Nenhum atendimento registrado para os clientes da sua carteira.
+                </p>
+              ) : (
+                executiveRecentRecords.map((r, idx) => (
+                  <div
+                    key={r?.id || `exec-rec-${idx}`}
+                    className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100/80 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-slate-900 truncate">
+                          {r.client_company || r.client_name || 'Cliente'}
+                        </p>
+                        {r.avoidable_contact && (
+                          <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4">
+                            Evitável
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 truncate">
+                        {r.contact_reason || 'Atendimento'} —{' '}
+                        {(r.description || '').substring(0, 70)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge status={r.status || 'Aberto'} />
+                      <span className="text-[10px] text-slate-400">
+                        {safeFormatDate(r.created)}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. GESTOR COMERCIAL: VISÃO DE NEGÓCIOS                                   */}
+      {/* ========================================================================= */}
+      {!isFullView && isGestorComercial && (
+        <div className="space-y-6">
+          {/* Barra de Filtro de Período para Negócios */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-subtle">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-indigo-600" />
+              <span className="text-xs font-bold text-slate-800">
+                Filtrar Período de Análise Comercial:
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={commercialPeriod}
+                onValueChange={(val: any) => setCommercialPeriod(val)}
+              >
+                <SelectTrigger className="w-[180px] h-8 text-xs bg-slate-50">
+                  <SelectValue placeholder="Selecione o período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today" className="text-xs">
+                    Hoje
+                  </SelectItem>
+                  <SelectItem value="7days" className="text-xs">
+                    Últimos 7 dias
+                  </SelectItem>
+                  <SelectItem value="month" className="text-xs">
+                    Mês Atual
+                  </SelectItem>
+                  <SelectItem value="all" className="text-xs">
+                    Todo o Período
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Cards de Volume total por período, Clientes Ativos, Taxa de autonomia geral */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Volume Total de Atendimentos</p>
+                  <p className="text-2xl font-extrabold text-slate-900 mt-1">
+                    {commercialFilteredRecords.length}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {commercialPeriod === 'today'
+                      ? 'No dia de hoje'
+                      : commercialPeriod === '7days'
+                        ? 'Nos últimos 7 dias'
+                        : commercialPeriod === 'month'
+                          ? 'No mês atual'
+                          : 'No histórico completo'}
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                  <Headset className="h-6 w-6" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Clientes Ativos</p>
+                  <p className="text-2xl font-extrabold text-emerald-600 mt-1">
+                    {commercialActiveClients.length}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    de {commercialClients.length} clientes na base
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+                  <Building2 className="h-6 w-6" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Taxa de Autonomia Geral</p>
+                  <p className="text-2xl font-extrabold text-indigo-600 mt-1">
+                    {commercialAutonomyRate}%
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Proporção de demandas resolvidas sem retrabalho
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                  <Award className="h-6 w-6" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Gráfico Comparativo entre Grupos de Serviço */}
+          <Card className="border-slate-200 shadow-subtle">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-indigo-600" /> Gráfico Comparativo entre Grupos de
+                  Serviço
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/relatorios-grupo')}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
+                >
+                  Ver relatório completo <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ChartContainer config={commercialChartConfig} className="h-[280px] w-full">
+                <BarChart data={commercialGroupComparison}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={30} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar
+                    dataKey="total"
+                    name="Total Atendimentos"
+                    fill="#6366f1"
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="avoidable"
+                    name="Contatos Evitáveis"
+                    fill="#f43f5e"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+
+              {/* Tabela Resumo dos Grupos */}
+              <div className="overflow-x-auto rounded-lg border border-slate-100">
+                <Table>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow>
+                      <TableHead className="text-xs font-bold">Grupo de Serviço</TableHead>
+                      <TableHead className="text-xs font-bold text-center">Total</TableHead>
+                      <TableHead className="text-xs font-bold text-center">Evitáveis</TableHead>
+                      <TableHead className="text-xs font-bold text-center">
+                        Taxa de Autonomia
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {commercialGroupComparison.map((g) => (
+                      <TableRow key={g.group} className="hover:bg-slate-50">
+                        <TableCell className="text-xs font-semibold text-slate-900">
+                          {g.name}
+                        </TableCell>
+                        <TableCell className="text-xs text-center">{g.total}</TableCell>
+                        <TableCell className="text-xs text-center text-rose-600 font-semibold">
+                          {g.avoidable}
+                        </TableCell>
+                        <TableCell className="text-xs text-center">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                              g.autonomy >= 70
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {g.autonomy}%
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
