@@ -162,7 +162,8 @@ migrate(
           email: 'fernanda.lima@rextur.com.br',
           role: 'Executivo de Contas',
         },
-      ]      for (var ui = 0; ui < userData.length; ui++) {
+      ]
+      for (var ui = 0; ui < userData.length; ui++) {
         var ud = userData[ui]
         try {
           txApp.findAuthRecordByEmail('_pb_users_auth_', ud.email)

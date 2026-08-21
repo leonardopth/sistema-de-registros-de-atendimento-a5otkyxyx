@@ -4,6 +4,7 @@ export interface UserExportRow {
   name: string
   email: string
   role: string
+  departments?: string
   service_groups: string
   approval_status: string
   created: string
@@ -13,6 +14,7 @@ const HEADERS = [
   'Nome',
   'E-mail',
   'Perfil',
+  'Departamento',
   'Grupo de Atendimento',
   'Status de Aprovação',
   'Data de Criação',
@@ -40,6 +42,7 @@ export function usersToCSV(rows: UserExportRow[]): string {
       r.name || '',
       r.email || '',
       r.role || '',
+      r.departments || '',
       r.service_groups || '',
       r.approval_status || '',
       formatDateTime(r.created),
@@ -65,7 +68,7 @@ export function downloadUsersPDF(rows: UserExportRow[], title = 'Lista de Usuár
   const tableRows = rows
     .map(
       (r) =>
-        `<tr><td>${r.name || ''}</td><td>${r.email || ''}</td><td>${r.role || ''}</td><td>${r.service_groups || ''}</td><td>${r.approval_status || ''}</td><td>${formatDateTime(r.created)}</td></tr>`,
+        `<tr><td>${r.name || ''}</td><td>${r.email || ''}</td><td>${r.role || ''}</td><td>${r.departments || ''}</td><td>${r.service_groups || ''}</td><td>${r.approval_status || ''}</td><td>${formatDateTime(r.created)}</td></tr>`,
     )
     .join('')
 

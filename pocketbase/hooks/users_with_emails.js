@@ -21,6 +21,7 @@ routerAdd(
           telegram_alerts: u.getBool('telegram_alerts'),
           service_groups: u.get('service_groups') || [],
           bases: u.get('bases') || [],
+          departments: u.get('departments') || [],
           created: u.getString('created'),
           updated: u.getString('updated'),
         })

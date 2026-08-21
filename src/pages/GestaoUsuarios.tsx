@@ -44,6 +44,7 @@ export default function GestaoUsuarios() {
   const [colNames, setColNames] = useState<string[]>([])
   const [colEmails, setColEmails] = useState<string[]>([])
   const [colRoles, setColRoles] = useState<string[]>([])
+  const [colDepartments, setColDepartments] = useState<string[]>([])
   const [colStatuses, setColStatuses] = useState<string[]>([])
   const [colGroups, setColGroups] = useState<string[]>([])
 
@@ -112,6 +113,7 @@ export default function GestaoUsuarios() {
     colNames.length > 0 ||
     colEmails.length > 0 ||
     colRoles.length > 0 ||
+    colDepartments.length > 0 ||
     colStatuses.length > 0 ||
     colGroups.length > 0
 
@@ -121,13 +123,17 @@ export default function GestaoUsuarios() {
       const matchesEmail = colEmails.length === 0 || colEmails.includes(u.email || '-')
       const matchesRole = colRoles.length === 0 || colRoles.includes(u.role)
       const matchesStatus = colStatuses.length === 0 || colStatuses.includes(u.approval_status)
+      const deptStr = u.departments?.length ? u.departments.join(', ') : '-'
+      const matchesDept = colDepartments.length === 0 || colDepartments.includes(deptStr)
       const groupStr = u.service_groups?.length
         ? u.service_groups.join(', ')
         : u.bases?.length
           ? u.bases.join(', ')
           : '-'
       const matchesGroup = colGroups.length === 0 || colGroups.includes(groupStr)
-      return matchesName && matchesEmail && matchesRole && matchesStatus && matchesGroup
+      return (
+        matchesName && matchesEmail && matchesRole && matchesDept && matchesStatus && matchesGroup
+      )
     },
   )
 
@@ -175,6 +181,7 @@ export default function GestaoUsuarios() {
               setColNames([])
               setColEmails([])
               setColRoles([])
+              setColDepartments([])
               setColStatuses([])
               setColGroups([])
             }}
@@ -227,6 +234,19 @@ export default function GestaoUsuarios() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center justify-between gap-1">
+                    <span>Departamento</span>
+                    <TableColumnFilter
+                      title="Departamento"
+                      options={users.map((u) =>
+                        u.departments?.length ? u.departments.join(', ') : '-',
+                      )}
+                      selectedValues={colDepartments}
+                      onChange={setColDepartments}
+                    />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center justify-between gap-1">
                     <span>Status</span>
                     <TableColumnFilter
                       title="Status"
@@ -268,6 +288,27 @@ export default function GestaoUsuarios() {
                         <Crown className="h-3 w-3 mr-1" /> Master
                       </Badge>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {u.departments && u.departments.length > 0 ? (
+                        u.departments.map((dept) => (
+                          <Badge
+                            key={dept}
+                            className={cn(
+                              'text-xs font-medium',
+                              dept === 'Nacional'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                                : 'bg-purple-100 text-purple-800 border border-purple-200 hover:bg-purple-100',
+                            )}
+                          >
+                            {dept}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={u.approval_status} />
@@ -325,7 +366,7 @@ export default function GestaoUsuarios() {
               ))}
               {visibleUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-slate-400 py-8">
+                  <TableCell colSpan={7} className="text-center text-slate-400 py-8">
                     Nenhum usuário encontrado.
                   </TableCell>
                 </TableRow>

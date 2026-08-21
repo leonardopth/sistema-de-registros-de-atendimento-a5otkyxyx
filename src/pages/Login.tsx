@@ -50,6 +50,7 @@ export default function Login() {
   } | null>(null)
   const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [signupDepartments, setSignupDepartments] = useState<string[]>([])
   const [signupServiceGroups, setSignupServiceGroups] = useState<string[]>([])
   const [signupBases, setSignupBases] = useState<string[]>([])
   const { signIn, signUp } = useAuth()
@@ -129,6 +130,12 @@ export default function Login() {
       setFieldErrors({ role: 'Selecione uma categoria.' })
       return
     }
+    if (signupDepartments.length === 0) {
+      setFieldErrors({
+        departments: 'Selecione pelo menos um departamento (Nacional ou Internacional).',
+      })
+      return
+    }
 
     setLoading(true)
     const cleanEmail = email.trim().toLowerCase()
@@ -139,6 +146,7 @@ export default function Login() {
       role as UserRole,
       signupServiceGroups,
       signupBases,
+      signupDepartments,
     )
     setLoading(false)
 
@@ -166,6 +174,7 @@ export default function Login() {
     setShowPassword(false)
     setEmail('')
     setPassword('')
+    setSignupDepartments([])
     setSignupServiceGroups([])
     setSignupBases([])
   }
@@ -469,6 +478,35 @@ export default function Login() {
                     </Select>
                     {fieldErrors.role && (
                       <p className="text-xs text-rose-400">{fieldErrors.role}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-slate-300 text-xs font-medium">Departamento *</Label>
+                    <div className="flex items-center gap-6 pt-1">
+                      {['Nacional', 'Internacional'].map((dept) => (
+                        <label
+                          key={dept}
+                          className="flex items-center gap-2 text-xs cursor-pointer text-slate-300"
+                        >
+                          <Checkbox
+                            id={`signup-dept-${dept}`}
+                            checked={signupDepartments.includes(dept)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSignupDepartments([...signupDepartments, dept])
+                              } else {
+                                setSignupDepartments(signupDepartments.filter((d) => d !== dept))
+                              }
+                            }}
+                            className="border-slate-700 data-[state=checked]:bg-cyan-600 data-[state=checked]:border-cyan-600"
+                          />
+                          <span>{dept}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {fieldErrors.departments && (
+                      <p className="text-xs text-rose-400">{fieldErrors.departments}</p>
                     )}
                   </div>
 

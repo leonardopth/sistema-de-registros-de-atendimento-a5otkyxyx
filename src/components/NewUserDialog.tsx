@@ -23,8 +23,9 @@ import { Loader2, UserPlus } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { useToast } from '@/hooks/use-toast'
 import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
-import type { UserRole, ServiceGroup, CommercialBase } from '@/types/service_record'
+import type { UserRole, ServiceGroup, CommercialBase, TravelType } from '@/types/service_record'
 
+const DEPARTMENT_OPTIONS: TravelType[] = ['Nacional', 'Internacional']
 const ATENDIMENTO_ROLES: UserRole[] = ['Gerente', 'Supervisor', 'Líder', 'Consultor']
 const VENDAS_ROLES: UserRole[] = ['Gestor Comercial', 'Executivo de Contas']
 const SERVICE_GROUP_OPTIONS: ServiceGroup[] = [
@@ -60,6 +61,7 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole | ''>('')
+  const [departments, setDepartments] = useState<TravelType[]>([])
   const [serviceGroups, setServiceGroups] = useState<ServiceGroup[]>([])
   const [bases, setBases] = useState<CommercialBase[]>([])
   const [loading, setLoading] = useState(false)
@@ -73,9 +75,23 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
     setEmail('')
     setPassword('')
     setRole('')
+    setDepartments([])
     setServiceGroups([])
     setBases([])
     setFieldErrors({})
+  }
+
+  const toggleDepartment = (dept: TravelType) => {
+    setDepartments((prev) =>
+      prev.includes(dept) ? prev.filter((x) => x !== dept) : [...prev, dept],
+    )
+    if (fieldErrors.departments) {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.departments
+        return next
+      })
+    }
   }
 
   const toggleGroup = (g: ServiceGroup) =>
@@ -88,6 +104,18 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
       toast({ variant: 'destructive', title: 'Preencha todos os campos obrigatórios' })
       return
     }
+    if (departments.length === 0) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        departments: 'Selecione pelo menos um departamento (Nacional ou Internacional)',
+      }))
+      toast({
+        variant: 'destructive',
+        title: 'Departamento obrigatório',
+        description: 'Selecione pelo menos uma opção: Nacional ou Internacional.',
+      })
+      return
+    }
     setLoading(true)
     setFieldErrors({})
     try {
@@ -97,6 +125,7 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
         password,
         passwordConfirm: password,
         role,
+        departments,
         service_groups: isAtendimento ? serviceGroups : [],
         bases: isVendas ? bases : [],
         approval_status: 'Aprovado',
@@ -193,6 +222,23 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
               </SelectContent>
             </Select>
             {fieldErrors.role && <p className="text-xs text-red-500">{fieldErrors.role}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Departamento *</Label>
+            <div className="flex items-center gap-6 pt-1">
+              {DEPARTMENT_OPTIONS.map((dept) => (
+                <label key={dept} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={departments.includes(dept)}
+                    onCheckedChange={() => toggleDepartment(dept)}
+                  />
+                  <span>{dept}</span>
+                </label>
+              ))}
+            </div>
+            {fieldErrors.departments && (
+              <p className="text-xs text-red-500">{fieldErrors.departments}</p>
+            )}
           </div>
           {isAtendimento && (
             <div className="space-y-2">

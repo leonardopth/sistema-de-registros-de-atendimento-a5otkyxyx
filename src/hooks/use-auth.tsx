@@ -12,6 +12,7 @@ interface AuthContextType {
     role?: string,
     serviceGroups?: string[],
     bases?: string[],
+    departments?: string[],
   ) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any; approvalStatus?: string }>
   signOut: () => void
@@ -60,6 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     role?: string,
     serviceGroups?: string[],
     bases?: string[],
+    departments?: string[],
   ) => {
     try {
       await pb.collection('users').create({
@@ -70,6 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role: role || 'Consultor',
         service_groups: serviceGroups || [],
         bases: bases || [],
+        departments: departments || [],
         approval_status: 'Pendente',
       })
       return { error: null }

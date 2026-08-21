@@ -68,7 +68,15 @@ export function useServiceRecordForm(
     '',
   )
   const [avoidableContactExplanation, setAvoidableContactExplanation] = useState('')
-  const [travelType, setTravelType] = useState<TravelType | ''>('')
+  const getDefaultTravelType = useCallback((): TravelType | '' => {
+    const depts: TravelType[] = user?.departments || []
+    if (depts.length === 1) {
+      return depts[0]
+    }
+    return ''
+  }, [user?.departments])
+
+  const [travelType, setTravelType] = useState<TravelType | ''>(getDefaultTravelType)
   const [travelTypeError, setTravelTypeError] = useState('')
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<UserRecord[]>([])
@@ -106,7 +114,11 @@ export function useServiceRecordForm(
         if (s.priority !== undefined) setPriority(s.priority)
         if (s.status !== undefined) setStatus(s.status)
         if (s.duration !== undefined) setDuration(s.duration)
-        if (s.travelType !== undefined) setTravelType(s.travelType)
+        if (s.travelType !== undefined && s.travelType !== '') {
+          setTravelType(s.travelType)
+        } else {
+          setTravelType(getDefaultTravelType())
+        }
         if (s.tasks !== undefined) setTasks(s.tasks)
         if (s.avoidableContact !== undefined) setAvoidableContact(s.avoidableContact)
         if (s.avoidableContactReason !== undefined)
@@ -234,6 +246,12 @@ export function useServiceRecordForm(
   useEffect(() => {
     if (user?.id) setAssignedUserId(user.id)
   }, [user?.id])
+
+  useEffect(() => {
+    if (!persistKey) {
+      setTravelType(getDefaultTravelType())
+    }
+  }, [getDefaultTravelType, persistKey])
 
   useEffect(() => {
     if (!enabled) {
@@ -402,7 +420,7 @@ export function useServiceRecordForm(
     setClientPhone('')
     setClientCompany('')
     setContactReason('')
-    setTravelType('')
+    setTravelType(getDefaultTravelType())
     setTravelTypeError('')
     setChannel('')
     setDescription('')
@@ -438,6 +456,7 @@ export function useServiceRecordForm(
   }
 
   const clearForm = () => {
+    if (persistKey) localStorage.removeItem(persistKey)
     resetForm()
   }
 

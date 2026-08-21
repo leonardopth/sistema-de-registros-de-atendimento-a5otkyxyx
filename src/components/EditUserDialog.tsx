@@ -28,6 +28,7 @@ import {
   updateUserEmail,
   updateUserServiceGroups,
   updateUserBases,
+  updateUserDepartments,
 } from '@/services/users'
 import type {
   UserRecord,
@@ -35,8 +36,10 @@ import type {
   ServiceGroup,
   CommercialBase,
   ApprovalStatus,
+  TravelType,
 } from '@/types/service_record'
 
+const DEPARTMENT_OPTIONS: TravelType[] = ['Nacional', 'Internacional']
 const ATENDIMENTO_ROLES: UserRole[] = ['Gerente', 'Supervisor', 'Líder', 'Consultor']
 const VENDAS_ROLES: UserRole[] = ['Gestor Comercial', 'Executivo de Contas']
 const SERVICE_GROUP_OPTIONS: ServiceGroup[] = [
@@ -73,6 +76,7 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<UserRole | ''>('')
+  const [departments, setDepartments] = useState<TravelType[]>([])
   const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>('Pendente')
   const [masterAccess, setMasterAccess] = useState(false)
   const [serviceGroups, setServiceGroups] = useState<ServiceGroup[]>([])
@@ -85,6 +89,7 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
       setName(user.name || '')
       setEmail(user.email || '')
       setRole(user.role || '')
+      setDepartments(user.departments || [])
       setApprovalStatus(user.approval_status || 'Pendente')
       setMasterAccess(user.master_access || false)
       setServiceGroups(user.service_groups || [])
@@ -96,6 +101,19 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
   const isAtendimento = ATENDIMENTO_ROLES.includes(role as UserRole)
   const isVendas = VENDAS_ROLES.includes(role as UserRole)
 
+  const toggleDepartment = (dept: TravelType) => {
+    setDepartments((prev) =>
+      prev.includes(dept) ? prev.filter((x) => x !== dept) : [...prev, dept],
+    )
+    if (fieldErrors.departments) {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.departments
+        return next
+      })
+    }
+  }
+
   const toggleGroup = (g: ServiceGroup) =>
     setServiceGroups((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
   const toggleBase = (b: CommercialBase) =>
@@ -103,12 +121,25 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
 
   const handleSave = async () => {
     if (!user || !name.trim()) return
+    if (departments.length === 0) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        departments: 'Selecione pelo menos um departamento (Nacional ou Internacional)',
+      }))
+      toast({
+        variant: 'destructive',
+        title: 'Departamento obrigatório',
+        description: 'Selecione pelo menos uma opção: Nacional ou Internacional.',
+      })
+      return
+    }
     setLoading(true)
     setFieldErrors({})
     try {
       await updateUser(user.id, {
         name: name.trim(),
         role: role as UserRole,
+        departments,
         approval_status: approvalStatus,
       })
       if (email.trim() !== user.email) {
@@ -194,6 +225,23 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
                 </SelectGroup>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Departamento *</Label>
+            <div className="flex items-center gap-6 pt-1">
+              {DEPARTMENT_OPTIONS.map((dept) => (
+                <label key={dept} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={departments.includes(dept)}
+                    onCheckedChange={() => toggleDepartment(dept)}
+                  />
+                  <span>{dept}</span>
+                </label>
+              ))}
+            </div>
+            {fieldErrors.departments && (
+              <p className="text-xs text-red-500">{fieldErrors.departments}</p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Status de Aprovação</Label>
