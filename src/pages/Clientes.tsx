@@ -116,7 +116,7 @@ export default function Clientes() {
   const userServiceGroups = (user?.service_groups as string[] | undefined) || []
   const hasGroupRestriction = userServiceGroups.length > 0 && user?.role !== 'Master'
   const canDeleteClient =
-    user?.role === 'Gerentes' || user?.role === 'Master' || user?.master_access === true
+    user?.role === 'Gerente' || user?.role === 'Master' || user?.master_access === true
 
   const autoAtendimentoExec = executives.find((ex) => ex.name === 'Auto-Atendimento')
   const regularExecutives = executives.filter((ex) => ex.name !== 'Auto-Atendimento')

@@ -260,11 +260,11 @@ export default function Atendimentos() {
   }, [])
 
   const isMasterUser = user?.role === 'Master'
-  const isManager = ['Gerentes', 'Supervisores', 'Líderes'].includes(user?.role || '')
+  const isManager = ['Gerente', 'Supervisor', 'Líder'].includes(user?.role || '')
   const userServiceGroups = (user?.service_groups as string[] | undefined) || []
   const hasGroupRestriction = !isMasterUser && userServiceGroups.length > 0
 
-  const isExecutivo = user?.role === 'Executivo de contas'
+  const isExecutivo = user?.role === 'Executivo de Contas'
   const isGestorComercial = user?.role === 'Gestor Comercial'
   const userBases = (user?.bases as string[] | undefined) || []
 

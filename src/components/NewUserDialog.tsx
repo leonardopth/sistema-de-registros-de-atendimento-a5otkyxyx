@@ -25,8 +25,8 @@ import { useToast } from '@/hooks/use-toast'
 import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 import type { UserRole, ServiceGroup, CommercialBase } from '@/types/service_record'
 
-const ATENDIMENTO_ROLES: UserRole[] = ['Gerentes', 'Supervisores', 'Líderes', 'Consultores']
-const VENDAS_ROLES: UserRole[] = ['Gestor Comercial', 'Executivo de contas']
+const ATENDIMENTO_ROLES: UserRole[] = ['Gerente', 'Supervisor', 'Líder', 'Consultor']
+const VENDAS_ROLES: UserRole[] = ['Gestor Comercial', 'Executivo de Contas']
 const SERVICE_GROUP_OPTIONS: ServiceGroup[] = [
   'Concierge',
   'Exclusivo',

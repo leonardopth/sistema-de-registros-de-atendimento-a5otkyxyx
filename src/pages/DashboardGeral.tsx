@@ -45,7 +45,7 @@ import { ThresholdSuggestionPanel } from '@/components/ThresholdSuggestionPanel'
 import { TravelTypeReportPanel } from '@/components/TravelTypeReportPanel'
 import { PerformanceAlerts } from '@/components/PerformanceAlerts'
 
-const PRIVILEGED_ROLES = ['Master', 'Gerentes', 'Supervisores', 'Líderes']
+const PRIVILEGED_ROLES = ['Master', 'Gerente', 'Supervisor', 'Líder']
 
 export default function DashboardGeral() {
   const { user } = useAuth()

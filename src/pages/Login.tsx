@@ -459,11 +459,11 @@ export default function Login() {
                         <SelectValue placeholder="Selecione sua categoria" />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
-                        <SelectItem value="Gerentes">Gerentes</SelectItem>
-                        <SelectItem value="Supervisores">Supervisores</SelectItem>
-                        <SelectItem value="Líderes">Líderes</SelectItem>
-                        <SelectItem value="Consultores">Consultores</SelectItem>
-                        <SelectItem value="Executivo de contas">Executivo de contas</SelectItem>
+                        <SelectItem value="Gerente">Gerente</SelectItem>
+                        <SelectItem value="Supervisor">Supervisor</SelectItem>
+                        <SelectItem value="Líder">Líder</SelectItem>
+                        <SelectItem value="Consultor">Consultor</SelectItem>
+                        <SelectItem value="Executivo de Contas">Executivo de Contas</SelectItem>
                         <SelectItem value="Gestor Comercial">Gestor Comercial</SelectItem>
                       </SelectContent>
                     </Select>
@@ -472,7 +472,7 @@ export default function Login() {
                     )}
                   </div>
 
-                  {['Gerentes', 'Supervisores', 'Líderes', 'Consultores'].includes(role) && (
+                  {['Gerente', 'Supervisor', 'Líder', 'Consultor'].includes(role) && (
                     <div className="space-y-2">
                       <Label className="text-slate-300 text-xs font-medium">
                         Grupo de Atendimento
@@ -509,7 +509,7 @@ export default function Login() {
                     </div>
                   )}
 
-                  {['Gestor Comercial', 'Executivo de contas'].includes(role as string) && (
+                  {['Gestor Comercial', 'Executivo de Contas'].includes(role as string) && (
                     <div className="space-y-2">
                       <Label className="text-slate-300 text-xs font-medium">Bases Regionais</Label>
                       <p className="text-[11px] text-slate-500">
