@@ -16,7 +16,7 @@ interface ServiceGroupManagerProps {
 }
 
 export function ServiceGroupManager({ users, onSaved }: ServiceGroupManagerProps) {
-  const gerentes = users.filter((u) => u.role === 'Gerentes')
+  const gerentes = users.filter((u) => u.role === 'Gerente')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [groups, setGroups] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
@@ -46,7 +46,7 @@ export function ServiceGroupManager({ users, onSaved }: ServiceGroupManagerProps
     <Card className="p-4 border-slate-200 shadow-subtle">
       <div className="flex items-center gap-2 mb-4">
         <Users className="h-5 w-5 text-indigo-600" />
-        <h3 className="text-sm font-bold text-slate-800">Gerentes e seus Grupos de Atendimento</h3>
+        <h3 className="text-sm font-bold text-slate-800">Gerente e seus Grupos de Atendimento</h3>
       </div>
       <div className="space-y-3">
         {gerentes.map((u) => (

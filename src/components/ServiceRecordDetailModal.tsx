@@ -129,7 +129,7 @@ export function ServiceRecordDetailModal({
   const isOwner = record
     ? record.user_id === user?.id || record.assigned_user === user?.id || user?.role === 'Master'
     : false
-  const isManagerRole = ['Gerentes', 'Supervisores', 'Líderes'].includes(user?.role || '')
+  const isManagerRole = ['Gerente', 'Supervisor', 'Líder'].includes(user?.role || '')
   const isEditable = record
     ? EDITABLE_STATUSES.includes(record.status) &&
       (isOwner || isManagerRole || userSharePermission === 'Editar')

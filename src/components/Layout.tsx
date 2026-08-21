@@ -31,7 +31,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 
-const MANAGER_ROLES = ['Gerentes', 'Supervisores', 'Líderes']
+const MANAGER_ROLES = ['Gerente', 'Supervisor', 'Líder']
 
 interface NavItem {
   label: string
@@ -88,7 +88,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Painel Executivo',
     to: '/painel-executivo',
     icon: DollarSign,
-    visible: (r) => r === 'Executivo de contas',
+    visible: (r) => r === 'Executivo de Contas',
   },
   {
     label: 'Gestão de Usuários',

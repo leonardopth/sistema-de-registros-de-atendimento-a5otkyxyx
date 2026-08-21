@@ -100,7 +100,7 @@ export function SharedUsersList({ recordId }: SharedUsersListProps) {
               <span className="text-[10px] text-slate-400 font-normal">
                 (
                 {share.account_executive || share.expand?.account_executive
-                  ? 'Executivo de contas'
+                  ? 'Executivo de Contas'
                   : share.expand?.user?.role || 'Colaborador'}
                 )
               </span>

@@ -1,27 +1,13 @@
 migrate(
   (app) => {
     // 1. Atualizar registros existentes da coleção users para os cargos no singular
+    app.db().newQuery("UPDATE users SET role = 'Gerente' WHERE role = 'Gerentes'").execute()
+    app.db().newQuery("UPDATE users SET role = 'Supervisor' WHERE role = 'Supervisores'").execute()
+    app.db().newQuery("UPDATE users SET role = 'Líder' WHERE role = 'Líderes'").execute()
+    app.db().newQuery("UPDATE users SET role = 'Consultor' WHERE role = 'Consultores'").execute()
     app
       .db()
-      .newQuery("UPDATE users SET role = 'Gerente' WHERE role = 'Gerentes'")
-      .execute()
-    app
-      .db()
-      .newQuery("UPDATE users SET role = 'Supervisor' WHERE role = 'Supervisores'")
-      .execute()
-    app
-      .db()
-      .newQuery("UPDATE users SET role = 'Líder' WHERE role = 'Líderes'")
-      .execute()
-    app
-      .db()
-      .newQuery("UPDATE users SET role = 'Consultor' WHERE role = 'Consultores'")
-      .execute()
-    app
-      .db()
-      .newQuery(
-        "UPDATE users SET role = 'Executivo de Contas' WHERE role = 'Executivo de contas'",
-      )
+      .newQuery("UPDATE users SET role = 'Executivo de Contas' WHERE role = 'Executivo de contas'")
       .execute()
 
     // 2. Atualizar campo role e adicionar campo departments na coleção users
@@ -165,27 +151,13 @@ migrate(
   },
   (app) => {
     // Reverter cargos para plural
+    app.db().newQuery("UPDATE users SET role = 'Gerentes' WHERE role = 'Gerente'").execute()
+    app.db().newQuery("UPDATE users SET role = 'Supervisores' WHERE role = 'Supervisor'").execute()
+    app.db().newQuery("UPDATE users SET role = 'Líderes' WHERE role = 'Líder'").execute()
+    app.db().newQuery("UPDATE users SET role = 'Consultores' WHERE role = 'Consultor'").execute()
     app
       .db()
-      .newQuery("UPDATE users SET role = 'Gerentes' WHERE role = 'Gerente'")
-      .execute()
-    app
-      .db()
-      .newQuery("UPDATE users SET role = 'Supervisores' WHERE role = 'Supervisor'")
-      .execute()
-    app
-      .db()
-      .newQuery("UPDATE users SET role = 'Líderes' WHERE role = 'Líder'")
-      .execute()
-    app
-      .db()
-      .newQuery("UPDATE users SET role = 'Consultores' WHERE role = 'Consultor'")
-      .execute()
-    app
-      .db()
-      .newQuery(
-        "UPDATE users SET role = 'Executivo de contas' WHERE role = 'Executivo de Contas'",
-      )
+      .newQuery("UPDATE users SET role = 'Executivo de contas' WHERE role = 'Executivo de Contas'")
       .execute()
 
     const usersCol = app.findCollectionByNameOrId('users')

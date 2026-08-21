@@ -31,11 +31,11 @@ export type AvoidableContactReason = 'Disponível no RF' | 'Fora do Escopo' | 'E
 export type TravelType = 'Nacional' | 'Internacional'
 
 export type UserRole =
-  | 'Gerentes'
-  | 'Supervisores'
-  | 'Líderes'
-  | 'Consultores'
-  | 'Executivo de contas'
+  | 'Gerente'
+  | 'Supervisor'
+  | 'Líder'
+  | 'Consultor'
+  | 'Executivo de Contas'
   | 'Master'
   | 'Gestor Comercial'
 
@@ -99,6 +99,7 @@ export interface UserRecord {
   name: string
   email: string
   role: UserRole
+  departments?: TravelType[]
   master_access?: boolean
   approval_status?: ApprovalStatus
   approved_by?: string

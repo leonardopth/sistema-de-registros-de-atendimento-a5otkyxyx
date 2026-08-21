@@ -191,7 +191,8 @@ migrate(
         role: 'Executivo de Contas',
         approval_status: 'Aprovado',
         bases: ['RJ/ES/MG', 'CO'],
-      },      {
+      },
+      {
         name: 'Carlos Eduardo Souza',
         email: 'carlos.souza@rextur.com.br',
         role: 'Gestor Comercial',
@@ -214,9 +215,7 @@ migrate(
     })
     var managerUsers = allUsers.filter(function (u) {
       return (
-        u.get('role') === 'Gerente' ||
-        u.get('role') === 'Master' ||
-        u.get('master_access') === true
+        u.get('role') === 'Gerente' || u.get('role') === 'Master' || u.get('master_access') === true
       )
     })
 

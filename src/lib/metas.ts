@@ -3,7 +3,7 @@ import type { UserTargetRecord } from '@/services/user-targets'
 import { TIMEZONE } from '@/lib/timezone'
 
 /** Funções/papéis com permissão de gestão sobre metas. */
-export const MANAGER_ROLES = ['Gerentes', 'Supervisores', 'Líderes', 'Master']
+export const MANAGER_ROLES = ['Gerente', 'Supervisor', 'Líder', 'Master']
 
 export function canManageTargets(role?: string, masterAccess?: boolean): boolean {
   if (!role) return false

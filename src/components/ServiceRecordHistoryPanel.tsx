@@ -13,7 +13,7 @@ const FIELD_LABELS: Record<string, string> = {
   contact_reason: 'Motivo de contato',
   channel: 'Canal',
   client: 'Cliente',
-  account_executive: 'Executivo de contas',
+  account_executive: 'Executivo de Contas',
   assigned_agent: 'Agente',
   assigned_user: 'Responsável',
   avoidable_contact: 'Contato evitável',

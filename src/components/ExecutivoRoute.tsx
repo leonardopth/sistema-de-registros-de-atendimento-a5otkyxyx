@@ -14,7 +14,7 @@ export function ExecutivoRoute({ children }: { children: ReactNode }) {
     )
   }
 
-  if (user?.role !== 'Executivo de contas' && user?.role !== 'Master') {
+  if (user?.role !== 'Executivo de Contas' && user?.role !== 'Master') {
     return <Navigate to="/" replace />
   }
 

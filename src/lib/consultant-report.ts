@@ -15,7 +15,7 @@ export function computeConsultantStats(
   users: UserRecord[],
 ): ConsultantStat[] {
   const userMap = new Map(users.map((u) => [u.id, u]))
-  const consultants = users.filter((u) => u.role === 'Consultores')
+  const consultants = users.filter((u) => u.role === 'Consultor')
   const map = new Map<string, ServiceRecord[]>()
 
   // Inicializa mapa para todos os consultores cadastrados (para que mesmo consultores com 0 atendimentos apareçam)
@@ -47,7 +47,7 @@ export function filterConsultantsByAccess(stats: ConsultantStat[], user: any): C
   if (!user) return []
   // Usuários com papel "Master" ou permissão master_access visualizam TODOS os consultores sem restrição
   if (isMasterUser(user)) return stats
-  // Gestão/Liderança (Gerentes, Supervisores, Líderes) visualiza consultores dos seus grupos de atendimento
+  // Gestão/Liderança (Gerente, Supervisor, Líder) visualiza consultores dos seus grupos de atendimento
   if (isManagerUser(user)) {
     const groups = getUserServiceGroups(user)
     if (groups.length === 0) return stats

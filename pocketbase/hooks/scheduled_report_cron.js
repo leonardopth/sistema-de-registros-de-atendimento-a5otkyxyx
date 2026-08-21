@@ -28,12 +28,7 @@ cronAdd('0 11 * * *', function () {
       var role = userRec.getString('role')
 
       var records
-      if (
-        role === 'Master' ||
-        role === 'Gerente' ||
-        role === 'Supervisor' ||
-        role === 'Líder'
-      ) {
+      if (role === 'Master' || role === 'Gerente' || role === 'Supervisor' || role === 'Líder') {
         records = $app.findRecordsByFilter('service_records', '', '-created', 500, 0)
       } else {
         records = $app.findRecordsByFilter(

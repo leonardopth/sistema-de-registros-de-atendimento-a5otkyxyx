@@ -17,7 +17,7 @@ interface CommercialBasesManagerProps {
 
 export function CommercialBasesManager({ users, onSaved }: CommercialBasesManagerProps) {
   const targetUsers = users.filter(
-    (u) => u.role === 'Gestor Comercial' || u.role === 'Executivo de contas',
+    (u) => u.role === 'Gestor Comercial' || u.role === 'Executivo de Contas',
   )
   const [editingId, setEditingId] = useState<string | null>(null)
   const [bases, setBases] = useState<string[]>([])
@@ -49,7 +49,7 @@ export function CommercialBasesManager({ users, onSaved }: CommercialBasesManage
       <div className="flex items-center gap-2 mb-4">
         <Building className="h-5 w-5 text-indigo-600" />
         <h3 className="text-sm font-bold text-slate-800">
-          Gestores Comerciais e Executivos — Bases
+          Gestor Comercial e Executivo de Contas — Bases
         </h3>
       </div>
       <div className="space-y-3">

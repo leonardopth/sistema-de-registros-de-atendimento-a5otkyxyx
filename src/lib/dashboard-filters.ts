@@ -57,7 +57,7 @@ export function filterByUserAccess(
   if (!user) return []
   if (user.role === 'Master' || user.master_access) return records
   const userServiceGroups = (user.service_groups as string[] | undefined) || []
-  const isManager = ['Gerentes', 'Supervisores', 'Líderes'].includes(user.role || '')
+  const isManager = ['Gerente', 'Supervisor', 'Líder'].includes(user.role || '')
   if (userServiceGroups.length === 0) return records
 
   const companyToGroup = new Map<string, string>()

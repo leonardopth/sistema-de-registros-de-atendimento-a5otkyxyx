@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 
-const MANAGER_ROLES = ['Gerentes', 'Supervisores', 'Líderes']
+const MANAGER_ROLES = ['Gerente', 'Supervisor', 'Líder']
 
 export function ManagerRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()

@@ -29,7 +29,7 @@ export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
       .then(([u, t, g]) => {
         if (!active) return
         const internal = u.filter((item) =>
-          ['Consultores', 'Líderes', 'Supervisores', 'Gerentes'].includes(item.role),
+          ['Consultor', 'Líder', 'Supervisor', 'Gerente'].includes(item.role),
         )
         setUsers(internal)
         setTargets(t)

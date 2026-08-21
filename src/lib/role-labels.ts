@@ -1,11 +1,11 @@
 import { UserRole } from '@/types/service_record'
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  Gerentes: 'Gerente',
-  Supervisores: 'Supervisor',
-  Líderes: 'Líder',
-  Consultores: 'Consultor',
-  'Executivo de contas': 'Executivo de contas',
+  Gerente: 'Gerente',
+  Supervisor: 'Supervisor',
+  Líder: 'Líder',
+  Consultor: 'Consultor',
+  'Executivo de Contas': 'Executivo de Contas',
   Master: 'Master',
   'Gestor Comercial': 'Gestor Comercial',
 }
