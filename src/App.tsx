@@ -25,6 +25,7 @@ import DashboardGeral from '@/pages/DashboardGeral'
 import PainelTreinamento from '@/pages/PainelTreinamento'
 import EvolucaoPosTreinamento from '@/pages/EvolucaoPosTreinamento'
 import RelatorioConsultor from '@/pages/RelatorioConsultor'
+import ComparativoAgentes from '@/pages/ComparativoAgentes'
 import Auditoria from '@/pages/Auditoria'
 import MetasDesempenho from '@/pages/MetasDesempenho'
 import Login from '@/pages/Login'
@@ -63,6 +64,14 @@ const App = () => (
               <Route path="/evolucao-treinamento" element={<EvolucaoPosTreinamento />} />
               <Route path="/relatorio-consultor" element={<RelatorioConsultor />} />
               <Route path="/dashboard-geral" element={<DashboardGeral />} />
+              <Route
+                path="/comparativo"
+                element={
+                  <ManagerRoute>
+                    <ComparativoAgentes />
+                  </ManagerRoute>
+                }
+              />
               <Route path="/metas-desempenho" element={<MetasDesempenho />} />
               <Route path="/executivos" element={<ExecutivosContas />} />
               <Route

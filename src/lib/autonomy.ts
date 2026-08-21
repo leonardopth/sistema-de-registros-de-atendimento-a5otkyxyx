@@ -65,6 +65,8 @@ export interface AutonomyEvolutionPoint {
   autonomyRate: number
   total: number
   avoidable: number
+  threshold?: number
+  isAboveThreshold?: boolean
 }
 
 const MONTH_LABELS: Record<string, string> = {
@@ -85,6 +87,8 @@ const MONTH_LABELS: Record<string, string> = {
 export function computeAutonomyEvolution(
   records: ServiceRecord[],
   clientKey: string,
+  thresholdTarget = 80,
+  monthsCount = 12,
 ): AutonomyEvolutionPoint[] {
   const clientRecords = records.filter(
     (r) => (r.client_company || r.client_name || 'Desconhecido') === clientKey,
@@ -101,16 +105,30 @@ export function computeAutonomyEvolution(
     if (r.avoidable_contact) entry.avoidable++
   })
 
-  return Array.from(monthMap.entries())
-    .map(([month, v]) => {
-      const [year, mon] = month.split('-')
-      return {
-        month,
-        monthLabel: `${MONTH_LABELS[mon] || mon}/${year.slice(2)}`,
-        autonomyRate: v.total > 0 ? Math.round(((v.total - v.avoidable) / v.total) * 100) : 100,
-        total: v.total,
-        avoidable: v.avoidable,
-      }
+  // Gera lista dos últimos 12 meses corridos para ter uma evolução contínua
+  const now = new Date()
+  const result: AutonomyEvolutionPoint[] = []
+
+  for (let i = monthsCount - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1, 12, 0, 0))
+    const yyyy = d.getUTCFullYear()
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const monthKey = `${yyyy}-${mm}`
+    const v = monthMap.get(monthKey) || { total: 0, avoidable: 0 }
+    // Se não há atendimentos no mês, a autonomia pode ser considerada 100% (sem contatos) ou baseada no histórico
+    const autonomyRate = v.total > 0 ? Math.round(((v.total - v.avoidable) / v.total) * 100) : 100
+    const isAboveThreshold = autonomyRate >= thresholdTarget
+
+    result.push({
+      month: monthKey,
+      monthLabel: `${MONTH_LABELS[mm] || mm}/${String(yyyy).slice(2)}`,
+      autonomyRate,
+      total: v.total,
+      avoidable: v.avoidable,
+      threshold: thresholdTarget,
+      isAboveThreshold,
     })
-    .sort((a, b) => a.month.localeCompare(b.month))
+  }
+
+  return result
 }

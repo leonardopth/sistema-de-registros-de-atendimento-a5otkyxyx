@@ -35,7 +35,9 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
-import { getUsers } from '@/services/users'
+import { getUsers, updateEmailNotifications } from '@/services/users'
+import { Switch } from '@/components/ui/switch'
+import { Mail, BellRing } from 'lucide-react'
 import { getServiceRecords } from '@/services/service_records'
 import { getUserTargets, deleteUserTarget, type UserTargetRecord } from '@/services/user-targets'
 import { getGlobalTarget } from '@/services/global-targets'
@@ -100,6 +102,40 @@ export default function MetasDesempenho() {
   const [historyUser, setHistoryUser] = useState<UserRecord | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState<boolean>(
+    user?.email_notifications !== false,
+  )
+  const [updatingNotifications, setUpdatingNotifications] = useState(false)
+
+  // Sincroniza estado de notificações do perfil do usuário
+  useEffect(() => {
+    if (user) {
+      setEmailNotificationsEnabled(user.email_notifications !== false)
+    }
+  }, [user])
+
+  const handleToggleEmailNotifications = async (checked: boolean) => {
+    if (!user?.id) return
+    setUpdatingNotifications(true)
+    try {
+      await updateEmailNotifications(user.id, checked)
+      setEmailNotificationsEnabled(checked)
+      toast({
+        title: checked ? 'Notificações por e-mail ativadas' : 'Notificações por e-mail desativadas',
+        description: checked
+          ? 'Você receberá alertas diários caso algum colaborador atinja níveis críticos de desempenho.'
+          : 'Você não receberá mais os e-mails diários de alertas críticos.',
+      })
+    } catch (err) {
+      console.error(err)
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar preferência de e-mail',
+      })
+    } finally {
+      setUpdatingNotifications(false)
+    }
+  }
 
   // Filtros em colunas
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
@@ -416,6 +452,50 @@ export default function MetasDesempenho() {
           </Button>
         </div>
       </div>
+
+      {/* Card de Configuração de Notificações por E-mail */}
+      <Card className="border-slate-200 bg-white shadow-subtle">
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0">
+              <Mail className="h-5 w-5 text-indigo-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold text-slate-900">
+                  Notificações por e-mail para alertas críticos
+                </p>
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    'text-[10px] h-4 px-1.5',
+                    emailNotificationsEnabled
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-slate-100 text-slate-500',
+                  )}
+                >
+                  {emailNotificationsEnabled ? 'Ativo' : 'Desativado'}
+                </Badge>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Envio diário às 8h com colaboradores abaixo de 50% da meta de atendimentos ou taxa
+                de resolução mais de 20 p.p. abaixo do mínimo.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+            <span className="text-xs text-slate-600 font-medium">
+              {emailNotificationsEnabled ? 'Receber alertas diários' : 'Silenciado'}
+            </span>
+            <Switch
+              checked={emailNotificationsEnabled}
+              onCheckedChange={handleToggleEmailNotifications}
+              disabled={updatingNotifications}
+              aria-label="Ativar/desativar notificações por e-mail de alertas críticos"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Card da Meta Global */}
       <Card className="border-indigo-200 bg-indigo-50/40 shadow-subtle">

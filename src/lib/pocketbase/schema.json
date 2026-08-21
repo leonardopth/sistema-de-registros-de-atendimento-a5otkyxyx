@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T15:30:00.421Z",
+  "generatedAt": "2026-08-21T15:49:37.292Z",
   "collections": [
     {
       "name": "users",
@@ -113,6 +113,12 @@
         {
           "name": "departments",
           "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email_notifications",
+          "type": "bool",
           "required": false,
           "system": false
         }

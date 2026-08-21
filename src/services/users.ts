@@ -104,6 +104,12 @@ export async function updateTelegramSettings(userId: string, telegramId: string,
   })
 }
 
+export async function updateEmailNotifications(userId: string, enabled: boolean) {
+  return await pb.collection('users').update(userId, {
+    email_notifications: enabled,
+  })
+}
+
 export async function deleteUser(id: string) {
   try {
     await createAuditLog({

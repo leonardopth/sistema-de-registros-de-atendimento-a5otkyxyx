@@ -52,6 +52,13 @@ const NAV_ITEMS: NavItem[] = [
     icon: BarChart3,
     visible: (r) => MANAGER_ROLES.includes(r),
   },
+  {
+    label: 'Comparativo',
+    to: '/comparativo',
+    icon: BarChart3,
+    visible: (r, masterAccess) =>
+      MANAGER_ROLES.includes(r) || r === 'Master' || masterAccess === true,
+  },
   { label: 'Dashboard Geral', to: '/dashboard-geral', icon: PieChart, visible: () => true },
   {
     label: 'Relatório Consultor',

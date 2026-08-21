@@ -7,7 +7,10 @@ export function ManagerRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
 
   if (loading) return null
-  if (!user || !MANAGER_ROLES.includes(user.role)) {
+  if (!user) return <Navigate to="/" replace />
+  const hasAccess =
+    MANAGER_ROLES.includes(user.role) || user.role === 'Master' || user.master_access === true
+  if (!hasAccess) {
     return <Navigate to="/" replace />
   }
   return <>{children}</>

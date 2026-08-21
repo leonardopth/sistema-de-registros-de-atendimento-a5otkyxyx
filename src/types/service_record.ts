@@ -107,6 +107,7 @@ export interface UserRecord {
   approved_at?: string
   service_groups?: ServiceGroup[]
   bases?: CommercialBase[]
+  email_notifications?: boolean
 }
 
 export interface ClientRecord {
