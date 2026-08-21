@@ -69,6 +69,8 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
 
   const isAtendimento = ATENDIMENTO_ROLES.includes(role as UserRole)
   const isVendas = VENDAS_ROLES.includes(role as UserRole)
+  const hideDepartment =
+    role === 'Gerente' || role === 'Executivo de Contas' || role === 'Gestor Comercial'
 
   const reset = () => {
     setName('')
@@ -104,7 +106,7 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
       toast({ variant: 'destructive', title: 'Preencha todos os campos obrigatórios' })
       return
     }
-    if (departments.length === 0) {
+    if (!hideDepartment && departments.length === 0) {
       setFieldErrors((prev) => ({
         ...prev,
         departments: 'Selecione pelo menos um departamento (Nacional ou Internacional)',
@@ -125,7 +127,7 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
         password,
         passwordConfirm: password,
         role,
-        departments,
+        departments: hideDepartment ? [] : departments,
         service_groups: isAtendimento ? serviceGroups : [],
         bases: isVendas ? bases : [],
         approval_status: 'Aprovado',
@@ -223,23 +225,25 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
             </Select>
             {fieldErrors.role && <p className="text-xs text-red-500">{fieldErrors.role}</p>}
           </div>
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold">Departamento *</Label>
-            <div className="flex items-center gap-6 pt-1">
-              {DEPARTMENT_OPTIONS.map((dept) => (
-                <label key={dept} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <Checkbox
-                    checked={departments.includes(dept)}
-                    onCheckedChange={() => toggleDepartment(dept)}
-                  />
-                  <span>{dept}</span>
-                </label>
-              ))}
+          {!hideDepartment && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Departamento *</Label>
+              <div className="flex items-center gap-6 pt-1">
+                {DEPARTMENT_OPTIONS.map((dept) => (
+                  <label key={dept} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={departments.includes(dept)}
+                      onCheckedChange={() => toggleDepartment(dept)}
+                    />
+                    <span>{dept}</span>
+                  </label>
+                ))}
+              </div>
+              {fieldErrors.departments && (
+                <p className="text-xs text-red-500">{fieldErrors.departments}</p>
+              )}
             </div>
-            {fieldErrors.departments && (
-              <p className="text-xs text-red-500">{fieldErrors.departments}</p>
-            )}
-          </div>
+          )}
           {isAtendimento && (
             <div className="space-y-2">
               <Label className="text-xs font-semibold">Grupos de Atendimento</Label>

@@ -100,6 +100,8 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
 
   const isAtendimento = ATENDIMENTO_ROLES.includes(role as UserRole)
   const isVendas = VENDAS_ROLES.includes(role as UserRole)
+  const hideDepartment =
+    role === 'Gerente' || role === 'Executivo de Contas' || role === 'Gestor Comercial'
 
   const toggleDepartment = (dept: TravelType) => {
     setDepartments((prev) =>
@@ -121,7 +123,7 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
 
   const handleSave = async () => {
     if (!user || !name.trim()) return
-    if (departments.length === 0) {
+    if (!hideDepartment && departments.length === 0) {
       setFieldErrors((prev) => ({
         ...prev,
         departments: 'Selecione pelo menos um departamento (Nacional ou Internacional)',
@@ -139,7 +141,7 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
       await updateUser(user.id, {
         name: name.trim(),
         role: role as UserRole,
-        departments,
+        departments: hideDepartment ? [] : departments,
         approval_status: approvalStatus,
       })
       if (email.trim() !== user.email) {
@@ -226,23 +228,25 @@ export function EditUserDialog({ user, open, onOpenChange, onSuccess }: EditUser
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold">Departamento *</Label>
-            <div className="flex items-center gap-6 pt-1">
-              {DEPARTMENT_OPTIONS.map((dept) => (
-                <label key={dept} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <Checkbox
-                    checked={departments.includes(dept)}
-                    onCheckedChange={() => toggleDepartment(dept)}
-                  />
-                  <span>{dept}</span>
-                </label>
-              ))}
+          {!hideDepartment && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Departamento *</Label>
+              <div className="flex items-center gap-6 pt-1">
+                {DEPARTMENT_OPTIONS.map((dept) => (
+                  <label key={dept} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={departments.includes(dept)}
+                      onCheckedChange={() => toggleDepartment(dept)}
+                    />
+                    <span>{dept}</span>
+                  </label>
+                ))}
+              </div>
+              {fieldErrors.departments && (
+                <p className="text-xs text-red-500">{fieldErrors.departments}</p>
+              )}
             </div>
-            {fieldErrors.departments && (
-              <p className="text-xs text-red-500">{fieldErrors.departments}</p>
-            )}
-          </div>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Status de Aprovação</Label>
             <Select
