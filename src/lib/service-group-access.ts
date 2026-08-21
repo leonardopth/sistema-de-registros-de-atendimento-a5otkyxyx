@@ -15,9 +15,9 @@ export function isManagerUser(user: UserRecord | null): boolean {
   if (!user) return false
   return (
     isMasterUser(user) ||
-    user.role === 'Gerentes' ||
-    user.role === 'Supervisores' ||
-    user.role === 'Líderes'
+    user.role === 'Gerente' ||
+    user.role === 'Supervisor' ||
+    user.role === 'Líder'
   )
 }
 
