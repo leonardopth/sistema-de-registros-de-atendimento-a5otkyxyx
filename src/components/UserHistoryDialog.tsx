@@ -9,8 +9,14 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import type { UserRecord, ServiceRecord } from '@/types/service_record'
-import { buildUserHistory, STATUS_STYLES, type EffectiveTarget, type HistoryRow } from '@/lib/metas'
-import { History, UserCheck } from 'lucide-react'
+import {
+  buildUserHistory,
+  isLeadershipRole,
+  STATUS_STYLES,
+  type EffectiveTarget,
+  type HistoryRow,
+} from '@/lib/metas'
+import { History, UserCheck, Users2 } from 'lucide-react'
 
 interface UserHistoryDialogProps {
   open: boolean
@@ -18,6 +24,7 @@ interface UserHistoryDialogProps {
   user: UserRecord | null
   records: ServiceRecord[]
   effective: EffectiveTarget | null
+  allUsers?: UserRecord[]
 }
 
 export function UserHistoryDialog({
@@ -26,26 +33,53 @@ export function UserHistoryDialog({
   user,
   records,
   effective,
+  allUsers,
 }: UserHistoryDialogProps) {
   if (!user || !effective) return null
 
-  const history: HistoryRow[] = buildUserHistory(user.id, records, effective, 12)
+  const isLeader = isLeadershipRole(user.role)
+  const history: HistoryRow[] = buildUserHistory(
+    user.id,
+    records,
+    effective,
+    12,
+    undefined,
+    allUsers,
+  )
   const hits = history.filter((h) => h.hit).length
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[750px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-indigo-950 font-bold text-base">
-            <History className="h-5 w-5 text-indigo-600" />
-            Histórico de Metas — {user.name} ({user.role})
-          </DialogTitle>
-          <div className="flex items-center gap-2 pt-1 text-xs text-slate-500">
-            <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
-            <span>
-              Atingiu as metas em <strong>{hits}</strong> de <strong>{history.length}</strong> meses
-              avaliados
-            </span>
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle className="flex items-center gap-2 text-indigo-950 font-bold text-base">
+              <History className="h-5 w-5 text-indigo-600" />
+              Histórico de Metas — {user.name} ({user.role})
+            </DialogTitle>
+            {isLeader && (
+              <Badge
+                variant="secondary"
+                className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs"
+              >
+                <Users2 className="h-3 w-3 mr-1" />
+                Agregado da Equipe
+              </Badge>
+            )}
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pt-1 text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
+              <span>
+                Atingiu as metas em <strong>{hits}</strong> de <strong>{history.length}</strong>{' '}
+                meses avaliados
+              </span>
+            </div>
+            {isLeader && (
+              <span className="text-[11px] text-indigo-600 italic">
+                * Valores consolidados de todos os colaboradores da equipe
+              </span>
+            )}
           </div>
         </DialogHeader>
 

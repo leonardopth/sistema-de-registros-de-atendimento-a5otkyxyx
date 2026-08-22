@@ -238,14 +238,32 @@ export default function Index() {
   const teamUsers = useMemo(() => {
     if (!user) return []
     const userGroups = (user.service_groups as string[] | undefined) || []
-    if (userGroups.length === 0) {
-      return users.filter((u) => u.role === 'Consultor')
-    }
-    return users.filter((u) => {
-      if (u.role !== 'Consultor') return false
-      const groups = (u.service_groups as string[] | undefined) || []
-      return groups.some((g) => userGroups.includes(g))
+    const teamMap = new Map<string, UserRecord>()
+
+    users.forEach((u) => {
+      if (u.id === user.id) return
+
+      // Vínculo direto por supervisor_id
+      const supId = (u as any).supervisor_id
+      if (supId && supId === user.id) {
+        teamMap.set(u.id, u)
+        return
+      }
+
+      // Mesmo grupo de serviço
+      if (userGroups.length > 0) {
+        const uGroups = (u.service_groups as string[] | undefined) || []
+        if (uGroups.some((g) => userGroups.includes(g))) {
+          teamMap.set(u.id, u)
+        }
+      } else {
+        if (u.role === 'Consultor' || u.role === ('Consultores' as any)) {
+          teamMap.set(u.id, u)
+        }
+      }
     })
+
+    return Array.from(teamMap.values())
   }, [users, user])
 
   const teamRecords = useMemo(() => {

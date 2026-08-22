@@ -52,7 +52,9 @@ import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import {
   canManageTargets,
-  computeCurrentMonthStats,
+  isLeadershipRole,
+  getTeamMembersForLeader,
+  computeEffectiveStatsByUsers,
   resolveEffectiveTarget,
   getAttendanceStatus,
   getResolutionStatus,
@@ -68,6 +70,7 @@ import {
   type Status,
   type SentimentLogItem,
 } from '@/lib/metas'
+import { Users2, User } from 'lucide-react'
 import { exportMetasCSV, exportMetasPDF } from '@/lib/metas-export'
 
 function ProgressBar({ value, max, status }: { value: number; max: number; status: Status }) {
@@ -155,9 +158,19 @@ export default function MetasDesempenho() {
         getEmailLogs().catch(() => [] as EmailLogRecord[]),
         getCallAnalysisLogs().catch(() => [] as CallAnalysisLogRecord[]),
       ])
-      // Filtra usuários que são colaboradores internos
+      // Filtra usuários que são colaboradores internos e lideranças operacionais
       const internalUsers = u.filter((item) =>
-        ['Consultores', 'Líderes', 'Supervisores', 'Gerentes'].includes(item.role),
+        [
+          'Consultor',
+          'Líder',
+          'Supervisor',
+          'Gerente',
+          'Gestor Comercial',
+          'Consultores',
+          'Líderes',
+          'Supervisores',
+          'Gerentes',
+        ].includes(item.role),
       )
       setUsers(internalUsers)
       setTargets(t)
@@ -197,8 +210,8 @@ export default function MetasDesempenho() {
   useRealtime('call_analysis_logs', () => loadData())
 
   const realByUser = useMemo(
-    () => computeCurrentMonthStats(records, sentimentLogs),
-    [records, sentimentLogs],
+    () => computeEffectiveStatsByUsers(users, records, sentimentLogs),
+    [users, records, sentimentLogs],
   )
 
   const effectiveByUser = useMemo(() => {
@@ -262,11 +275,15 @@ export default function MetasDesempenho() {
         )
         const overall = getOverallStatus(attendanceStatus, resolutionStatus)
         const sourceLabel = eff?.source === 'individual' ? 'Individual' : 'Global'
+        const isLeader = isLeadershipRole(colab.role)
+        const teamMembers = isLeader ? getTeamMembersForLeader(colab, users) : [colab]
         return {
           user: colab,
           effective: eff,
           targetRecord: eff?.targetRecord,
           real,
+          isLeader,
+          teamMembers,
           attendanceStatus,
           resolutionStatus,
           responseTimeStatus,
@@ -630,6 +647,8 @@ export default function MetasDesempenho() {
                       effective,
                       targetRecord,
                       real,
+                      isLeader,
+                      teamMembers,
                       attendanceStatus,
                       responseTimeStatus,
                       autoCatStatus,
@@ -646,18 +665,38 @@ export default function MetasDesempenho() {
                                 ({colab.role})
                               </span>
                             </div>
-                            <Badge
-                              variant="secondary"
-                              className={cn(
-                                'mt-1 text-[9px] h-4 px-1.5',
-                                isIndividual
-                                  ? 'bg-indigo-100 text-indigo-700'
-                                  : 'bg-slate-100 text-slate-500',
+                            <div className="flex flex-wrap items-center gap-1 mt-1">
+                              {isLeader ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[9px] h-4 px-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                  title={`Métricas consolidadas da equipe (${teamMembers.length} pessoas)`}
+                                >
+                                  <Users2 className="h-2.5 w-2.5 mr-1" />
+                                  Equipe ({teamMembers.length})
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[9px] h-4 px-1.5 bg-slate-50 text-slate-600 border border-slate-200"
+                                >
+                                  <User className="h-2.5 w-2.5 mr-1" />
+                                  Individual
+                                </Badge>
                               )}
-                            >
-                              <Globe className="h-2.5 w-2.5 mr-0.5" />
-                              {isIndividual ? 'Individual' : 'Global'}
-                            </Badge>
+                              <Badge
+                                variant="secondary"
+                                className={cn(
+                                  'text-[9px] h-4 px-1.5',
+                                  isIndividual
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-slate-100 text-slate-500',
+                                )}
+                              >
+                                <Globe className="h-2.5 w-2.5 mr-0.5" />
+                                {isIndividual ? 'Meta Própria' : 'Meta Global'}
+                              </Badge>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-between mb-1">
@@ -844,6 +883,7 @@ export default function MetasDesempenho() {
         user={historyUser}
         records={records}
         effective={historyUser ? effectiveByUser.get(historyUser.id) || null : null}
+        allUsers={users}
       />
 
       <AlertDialog open={Boolean(deleteId)} onOpenChange={(o) => !o && setDeleteId(null)}>

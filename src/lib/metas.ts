@@ -5,6 +5,22 @@ import { TIMEZONE } from '@/lib/timezone'
 /** Funções/papéis com permissão de gestão sobre metas. */
 export const MANAGER_ROLES = ['Gerente', 'Supervisor', 'Líder', 'Master']
 
+/** Cargos de liderança cujas métricas de metas são calculadas pela consolidação/somatória da equipe */
+export const LEADERSHIP_ROLES = [
+  'Supervisor',
+  'Líder',
+  'Gerente',
+  'Gestor Comercial',
+  'Supervisores',
+  'Líderes',
+  'Gerentes',
+]
+
+export function isLeadershipRole(role?: string): boolean {
+  if (!role) return false
+  return LEADERSHIP_ROLES.includes(role)
+}
+
 export function canManageTargets(role?: string, masterAccess?: boolean): boolean {
   if (!role) return false
   if (MANAGER_ROLES.includes(role)) return true
@@ -131,6 +147,53 @@ export interface UserRealStats {
   avgSatisfactionScore: number // pontuação média de qualidade/satisfação (0-100)
   positiveSentimentCount: number
   totalFeedbackCount: number
+  isTeamConsolidated?: boolean
+  teamMemberCount?: number
+}
+
+/**
+ * Retorna os IDs dos membros da equipe sob liderança de um usuário (supervisor, líder, gerente).
+ * Regra:
+ * - Se for cargo de liderança: membros que têm o líder como supervisor_id ou pertencem ao mesmo grupo de serviço sob gestão do líder.
+ * - Caso o líder não tenha grupos restritos, inclui os consultores/liderados.
+ * - Caso não seja líder, retorna apenas o próprio ID do usuário.
+ */
+export function getTeamMembersForLeader(leader: UserRecord, allUsers: UserRecord[]): UserRecord[] {
+  if (!isLeadershipRole(leader.role)) {
+    return [leader]
+  }
+
+  const leaderGroups = (leader.service_groups as string[] | undefined) || []
+  const teamMap = new Map<string, UserRecord>()
+  // Sempre inclui o próprio líder
+  teamMap.set(leader.id, leader)
+
+  for (const other of allUsers) {
+    if (other.id === leader.id) continue
+
+    // 1. Vínculo direto por supervisor_id
+    const otherSupervisorId = (other as any).supervisor_id
+    if (otherSupervisorId && otherSupervisorId === leader.id) {
+      teamMap.set(other.id, other)
+      continue
+    }
+
+    // 2. Mesmos grupos de serviço sob gestão do líder
+    if (leaderGroups.length > 0) {
+      const otherGroups = (other.service_groups as string[] | undefined) || []
+      const hasCommonGroup = otherGroups.some((g) => leaderGroups.includes(g))
+      if (hasCommonGroup) {
+        teamMap.set(other.id, other)
+      }
+    } else {
+      // Líder geral sem grupos específicos — equipe abrange consultores
+      if (other.role === 'Consultor' || other.role === ('Consultores' as any)) {
+        teamMap.set(other.id, other)
+      }
+    }
+  }
+
+  return Array.from(teamMap.values())
 }
 
 export interface SentimentLogItem {
@@ -239,6 +302,119 @@ export function computeCurrentMonthStats(
 ): Map<string, UserRealStats> {
   const now = currentGMT3Date()
   return computeStatsByUserForMonth(records, now.year, now.month, sentimentLogs)
+}
+
+/**
+ * Consolida estatísticas agregadas (somatória e médias ponderadas) da equipe de um líder
+ * a partir do mapa de estatísticas individuais.
+ */
+export function aggregateTeamStats(
+  teamMembers: UserRecord[],
+  individualStatsMap: Map<string, UserRealStats>,
+): UserRealStats {
+  let total = 0
+  let resolved = 0
+  let avoidableCount = 0
+  let autoCategorizedCount = 0
+  let totalDurationWeight = 0
+  let totalCategorizationAccuracyWeight = 0
+  let totalSatisfactionWeight = 0
+  let positiveSentimentCount = 0
+  let totalFeedbackCount = 0
+
+  for (const member of teamMembers) {
+    const memberStat = individualStatsMap.get(member.id)
+    if (!memberStat) continue
+
+    total += memberStat.total
+    resolved += memberStat.resolved
+    avoidableCount += memberStat.avoidableCount
+    autoCategorizedCount += memberStat.autoCategorizedCount
+    totalDurationWeight += memberStat.avgDuration * memberStat.total
+    totalCategorizationAccuracyWeight += memberStat.categorizationAccuracy * memberStat.total
+    totalSatisfactionWeight += memberStat.avgSatisfactionScore * memberStat.total
+    positiveSentimentCount += memberStat.positiveSentimentCount
+    totalFeedbackCount += memberStat.totalFeedbackCount
+  }
+
+  const rate = total > 0 ? Math.round((resolved / total) * 100) : 0
+  const avoidableRate = total > 0 ? Math.round((avoidableCount / total) * 100) : 0
+  const avgDuration = total > 0 ? Number((totalDurationWeight / total).toFixed(1)) : 0
+  const autoCategorizedRate = total > 0 ? Math.round((autoCategorizedCount / total) * 100) : 0
+  const categorizationAccuracy =
+    total > 0
+      ? Math.round(totalCategorizationAccuracyWeight / total)
+      : autoCategorizedCount > 0
+        ? Math.max(75, Math.min(99, Math.round(100 - avoidableRate * 0.4)))
+        : 85
+
+  let avgSatisfactionScore = 90
+  if (totalFeedbackCount > 0) {
+    const sentimentScore = Math.round((positiveSentimentCount / totalFeedbackCount) * 100)
+    avgSatisfactionScore = Math.max(
+      60,
+      Math.min(100, Math.round(sentimentScore * 0.6 + rate * 0.4)),
+    )
+  } else if (total > 0) {
+    avgSatisfactionScore = Math.max(60, Math.min(100, Math.round(totalSatisfactionWeight / total)))
+  }
+
+  return {
+    total,
+    resolved,
+    rate,
+    avgDuration,
+    avoidableCount,
+    avoidableRate,
+    autoCategorizedCount,
+    autoCategorizedRate,
+    categorizationAccuracy,
+    avgSatisfactionScore,
+    positiveSentimentCount,
+    totalFeedbackCount,
+    isTeamConsolidated: true,
+    teamMemberCount: teamMembers.length,
+  }
+}
+
+/**
+ * Computa estatísticas do mês corrente aplicando agregação de equipe para cargos de liderança
+ * e mantendo individual para os demais.
+ */
+export function computeEffectiveStatsByUsers(
+  users: UserRecord[],
+  records: ServiceRecord[],
+  sentimentLogs?: SentimentLogItem[],
+): Map<string, UserRealStats> {
+  const individualStats = computeCurrentMonthStats(records, sentimentLogs)
+  const resultMap = new Map<string, UserRealStats>()
+
+  for (const u of users) {
+    if (isLeadershipRole(u.role)) {
+      const team = getTeamMembersForLeader(u, users)
+      const agg = aggregateTeamStats(team, individualStats)
+      resultMap.set(u.id, agg)
+    } else {
+      const stat = individualStats.get(u.id) || {
+        total: 0,
+        resolved: 0,
+        rate: 0,
+        avgDuration: 0,
+        avoidableCount: 0,
+        avoidableRate: 0,
+        autoCategorizedCount: 0,
+        autoCategorizedRate: 0,
+        categorizationAccuracy: 90,
+        avgSatisfactionScore: 90,
+        positiveSentimentCount: 0,
+        totalFeedbackCount: 0,
+        isTeamConsolidated: false,
+      }
+      resultMap.set(u.id, stat)
+    }
+  }
+
+  return resultMap
 }
 
 export interface MonthParts {
@@ -389,28 +565,41 @@ export function buildUserHistory(
   effective: EffectiveTarget,
   monthsBack = 12,
   sentimentLogs?: SentimentLogItem[],
+  allUsers?: UserRecord[],
 ): HistoryRow[] {
   const out: HistoryRow[] = []
   const now = currentGMT3Date()
+  const targetUser = allUsers?.find((u) => u.id === userId)
+  const isLeader = targetUser ? isLeadershipRole(targetUser.role) : false
+  const teamMembers =
+    targetUser && allUsers && isLeader ? getTeamMembersForLeader(targetUser, allUsers) : []
+
   for (let i = 0; i < monthsBack; i++) {
     const d = new Date(Date.UTC(now.year, now.month - i, 1, 12, 0, 0))
     const year = d.getUTCFullYear()
     const month = d.getUTCMonth()
     const statsMap = computeStatsByUserForMonth(records, year, month, sentimentLogs)
-    const real = statsMap.get(userId) || {
-      total: 0,
-      resolved: 0,
-      rate: 0,
-      avgDuration: 0,
-      avoidableCount: 0,
-      avoidableRate: 0,
-      autoCategorizedCount: 0,
-      autoCategorizedRate: 0,
-      categorizationAccuracy: 90,
-      avgSatisfactionScore: 90,
-      positiveSentimentCount: 0,
-      totalFeedbackCount: 0,
+
+    let real: UserRealStats
+    if (isLeader && teamMembers.length > 0) {
+      real = aggregateTeamStats(teamMembers, statsMap)
+    } else {
+      real = statsMap.get(userId) || {
+        total: 0,
+        resolved: 0,
+        rate: 0,
+        avgDuration: 0,
+        avoidableCount: 0,
+        avoidableRate: 0,
+        autoCategorizedCount: 0,
+        autoCategorizedRate: 0,
+        categorizationAccuracy: 90,
+        avgSatisfactionScore: 90,
+        positiveSentimentCount: 0,
+        totalFeedbackCount: 0,
+      }
     }
+
     const attendanceStatus = getAttendanceStatus(real.total, effective.monthly_attendance_target)
     const resolutionStatus = getResolutionStatus(real.rate, effective.min_resolution_rate)
     const overall = getOverallStatus(attendanceStatus, resolutionStatus)
@@ -434,6 +623,7 @@ export interface PerformanceAlert {
   userId: string
   userName: string
   userRole?: string
+  isLeader?: boolean
   type: 'attendance' | 'resolution'
   metricLabel: string
   realValue: number
@@ -444,7 +634,8 @@ export interface PerformanceAlert {
 }
 
 /**
- * Calcula alertas de desempenho para colaboradores:
+ * Calcula alertas de desempenho para colaboradores e lideranças:
+ * - Para cargos de liderança: as métricas avaliadas refletem o consolidado da equipe.
  * - Atendimentos: abaixo de 50% da meta do mês corrente.
  * - Resolução: taxa real > 20 p.p. abaixo do mínimo.
  */
@@ -455,10 +646,11 @@ export function computePerformanceAlerts(
   records: ServiceRecord[],
   sentimentLogs?: SentimentLogItem[],
 ): PerformanceAlert[] {
-  const stats = computeCurrentMonthStats(records, sentimentLogs)
+  const stats = computeEffectiveStatsByUsers(users, records, sentimentLogs)
   const alerts: PerformanceAlert[] = []
   for (const u of users) {
     const eff = resolveEffectiveTarget(u.id, targets, global)
+    const isLdr = isLeadershipRole(u.role)
     const real = stats.get(u.id) || {
       total: 0,
       resolved: 0,
@@ -481,8 +673,9 @@ export function computePerformanceAlerts(
           userId: u.id,
           userName: u.name,
           userRole: u.role,
+          isLeader: isLdr,
           type: 'attendance',
-          metricLabel: 'Atendimentos',
+          metricLabel: isLdr ? 'Atendimentos da Equipe' : 'Atendimentos',
           realValue: real.total,
           expectedValue: eff.monthly_attendance_target,
           realDisplay: String(real.total),
@@ -499,8 +692,9 @@ export function computePerformanceAlerts(
           userId: u.id,
           userName: u.name,
           userRole: u.role,
+          isLeader: isLdr,
           type: 'resolution',
-          metricLabel: 'Taxa de resolução',
+          metricLabel: isLdr ? 'Taxa de Resolução da Equipe' : 'Taxa de Resolução',
           realValue: real.rate,
           expectedValue: eff.min_resolution_rate,
           realDisplay: `${real.rate}%`,
@@ -522,6 +716,7 @@ export function computePerformanceAlerts(
 export interface ComparisonRow {
   userName: string
   userRole?: string
+  isLeader?: boolean
   source: 'individual' | 'global'
   attendanceTarget: number
   realAttendance: number
@@ -551,10 +746,11 @@ export function buildComparisonRows(
   records: ServiceRecord[],
   sentimentLogs?: SentimentLogItem[],
 ): ComparisonRow[] {
-  const stats = computeCurrentMonthStats(records, sentimentLogs)
+  const stats = computeEffectiveStatsByUsers(users, records, sentimentLogs)
   return users
     .map((u) => {
       const eff = resolveEffectiveTarget(u.id, targets, global)
+      const isLdr = isLeadershipRole(u.role)
       const real = stats.get(u.id) || {
         total: 0,
         resolved: 0,
@@ -591,6 +787,7 @@ export function buildComparisonRows(
       return {
         userName: u.name,
         userRole: u.role,
+        isLeader: isLdr,
         source: eff.source,
         attendanceTarget: eff.monthly_attendance_target,
         realAttendance: real.total,

@@ -18,7 +18,8 @@ import {
 } from '@/components/ui/select'
 import { createUserTarget, updateUserTarget, type UserTargetRecord } from '@/services/user-targets'
 import type { UserRecord } from '@/types/service_record'
-import { Target, Loader2 } from 'lucide-react'
+import { Target, Loader2, Users2, User } from 'lucide-react'
+import { isLeadershipRole } from '@/lib/metas'
 import { useToast } from '@/hooks/use-toast'
 
 interface UserTargetDialogProps {
@@ -142,34 +143,83 @@ export function UserTargetDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-indigo-950 font-bold">
             <Target className="h-5 w-5 text-indigo-600" />
-            {isEdit ? 'Editar Meta de Colaborador' : 'Nova Meta Individual de Colaborador'}
+            {(() => {
+              const selectedUser = users.find((u) => u.id === userId)
+              const isLeader = selectedUser ? isLeadershipRole(selectedUser.role) : false
+              if (isEdit) {
+                return isLeader ? 'Editar Meta de Líder (Equipe)' : 'Editar Meta de Colaborador'
+              }
+              return isLeader
+                ? 'Nova Meta de Líder (Equipe)'
+                : 'Nova Meta Individual de Colaborador'
+            })()}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Colaborador *</Label>
+            <Label className="text-xs">Colaborador / Líder *</Label>
             {isEdit ? (
-              <p className="text-xs font-semibold text-slate-800 p-2 bg-slate-50 border rounded-md">
-                {users.find((u) => u.id === userId)?.name || 'Colaborador selecionado'}
-              </p>
+              <div className="p-2.5 bg-slate-50 border rounded-md">
+                <p className="text-xs font-semibold text-slate-800">
+                  {users.find((u) => u.id === userId)?.name || 'Colaborador selecionado'}
+                </p>
+                {(() => {
+                  const selectedUser = users.find((u) => u.id === userId)
+                  const isLeader = selectedUser ? isLeadershipRole(selectedUser.role) : false
+                  if (isLeader) {
+                    return (
+                      <p className="text-[11px] text-indigo-700 font-medium flex items-center gap-1 mt-1">
+                        <Users2 className="h-3 w-3" />
+                        Cargo de liderança ({selectedUser?.role}): As métricas serão calculadas como
+                        a somatória da equipe.
+                      </p>
+                    )
+                  }
+                  return (
+                    <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                      <User className="h-3 w-3" />
+                      Cargo operacional ({selectedUser?.role}): Métricas individuais.
+                    </p>
+                  )
+                })()}
+              </div>
             ) : (
-              <Select value={userId} onValueChange={setUserId}>
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="Selecione um colaborador" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableUsers.map((u) => (
-                    <SelectItem key={u.id} value={u.id} className="text-xs">
-                      {u.name} ({u.role})
-                    </SelectItem>
-                  ))}
-                  {availableUsers.length === 0 && (
-                    <SelectItem value="_none" disabled className="text-xs text-slate-400">
-                      Todos os colaboradores já possuem meta individual
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              <div>
+                <Select value={userId} onValueChange={setUserId}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Selecione um colaborador ou líder" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableUsers.map((u) => (
+                      <SelectItem key={u.id} value={u.id} className="text-xs">
+                        {u.name} ({u.role})
+                      </SelectItem>
+                    ))}
+                    {availableUsers.length === 0 && (
+                      <SelectItem value="_none" disabled className="text-xs text-slate-400">
+                        Todos os colaboradores já possuem meta individual
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {(() => {
+                  const selectedUser = users.find((u) => u.id === userId)
+                  const isLeader = selectedUser ? isLeadershipRole(selectedUser.role) : false
+                  if (selectedUser && isLeader) {
+                    return (
+                      <p className="text-[11px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded p-1.5 mt-1.5 flex items-center gap-1.5">
+                        <Users2 className="h-3.5 w-3.5 shrink-0" />
+                        <span>
+                          <strong>Cargo de Liderança ({selectedUser.role}):</strong> Esta meta será
+                          avaliada com base na consolidação/somatória de toda a equipe sob sua
+                          gestão.
+                        </span>
+                      </p>
+                    )
+                  }
+                  return null
+                })()}
+              </div>
             )}
           </div>
 

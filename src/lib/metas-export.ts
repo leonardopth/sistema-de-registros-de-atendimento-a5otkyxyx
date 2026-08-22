@@ -25,6 +25,9 @@ function formatCell(row: ComparisonRow, key: keyof ComparisonRow): string {
   if (key === 'source') {
     return v === 'individual' ? 'Individual' : 'Global (padrão)'
   }
+  if (key === 'isLeader') {
+    return v ? 'Sim (Equipe)' : 'Não (Individual)'
+  }
   if (
     key === 'attendanceStatus' ||
     key === 'resolutionStatus' ||

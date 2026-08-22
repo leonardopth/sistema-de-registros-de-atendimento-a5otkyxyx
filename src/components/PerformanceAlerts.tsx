@@ -7,7 +7,13 @@ import { getUsers } from '@/services/users'
 import { getUserTargets, type UserTargetRecord } from '@/services/user-targets'
 import { getGlobalTarget } from '@/services/global-targets'
 import type { UserRecord, GlobalTargetRecord, ServiceRecord } from '@/types/service_record'
-import { computePerformanceAlerts, canManageTargets, type PerformanceAlert } from '@/lib/metas'
+import {
+  computePerformanceAlerts,
+  canManageTargets,
+  isLeadershipRole,
+  type PerformanceAlert,
+} from '@/lib/metas'
+import { Users2, User } from 'lucide-react'
 
 interface PerformanceAlertsProps {
   records: ServiceRecord[]
@@ -29,7 +35,17 @@ export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
       .then(([u, t, g]) => {
         if (!active) return
         const internal = u.filter((item) =>
-          ['Consultor', 'Líder', 'Supervisor', 'Gerente'].includes(item.role),
+          [
+            'Consultor',
+            'Líder',
+            'Supervisor',
+            'Gerente',
+            'Gestor Comercial',
+            'Consultores',
+            'Líderes',
+            'Supervisores',
+            'Gerentes',
+          ].includes(item.role),
         )
         setUsers(internal)
         setTargets(t)
@@ -72,15 +88,24 @@ export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-rose-500 mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900">
-                      {alert.userName}{' '}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-xs font-bold text-slate-900">{alert.userName}</p>
                       {alert.userRole && (
                         <span className="text-[10px] text-slate-400 font-normal">
                           ({alert.userRole})
                         </span>
                       )}
-                    </p>
-                    <p className="text-[11px] text-slate-600">
+                      {alert.isLeader && (
+                        <Badge
+                          variant="secondary"
+                          className="text-[9px] h-3.5 px-1 bg-indigo-50 text-indigo-700 border border-indigo-200"
+                        >
+                          <Users2 className="h-2.5 w-2.5 mr-0.5" />
+                          Meta da Equipe
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
                       {alert.metricLabel}:{' '}
                       <span className="font-semibold text-rose-600">{alert.realDisplay}</span> vs
                       esperado{' '}
@@ -91,8 +116,8 @@ export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
                       className="mt-1 text-[9px] h-4 bg-rose-100 text-rose-700"
                     >
                       {alert.type === 'attendance'
-                        ? `Atendimentos (${Math.round(alert.ratio * 100)}% da meta)`
-                        : `${Math.round(alert.ratio)} p.p. abaixo do mínimo`}
+                        ? `${alert.isLeader ? 'Equipe com' : 'Atendimentos'} (${Math.round(alert.ratio * 100)}% da meta)`
+                        : `${Math.round(alert.ratio)} p.p. abaixo do mínimo da equipe`}
                     </Badge>
                   </div>
                 </div>

@@ -73,6 +73,81 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
       }
     }
 
+    // Mapeamento de usuários e grupos para consolidar equipes de líderes
+    var leadershipRoles = [
+      'Supervisor',
+      'Líder',
+      'Gerente',
+      'Gestor Comercial',
+      'Supervisores',
+      'Líderes',
+      'Gerentes',
+    ]
+    function isLeaderRole(role) {
+      if (!role) return false
+      for (var lIdx = 0; lIdx < leadershipRoles.length; lIdx++) {
+        if (leadershipRoles[lIdx] === role) return true
+      }
+      return false
+    }
+
+    // Identificar membros da equipe para cada líder
+    // Membros da equipe = consultores/colaboradores que compartilham os mesmos grupos de atendimento ou cujo supervisor_id é o líder
+    function getTeamUserIds(leader) {
+      var leaderId = leader.id
+      var leaderRole = leader.getString('role') || ''
+      var isLdr = isLeaderRole(leaderRole)
+      if (!isLdr) return [leaderId]
+
+      var lGroups = leader.get('service_groups') || []
+      var memberIds = {}
+      memberIds[leaderId] = true
+
+      for (var j = 0; j < users.length; j++) {
+        var otherUser = users[j]
+        var otherId = otherUser.id
+        var otherRole = otherUser.getString('role') || ''
+
+        // Checa se outro usuário tem supervisor_id apontando para o líder (se campo existir)
+        var supId = otherUser.getString('supervisor_id')
+        if (supId && supId === leaderId) {
+          memberIds[otherId] = true
+          continue
+        }
+
+        // Se o líder tem grupos de serviço definidos, inclui colaboradores que pertencem ao mesmo grupo
+        if (lGroups && lGroups.length > 0) {
+          var oGroups = otherUser.get('service_groups') || []
+          var hasCommonGroup = false
+          for (var g1 = 0; g1 < lGroups.length; g1++) {
+            for (var g2 = 0; g2 < oGroups.length; g2++) {
+              if (lGroups[g1] === oGroups[g2]) {
+                hasCommonGroup = true
+                break
+              }
+            }
+            if (hasCommonGroup) break
+          }
+          if (hasCommonGroup) {
+            memberIds[otherId] = true
+          }
+        } else {
+          // Se o líder (ex: Gerente geral) não tem grupos específicos filtrados, a equipe abrange todos os consultores/liderados
+          if (otherRole === 'Consultor' || otherRole === 'Consultores') {
+            memberIds[otherId] = true
+          }
+        }
+      }
+
+      var resultList = []
+      for (var k in memberIds) {
+        if (memberIds.hasOwnProperty(k)) {
+          resultList.push(k)
+        }
+      }
+      return resultList
+    }
+
     // 5. Detectar alertas críticos
     var alerts = []
     for (var uIdx = 0; uIdx < users.length; uIdx++) {
@@ -80,6 +155,7 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
       var userId = usr.id
       var userName = usr.getString('name') || 'Colaborador'
       var userRole = usr.getString('role') || ''
+      var isLdr = isLeaderRole(userRole)
 
       var effAttendance = targetsByUser[userId]
         ? targetsByUser[userId].attendanceTarget
@@ -88,21 +164,33 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
         ? targetsByUser[userId].minResolution
         : globalMinResolution
 
-      var userStats = statsByUser[userId] || { total: 0, resolved: 0 }
-      var realTotal = userStats.total
-      var realRate = realTotal > 0 ? Math.round((userStats.resolved / realTotal) * 100) : 0
+      var teamIds = getTeamUserIds(usr)
+      var realTotal = 0
+      var realResolved = 0
+
+      for (var tIdx = 0; tIdx < teamIds.length; tIdx++) {
+        var mId = teamIds[tIdx]
+        var mStats = statsByUser[mId]
+        if (mStats) {
+          realTotal += mStats.total
+          realResolved += mStats.resolved
+        }
+      }
+
+      var realRate = realTotal > 0 ? Math.round((realResolved / realTotal) * 100) : 0
+      var teamSuffix = isLdr ? ' (Equipe)' : ''
 
       // Alerta 1: Menos de 50% da meta de atendimentos
       if (effAttendance > 0) {
         var ratio = realTotal / effAttendance
         if (ratio < 0.5) {
           alerts.push({
-            userName: userName,
+            userName: userName + (isLdr ? ' (Meta da Equipe)' : ''),
             userRole: userRole,
-            metric: 'Atendimentos',
+            metric: 'Atendimentos' + teamSuffix,
             realValue: String(realTotal) + ' atendimentos',
             expectedValue: String(effAttendance) + ' atendimentos',
-            detail: Math.round(ratio * 100) + '% da meta esperada',
+            detail: Math.round(ratio * 100) + '% da meta da equipe esperada',
           })
         }
       }
@@ -112,12 +200,12 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
         var diff = effResolution - realRate
         if (diff > 20) {
           alerts.push({
-            userName: userName,
+            userName: userName + (isLdr ? ' (Meta da Equipe)' : ''),
             userRole: userRole,
-            metric: 'Taxa de Resolução',
+            metric: 'Taxa de Resolução' + teamSuffix,
             realValue: String(realRate) + '%',
             expectedValue: 'Mínimo ' + String(effResolution) + '%',
-            detail: String(diff) + ' p.p. abaixo do mínimo',
+            detail: String(diff) + ' p.p. abaixo do mínimo da equipe',
           })
         }
       }
