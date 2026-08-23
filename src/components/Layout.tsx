@@ -41,81 +41,105 @@ interface NavItem {
   visible: (role: string, masterAccess?: boolean) => boolean
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', to: '/', icon: LayoutDashboard, visible: () => true },
-  { label: 'Novo Atendimento', to: '/novo-atendimento', icon: Headset, visible: () => true },
-  { label: 'Atendimentos', to: '/atendimentos', icon: ClipboardList, visible: () => true },
-  { label: 'Clientes', to: '/clientes', icon: Users, visible: () => true },
-  { label: 'Autonomia', to: '/autonomia', icon: Award, visible: () => true },
-  { label: 'Ranking', to: '/ranking', icon: Trophy, visible: () => true },
+interface NavGroup {
+  id: string
+  label: string
+  items: NavItem[]
+}
+
+const NAV_GROUPS: NavGroup[] = [
   {
-    label: 'Relatório por Grupo',
-    to: '/relatorios-grupo',
-    icon: BarChart3,
-    visible: (r) => MANAGER_ROLES.includes(r),
+    id: 'atendimentos-colaboradores',
+    label: 'Atendimentos & Colaboradores',
+    items: [
+      { label: 'Dashboard', to: '/', icon: LayoutDashboard, visible: () => true },
+      { label: 'Novo Atendimento', to: '/novo-atendimento', icon: Headset, visible: () => true },
+      { label: 'Atendimentos', to: '/atendimentos', icon: ClipboardList, visible: () => true },
+      {
+        label: 'Relatório Consultor',
+        to: '/relatorio-consultor',
+        icon: UserCheck,
+        visible: (r) => MANAGER_ROLES.includes(r) || r === 'Master',
+      },
+      { label: 'Dashboard Geral', to: '/dashboard-geral', icon: PieChart, visible: () => true },
+      {
+        label: 'Relatório por Grupo',
+        to: '/relatorios-grupo',
+        icon: BarChart3,
+        visible: (r) => MANAGER_ROLES.includes(r),
+      },
+      {
+        label: 'Comparativo',
+        to: '/comparativo',
+        icon: BarChart3,
+        visible: (r, masterAccess) =>
+          MANAGER_ROLES.includes(r) || r === 'Master' || masterAccess === true,
+      },
+      { label: 'Ranking', to: '/ranking', icon: Trophy, visible: () => true },
+      {
+        label: 'Metas de Desempenho',
+        to: '/metas-desempenho',
+        icon: Target,
+        visible: (r, masterAccess) =>
+          MANAGER_ROLES.includes(r) || r === 'Master' || masterAccess === true,
+      },
+    ],
   },
   {
-    label: 'Comparativo',
-    to: '/comparativo',
-    icon: BarChart3,
-    visible: (r, masterAccess) =>
-      MANAGER_ROLES.includes(r) || r === 'Master' || masterAccess === true,
-  },
-  { label: 'Dashboard Geral', to: '/dashboard-geral', icon: PieChart, visible: () => true },
-  {
-    label: 'Relatório Consultor',
-    to: '/relatorio-consultor',
-    icon: UserCheck,
-    visible: (r) => MANAGER_ROLES.includes(r) || r === 'Master',
-  },
-  {
-    label: 'Treinamento',
-    to: '/painel-treinamento',
-    icon: GraduationCap,
-    visible: (r) => MANAGER_ROLES.includes(r) || r === 'Master',
-  },
-  {
-    label: 'Evolução',
-    to: '/evolucao-treinamento',
-    icon: TrendingUp,
-    visible: (r) => MANAGER_ROLES.includes(r) || r === 'Master',
-  },
-  {
-    label: 'Metas de Desempenho',
-    to: '/metas-desempenho',
-    icon: Target,
-    visible: (r, masterAccess) =>
-      MANAGER_ROLES.includes(r) || r === 'Master' || masterAccess === true,
-  },
-  {
-    label: 'Executivos',
-    to: '/executivos',
-    icon: Briefcase,
-    visible: (r) => MANAGER_ROLES.includes(r) || r === 'Master',
+    id: 'clientes-treinamento',
+    label: 'Clientes & Treinamento',
+    items: [
+      { label: 'Clientes', to: '/clientes', icon: Users, visible: () => true },
+      { label: 'Autonomia', to: '/autonomia', icon: Award, visible: () => true },
+      {
+        label: 'Executivos',
+        to: '/executivos',
+        icon: Briefcase,
+        visible: (r) => MANAGER_ROLES.includes(r) || r === 'Master',
+      },
+      {
+        label: 'Painel Executivo',
+        to: '/painel-executivo',
+        icon: DollarSign,
+        visible: (r) => r === 'Executivo de Contas',
+      },
+      {
+        label: 'Treinamento',
+        to: '/painel-treinamento',
+        icon: GraduationCap,
+        visible: (r) => MANAGER_ROLES.includes(r) || r === 'Master',
+      },
+      {
+        label: 'Evolução',
+        to: '/evolucao-treinamento',
+        icon: TrendingUp,
+        visible: (r) => MANAGER_ROLES.includes(r) || r === 'Master',
+      },
+    ],
   },
   {
-    label: 'Painel Executivo',
-    to: '/painel-executivo',
-    icon: DollarSign,
-    visible: (r) => r === 'Executivo de Contas',
-  },
-  {
-    label: 'Gestão de Usuários',
-    to: '/gestao-usuarios',
-    icon: UserCog,
-    visible: (r, masterAccess) => r === 'Master' || masterAccess === true,
-  },
-  {
-    label: 'Integrações',
-    to: '/integracoes',
-    icon: SlidersHorizontal,
-    visible: (r, masterAccess) => r === 'Master' || masterAccess === true,
-  },
-  {
-    label: 'Auditoria',
-    to: '/auditoria',
-    icon: ShieldCheck,
-    visible: (r, masterAccess) => r === 'Master' || masterAccess === true,
+    id: 'gestao-integracoes',
+    label: 'Gestão & Integrações',
+    items: [
+      {
+        label: 'Gestão de Usuários',
+        to: '/gestao-usuarios',
+        icon: UserCog,
+        visible: (r, masterAccess) => r === 'Master' || masterAccess === true,
+      },
+      {
+        label: 'Integrações',
+        to: '/integracoes',
+        icon: SlidersHorizontal,
+        visible: (r, masterAccess) => r === 'Master' || masterAccess === true,
+      },
+      {
+        label: 'Auditoria',
+        to: '/auditoria',
+        icon: ShieldCheck,
+        visible: (r, masterAccess) => r === 'Master' || masterAccess === true,
+      },
+    ],
   },
 ]
 
@@ -133,9 +157,11 @@ export default function Layout() {
     return () => window.removeEventListener('open-quick-log', handler)
   }, [])
 
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => user && item.visible(user.role, user.master_access),
-  )
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => user && item.visible(user.role, user.master_access)),
+  })).filter((group) => group.items.length > 0)
+
   const initials =
     user?.name
       ?.split(' ')
@@ -145,27 +171,37 @@ export default function Layout() {
       .toUpperCase() || '?'
 
   const renderNav = () => (
-    <nav className="flex flex-col gap-1">
-      {visibleItems.map((item) => {
-        const Icon = item.icon
-        const isActive = location.pathname === item.to
-        return (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={() => setMobileOpen(false)}
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-              isActive
-                ? 'bg-indigo-600 text-white'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-            )}
-          >
-            <Icon className="h-4 w-4" />
-            {item.label}
-          </Link>
-        )
-      })}
+    <nav className="flex flex-col space-y-4">
+      {visibleGroups.map((group, groupIndex) => (
+        <div key={group.id} className="flex flex-col">
+          {groupIndex > 0 && <div className="border-t border-slate-200 mb-3" />}
+          <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            {group.label}
+          </div>
+          <div className="flex flex-col gap-1">
+            {group.items.map((item) => {
+              const Icon = item.icon
+              const isActive = location.pathname === item.to
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   )
 
