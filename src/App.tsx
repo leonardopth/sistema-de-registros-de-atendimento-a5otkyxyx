@@ -19,6 +19,7 @@ import ExecutivosContas from '@/pages/ExecutivosContas'
 import GestaoUsuarios from '@/pages/GestaoUsuarios'
 import DiagnosticoEmail from '@/pages/DiagnosticoEmail'
 import Integracoes from '@/pages/Integracoes'
+import Ranking from '@/pages/Ranking'
 import PainelExecutivo from '@/pages/PainelExecutivo'
 import RelatoriosGrupo from '@/pages/RelatoriosGrupo'
 import DashboardGeral from '@/pages/DashboardGeral'
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/painel-treinamento" element={<PainelTreinamento />} />
               <Route path="/evolucao-treinamento" element={<EvolucaoPosTreinamento />} />
               <Route path="/relatorio-consultor" element={<RelatorioConsultor />} />
+              <Route path="/ranking" element={<Ranking />} />
               <Route path="/dashboard-geral" element={<DashboardGeral />} />
               <Route
                 path="/comparativo"

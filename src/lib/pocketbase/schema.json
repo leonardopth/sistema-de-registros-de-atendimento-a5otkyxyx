@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-22T20:50:58.523Z",
+  "generatedAt": "2026-08-23T21:05:54.254Z",
   "collections": [
     {
       "name": "users",
@@ -1801,6 +1801,207 @@
         "CREATE INDEX idx_cal_sr ON call_analysis_logs (service_record)",
         "CREATE INDEX idx_cal_client ON call_analysis_logs (client)",
         "CREATE INDEX idx_cal_created ON call_analysis_logs (created DESC)"
+      ]
+    },
+    {
+      "name": "gamification",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.role = 'Master' || @request.auth.master_access = true"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "xp",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "level",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "badges",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "daily_record",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "streak_days",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "consecutive_months",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "last_badge_unlocked_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_gamification_user ON gamification (user_id)",
+        "CREATE INDEX idx_gamification_xp ON gamification (xp DESC)"
+      ]
+    },
+    {
+      "name": "badges",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.role = 'Master' || @request.auth.master_access = true"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "badge_key",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "unlocked_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_badges_user ON badges (user_id)",
+        "CREATE INDEX idx_badges_key ON badges (badge_key)",
+        "CREATE UNIQUE INDEX idx_badges_user_key ON badges (user_id, badge_key)"
+      ]
+    },
+    {
+      "name": "monthly_awards",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.role = 'Master' || @request.auth.master_access = true"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "award_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["employee_of_month", "notable_evolution"]
+        },
+        {
+          "name": "month_year",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "metric_value",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "details",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "awarded_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_awards_month ON monthly_awards (month_year)",
+        "CREATE INDEX idx_awards_type ON monthly_awards (award_type)",
+        "CREATE UNIQUE INDEX idx_awards_user_type_month ON monthly_awards (user_id, award_type, month_year)"
       ]
     }
   ]

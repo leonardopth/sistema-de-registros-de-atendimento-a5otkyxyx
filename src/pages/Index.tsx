@@ -30,6 +30,8 @@ import { getClients } from '@/services/clients'
 import { getAccountExecutives } from '@/services/account_executives'
 import { getUsers } from '@/services/users'
 import { getTrainings } from '@/services/trainings'
+import { getMonthlyAwards } from '@/services/gamification'
+import { MonthlyAwardRecord } from '@/types/gamification'
 import {
   ServiceRecord,
   ClientRecord,
@@ -41,6 +43,8 @@ import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { DashboardStats } from '@/components/DashboardStats'
 import { ConsultantGamification } from '@/components/ConsultantGamification'
+import { AchievementFeed } from '@/components/AchievementFeed'
+import { SocialRecognitionBanner } from '@/components/SocialRecognitionBanner'
 import { AutonomyScorecard } from '@/components/AutonomyScorecard'
 import { TrainingPanel } from '@/components/TrainingPanel'
 import { PerformanceAlerts } from '@/components/PerformanceAlerts'
@@ -80,6 +84,7 @@ export default function Index() {
   const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
   const [users, setUsers] = useState<UserRecord[]>([])
   const [trainings, setTrainings] = useState<TrainingRecord[]>([])
+  const [awards, setAwards] = useState<MonthlyAwardRecord[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [commercialPeriod, setCommercialPeriod] = useState<'all' | 'month' | 'today' | '7days'>(
     'month',
@@ -88,7 +93,7 @@ export default function Index() {
   const loadData = async () => {
     try {
       setLoadError(null)
-      const [r, c, e, u, t] = await Promise.all([
+      const [r, c, e, u, t, a] = await Promise.all([
         getServiceRecords('', '-created').catch((err: any) => {
           console.warn('Non-blocking error fetching service records:', err)
           return []
@@ -109,12 +114,14 @@ export default function Index() {
           console.warn('Non-blocking error fetching trainings:', err)
           return []
         }),
+        getMonthlyAwards().catch(() => []),
       ])
       setRecords(Array.isArray(r) ? r : [])
       setClients(Array.isArray(c) ? c : [])
       setExecutives(Array.isArray(e) ? e : [])
       setUsers(Array.isArray(u) ? u : [])
       setTrainings(Array.isArray(t) ? t : [])
+      setAwards(Array.isArray(a) ? a : [])
     } catch (err: any) {
       console.error('Error loading dashboard data:', err)
       setLoadError('Não foi possível sincronizar todos os dados. Exibindo informações locais.')
@@ -134,6 +141,9 @@ export default function Index() {
   useRealtime('clients', () => loadData())
   useRealtime('trainings', () => loadData())
   useRealtime('account_executives', () => loadData())
+  useRealtime('monthly_awards', () => loadData())
+  useRealtime('gamification', () => loadData())
+  useRealtime('badges', () => loadData())
 
   const safeFormatDate = (dateStr?: string) => {
     if (!dateStr) return ''
@@ -607,12 +617,19 @@ export default function Index() {
           {/* Cards de estatísticas */}
           <DashboardStats {...generalStats} />
 
+          {/* Reconhecimento Social */}
+          <SocialRecognitionBanner awards={awards} />
+
           {/* Alertas de Desempenho */}
           <PerformanceAlerts records={accessibleRecords} />
 
           {/* Grid com Gamificação e Atendimentos Recentes */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <ConsultantGamification records={consultantRecords} userName={user?.name || ''} />
+            <ConsultantGamification
+              records={consultantRecords}
+              userName={user?.name || ''}
+              userId={user?.id}
+            />
             <Card className="lg:col-span-2 border-slate-200 shadow-subtle">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
@@ -666,6 +683,9 @@ export default function Index() {
             <AutonomyScorecard records={accessibleRecords} clients={accessibleClients} />
             <TrainingPanel records={accessibleRecords} clients={accessibleClients} />
           </div>
+
+          {/* Feed de Conquistas da Equipe */}
+          <AchievementFeed />
         </div>
       )}
 
@@ -674,6 +694,9 @@ export default function Index() {
       {/* ========================================================================= */}
       {!isFullView && isSupervisorOrLider && (
         <div className="space-y-6">
+          {/* Reconhecimento Social */}
+          <SocialRecognitionBanner awards={awards} />
+
           {/* Header descritivo do foco da equipe */}
           <div className="bg-gradient-to-r from-indigo-50 via-white to-indigo-50 border border-indigo-100 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -705,6 +728,18 @@ export default function Index() {
 
           {/* Alertas de Desempenho dos Liderados */}
           <PerformanceAlerts records={teamRecords} />
+
+          {/* Grid com Gamificação e Conquistas da Equipe */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <ConsultantGamification
+              records={consultantRecords}
+              userName={user?.name || ''}
+              userId={user?.id}
+            />
+            <div className="lg:col-span-2">
+              <AchievementFeed />
+            </div>
+          </div>
 
           {/* Scorecard de Autonomia e Atendimentos Recentes da Equipe */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -772,12 +807,19 @@ export default function Index() {
       {/* ========================================================================= */}
       {!isFullView && isConsultor && (
         <div className="space-y-6">
+          {/* Reconhecimento Social */}
+          <SocialRecognitionBanner awards={awards} />
+
           {/* Cards com suas próprias estatísticas */}
           <DashboardStats {...consultantStats} />
 
           {/* Grid com Gamificação e Seus Atendimentos Recentes */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <ConsultantGamification records={consultantRecords} userName={user?.name || ''} />
+            <ConsultantGamification
+              records={consultantRecords}
+              userName={user?.name || ''}
+              userId={user?.id}
+            />
 
             <Card className="lg:col-span-2 border-slate-200 shadow-subtle">
               <CardHeader className="pb-2">
@@ -832,6 +874,9 @@ export default function Index() {
             <AutonomyScorecard records={consultantRecords} clients={consultantClients} />
             <TrainingPanel records={consultantRecords} clients={consultantClients} />
           </div>
+
+          {/* Feed de Conquistas */}
+          <AchievementFeed />
         </div>
       )}
 
@@ -840,6 +885,9 @@ export default function Index() {
       {/* ========================================================================= */}
       {!isFullView && isExecutivoContas && (
         <div className="space-y-6">
+          {/* Reconhecimento Social */}
+          <SocialRecognitionBanner awards={awards} />
+
           {/* Banner de Identificação */}
           <div className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -1042,6 +1090,9 @@ export default function Index() {
       {/* ========================================================================= */}
       {!isFullView && isGestorComercial && (
         <div className="space-y-6">
+          {/* Reconhecimento Social */}
+          <SocialRecognitionBanner awards={awards} />
+
           {/* Barra de Filtro de Período para Negócios */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-subtle">
             <div className="flex items-center gap-2">

@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   Award,
   SlidersHorizontal,
+  Trophy,
 } from 'lucide-react'
 
 const MANAGER_ROLES = ['Gerente', 'Supervisor', 'Líder']
@@ -46,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Atendimentos', to: '/atendimentos', icon: ClipboardList, visible: () => true },
   { label: 'Clientes', to: '/clientes', icon: Users, visible: () => true },
   { label: 'Autonomia', to: '/autonomia', icon: Award, visible: () => true },
+  { label: 'Ranking', to: '/ranking', icon: Trophy, visible: () => true },
   {
     label: 'Relatório por Grupo',
     to: '/relatorios-grupo',
