@@ -45,12 +45,18 @@ export function AchievementFeed({ notifications = [], limit = 6 }: AchievementFe
     loadFeed()
   }, [])
 
+  // Regra de Reconhecimento Social: Apenas Consultor e Executivo de Contas
+  const isEligibleRole = (role?: string) => {
+    return role === 'Consultor' || role === 'Executivo de Contas'
+  }
+
   // Construir itens de feed baseados nas badges recentes e nos níveis alcançados
   const feedItems: AchievementFeedItem[] = []
 
-  // 1. Badges recentes
-  badgesList.slice(0, 10).forEach((b) => {
+  // 1. Badges recentes (filtrar apenas consultores e executivos)
+  badgesList.forEach((b) => {
     const user = b.expand?.user_id
+    if (user?.role && !isEligibleRole(user.role)) return
     const userName = user?.name || 'Consultor'
     const bDef = BADGE_DEFINITIONS[b.badge_key]
 
@@ -66,9 +72,10 @@ export function AchievementFeed({ notifications = [], limit = 6 }: AchievementFe
     })
   })
 
-  // 2. Níveis altos
+  // 2. Níveis altos (filtrar apenas consultores e executivos)
   gamificationList.forEach((g) => {
     const user = g.expand?.user_id
+    if (user?.role && !isEligibleRole(user.role)) return
     const userName = user?.name || 'Consultor'
     if (g.level && g.level !== 'Aprendiz') {
       const lvlCfg = LEVELS.find((l) => l.name === g.level)

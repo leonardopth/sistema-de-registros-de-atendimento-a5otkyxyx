@@ -11,8 +11,19 @@ interface SocialRecognitionBannerProps {
 }
 
 export function SocialRecognitionBanner({ awards = [], monthYear }: SocialRecognitionBannerProps) {
-  const employeeOfMonth = awards.find((a) => a.award_type === 'employee_of_month')
-  const notableEvolution = awards.find((a) => a.award_type === 'notable_evolution')
+  // Apenas Consultor e Executivo de Contas podem aparecer no reconhecimento social
+  const isEligibleUser = (award: MonthlyAwardRecord) => {
+    const userRole = award.expand?.user_id?.role
+    // Se o cargo estiver presente no expand, deve ser Consultor ou Executivo de Contas
+    if (userRole) {
+      return userRole === 'Consultor' || userRole === 'Executivo de Contas'
+    }
+    return true
+  }
+
+  const eligibleAwards = awards.filter(isEligibleUser)
+  const employeeOfMonth = eligibleAwards.find((a) => a.award_type === 'employee_of_month')
+  const notableEvolution = eligibleAwards.find((a) => a.award_type === 'notable_evolution')
 
   if (!employeeOfMonth && !notableEvolution) {
     return null

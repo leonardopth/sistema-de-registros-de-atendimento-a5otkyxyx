@@ -15,9 +15,21 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { UserPlus, Check, X, Trash2, Loader2, Crown, History, Pencil, FilterX } from 'lucide-react'
+import {
+  UserPlus,
+  Check,
+  X,
+  Trash2,
+  Loader2,
+  Crown,
+  History,
+  Pencil,
+  FilterX,
+  KeyRound,
+} from 'lucide-react'
 import { NewUserDialog } from '@/components/NewUserDialog'
 import { EditUserDialog } from '@/components/EditUserDialog'
+import { ResetPasswordDialog } from '@/components/ResetPasswordDialog'
 import { MasterAccessHistoryDialog } from '@/components/MasterAccessHistoryDialog'
 import { TableColumnFilter } from '@/components/TableColumnFilter'
 import type { UserRecord, ApprovalStatus } from '@/types/service_record'
@@ -38,6 +50,7 @@ export default function GestaoUsuarios() {
   const [showMasterOnly, setShowMasterOnly] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null)
+  const [resetPasswordUser, setResetPasswordUser] = useState<UserRecord | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Filtros por coluna
@@ -330,6 +343,16 @@ export default function GestaoUsuarios() {
                       >
                         <Pencil className="h-4 w-4 text-indigo-600" />
                       </Button>
+                      {isMaster && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setResetPasswordUser(u)}
+                          title="Resetar Senha"
+                        >
+                          <KeyRound className="h-4 w-4 text-amber-600" />
+                        </Button>
+                      )}
                       {u.approval_status === 'Pendente' && (
                         <>
                           <Button size="sm" variant="ghost" onClick={() => handleApprove(u.id)}>
@@ -381,6 +404,14 @@ export default function GestaoUsuarios() {
         open={!!editingUser}
         onOpenChange={(v) => {
           if (!v) setEditingUser(null)
+        }}
+        onSuccess={loadUsers}
+      />
+      <ResetPasswordDialog
+        user={resetPasswordUser}
+        open={!!resetPasswordUser}
+        onOpenChange={(v) => {
+          if (!v) setResetPasswordUser(null)
         }}
         onSuccess={loadUsers}
       />

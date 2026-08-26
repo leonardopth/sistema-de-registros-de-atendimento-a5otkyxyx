@@ -138,6 +138,44 @@ export async function updateUserEmail(userId: string, email: string) {
   })
 }
 
+export async function resetUserPassword(userId: string, password: string) {
+  try {
+    const res = await pb.send(`/backend/v1/users/${userId}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    try {
+      await createAuditLog({
+        action: 'Reset User Password',
+        entity: 'users',
+        entity_id: userId,
+        details: { reset_by_master: true },
+      })
+    } catch (e) {
+      console.error('Audit log reset password error:', e)
+    }
+    return res
+  } catch (err) {
+    // Fallback: try client-side update with password/passwordConfirm
+    const updated = await pb.collection('users').update(userId, {
+      password,
+      passwordConfirm: password,
+    })
+    try {
+      await createAuditLog({
+        action: 'Reset User Password (client)',
+        entity: 'users',
+        entity_id: userId,
+        details: { reset_by_master: true },
+      })
+    } catch (e) {
+      console.error('Audit log reset password error:', e)
+    }
+    return updated
+  }
+}
+
 export async function updateUserServiceGroups(userId: string, serviceGroups: string[]) {
   return await pb.collection('users').update(userId, { service_groups: serviceGroups })
 }

@@ -32,9 +32,16 @@ routerAdd('POST', '/backend/v1/gamification/close-month', (c) => {
   var prevMonthYearStr =
     prevRefDate.getFullYear() + '-' + String(prevRefDate.getMonth() + 1).padStart(2, '0')
 
-  var users = $app.findRecordsByFilter('users', "id != ''", '', 1000, 0)
+  // Apenas Consultor e Executivo de Contas são elegíveis para Reconhecimento Social (exclui Gerente, Supervisor, Líder, Gestor Comercial, Master)
+  var users = $app.findRecordsByFilter(
+    'users',
+    "role = 'Consultor' || role = 'Executivo de Contas'",
+    '',
+    1000,
+    0,
+  )
   if (!users || users.length === 0) {
-    return c.json(200, { success: false, message: 'Nenhum usuário encontrado' })
+    return c.json(200, { success: false, message: 'Nenhum usuário elegível encontrado' })
   }
 
   var defaultMonthlyTarget = 100
@@ -249,7 +256,14 @@ cronAdd('monthly_gamification_awards_close', '0 3 1 * *', function () {
   var prevMonthYearStr =
     prevRefDate.getFullYear() + '-' + String(prevRefDate.getMonth() + 1).padStart(2, '0')
 
-  var users = $app.findRecordsByFilter('users', "id != ''", '', 1000, 0)
+  // Apenas Consultor e Executivo de Contas são elegíveis para Reconhecimento Social (exclui Gerente, Supervisor, Líder, Gestor Comercial, Master)
+  var users = $app.findRecordsByFilter(
+    'users',
+    "role = 'Consultor' || role = 'Executivo de Contas'",
+    '',
+    1000,
+    0,
+  )
   if (!users || users.length === 0) return
 
   var defaultMonthlyTarget = 100

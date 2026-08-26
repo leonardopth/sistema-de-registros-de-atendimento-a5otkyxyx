@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
@@ -75,7 +75,7 @@ export default function Ranking() {
   const [celebrationBadge, setCelebrationBadge] = useState<BadgeDefinition | null>(null)
   const [celebrationOpen, setCelebrationOpen] = useState(false)
 
-  const loadAllData = async () => {
+  const loadAllData = useCallback(async () => {
     try {
       setRefreshing(true)
       const [uList, gList, rList, aList] = await Promise.all([
@@ -94,17 +94,27 @@ export default function Ranking() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
-
-  useEffect(() => {
-    loadAllData()
   }, [])
 
-  // Inscrições Realtime
+  // Carga inicial e recarga quando trocar de aba, período ou base
+  useEffect(() => {
+    loadAllData()
+  }, [loadAllData, activeTab, period, selectedBase])
+
+  // Polling suave a cada 20 segundos para manter os dados sempre sincronizados
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadAllData()
+    }, 20000)
+    return () => clearInterval(interval)
+  }, [loadAllData])
+
+  // Inscrições Realtime para atualizações instantâneas no banco de dados
   useRealtime('gamification', () => loadAllData())
   useRealtime('badges', () => loadAllData())
   useRealtime('monthly_awards', () => loadAllData())
   useRealtime('service_records', () => loadAllData())
+  useRealtime('users', () => loadAllData())
 
   const currentUserGamification = useMemo(() => {
     if (!user) return null
