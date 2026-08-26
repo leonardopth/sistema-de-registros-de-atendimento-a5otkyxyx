@@ -165,7 +165,14 @@ export default function Ranking() {
 
     const entries: UserRankingEntry[] = []
 
-    users.forEach((u) => {
+    // Apenas usuários com role = 'Consultor' ou role = 'Executivo de Contas'
+    // Gestores, Supervisores, Líderes, Gerentes, Gestor Comercial e Master NÃO devem aparecer no ranking de gamificação
+    const eligibleUsers = users.filter((u) => {
+      const role = u.role
+      return role === 'Consultor' || role === 'Executivo de Contas'
+    })
+
+    eligibleUsers.forEach((u) => {
       const g = gamificationMap.get(u.id)
       const xp = g?.xp || 0
       const level = g?.level || 'Aprendiz'
@@ -389,12 +396,17 @@ export default function Ranking() {
       {/* 4. GALERIA DE BADGES E REGRAS DE NÍVEIS */}
       <div className="grid grid-cols-1 gap-6">
         <BadgesShowcase
-          unlockedBadgeKeys={currentUserGamification?.badges || []}
+          unlockedBadgeKeys={
+            user && (user.role === 'Consultor' || user.role === 'Executivo de Contas')
+              ? currentUserGamification?.badges || []
+              : allRankingEntries.length > 0
+                ? allRankingEntries[0]?.badges || []
+                : currentUserGamification?.badges || []
+          }
           userName={user?.name || ''}
           onBadgeClick={handleBadgeClick}
         />
       </div>
-
       {/* 5. FEED DE CONQUISTAS E REGRAS DE PONTUAÇÃO */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">

@@ -46,7 +46,9 @@ export function AchievementFeed({ notifications = [], limit = 6 }: AchievementFe
   }, [])
 
   // Regra de Reconhecimento Social: Apenas Consultor e Executivo de Contas
+  // Gestores, Supervisores, Líderes, Gerentes, Gestor Comercial e Master NÃO devem aparecer
   const isEligibleRole = (role?: string) => {
+    if (!role) return true // default caso role não venha preenchido
     return role === 'Consultor' || role === 'Executivo de Contas'
   }
 
@@ -107,9 +109,14 @@ export function AchievementFeed({ notifications = [], limit = 6 }: AchievementFe
       </CardHeader>
       <CardContent className="p-4 space-y-3">
         {displayItems.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-4">
-            Nenhuma conquista recente registrada. Conclua atendimentos para movimentar o feed!
-          </p>
+          <div className="text-center py-6 px-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+            <Sparkles className="h-6 w-6 text-amber-400 mx-auto mb-1.5 opacity-70" />
+            <p className="text-xs font-semibold text-slate-600">Feed de Conquistas em tempo real</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Conquistas e badges de Consultores e Executivos de Contas serão exibidas aqui conforme
+              atendimentos forem concluídos.
+            </p>
+          </div>
         ) : (
           displayItems.map((item) => {
             const initials = item.userName

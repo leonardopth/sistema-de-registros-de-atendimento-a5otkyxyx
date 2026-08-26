@@ -25,10 +25,6 @@ export function SocialRecognitionBanner({ awards = [], monthYear }: SocialRecogn
   const employeeOfMonth = eligibleAwards.find((a) => a.award_type === 'employee_of_month')
   const notableEvolution = eligibleAwards.find((a) => a.award_type === 'notable_evolution')
 
-  if (!employeeOfMonth && !notableEvolution) {
-    return null
-  }
-
   const renderAwardCard = (award: MonthlyAwardRecord, type: 'employee' | 'evolution') => {
     const isEmployee = type === 'employee'
     const user = award.expand?.user_id
@@ -127,8 +123,49 @@ export function SocialRecognitionBanner({ awards = [], monthYear }: SocialRecogn
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {employeeOfMonth && renderAwardCard(employeeOfMonth, 'employee')}
-          {notableEvolution && renderAwardCard(notableEvolution, 'evolution')}
+          {employeeOfMonth ? (
+            renderAwardCard(employeeOfMonth, 'employee')
+          ) : (
+            <div className="rounded-2xl p-4 border border-dashed border-slate-200 bg-slate-50/60 flex items-center gap-3 text-slate-500">
+              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-xl shrink-0">
+                ⭐
+              </div>
+              <div>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] uppercase font-bold text-slate-500 bg-white"
+                >
+                  Colaborador do Mês
+                </Badge>
+                <p className="text-xs font-semibold text-slate-700 mt-1">Apurando destaques...</p>
+                <p className="text-[11px] text-slate-400">
+                  Elegível para Consultores e Executivos de Contas com maior % de meta batida.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {notableEvolution ? (
+            renderAwardCard(notableEvolution, 'evolution')
+          ) : (
+            <div className="rounded-2xl p-4 border border-dashed border-slate-200 bg-slate-50/60 flex items-center gap-3 text-slate-500">
+              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-xl shrink-0">
+                🚀
+              </div>
+              <div>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] uppercase font-bold text-slate-500 bg-white"
+                >
+                  Evolução Notável
+                </Badge>
+                <p className="text-xs font-semibold text-slate-700 mt-1">Apurando destaques...</p>
+                <p className="text-[11px] text-slate-400">
+                  Elegível para Consultores e Executivos de Contas com maior crescimento mensal.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
