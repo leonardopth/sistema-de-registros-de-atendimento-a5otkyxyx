@@ -626,10 +626,11 @@ export default function Index() {
           {/* Grid com Gamificação e Atendimentos Recentes */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <ConsultantGamification
-              records={consultantRecords}
-              userName={user?.name || ''}
+              records={records}
+              userName={user?.name}
               userId={user?.id}
-            />
+              userRole={user?.role}
+            />{' '}
             <Card className="lg:col-span-2 border-slate-200 shadow-subtle">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">

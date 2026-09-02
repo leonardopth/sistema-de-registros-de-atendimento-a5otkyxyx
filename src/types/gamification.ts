@@ -88,16 +88,18 @@ export interface BadgeDefinition {
   name: string
   emoji: string
   criteria: string
-  category: 'performance' | 'streak' | 'teamwork' | 'quality'
+  category: 'performance' | 'streak' | 'teamwork' | 'quality' | 'autonomy' | 'client_evolution'
+  targetRole?: 'Consultor' | 'Executivo de Contas' | 'all'
 }
 
-export const BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
+export const CONSULTANT_BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
   novato: {
     key: 'novato',
     name: 'Novato',
     emoji: '🆕',
     criteria: 'Primeiro atendimento concluído',
     category: 'performance',
+    targetRole: 'Consultor',
   },
   velocista: {
     key: 'velocista',
@@ -105,6 +107,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
     emoji: '⚡',
     criteria: 'TMA abaixo da meta por 5 dias consecutivos',
     category: 'performance',
+    targetRole: 'Consultor',
   },
   olho_clinico: {
     key: 'olho_clinico',
@@ -112,6 +115,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
     emoji: '🔍',
     criteria: '10 contatos evitáveis identificados',
     category: 'quality',
+    targetRole: 'Consultor',
   },
   cliente_feliz: {
     key: 'cliente_feliz',
@@ -119,6 +123,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
     emoji: '😊',
     criteria: '10 atendimentos com sentimento positivo',
     category: 'quality',
+    targetRole: 'Consultor',
   },
   maratonista: {
     key: 'maratonista',
@@ -126,6 +131,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
     emoji: '🔥',
     criteria: '50+ atendimentos num único dia',
     category: 'streak',
+    targetRole: 'Consultor',
   },
   especialista: {
     key: 'especialista',
@@ -133,20 +139,23 @@ export const BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
     emoji: '📚',
     criteria: '100% da meta mensal por 3 meses seguidos',
     category: 'performance',
+    targetRole: 'Consultor',
   },
   recorde_pessoal: {
     key: 'recorde_pessoal',
     name: 'Recorde Pessoal',
     emoji: '🚀',
-    criteria: 'Bater o próprio recorde diário',
+    criteria: 'Bater o próprio recorde diário de atendimentos',
     category: 'streak',
+    targetRole: 'Consultor',
   },
   lendario: {
     key: 'lendario',
     name: 'Lendário',
     emoji: '👑',
-    criteria: 'Top 1 do ranking por uma semana',
+    criteria: 'Top 1 do ranking de consultores',
     category: 'performance',
+    targetRole: 'Consultor',
   },
   trabalho_equipe: {
     key: 'trabalho_equipe',
@@ -154,6 +163,7 @@ export const BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
     emoji: '🤝',
     criteria: 'Compartilhar atendimento que ajudou outro consultor',
     category: 'teamwork',
+    targetRole: 'Consultor',
   },
   categorizador_nato: {
     key: 'categorizador_nato',
@@ -161,7 +171,80 @@ export const BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
     emoji: '💡',
     criteria: '90%+ de categorização IA no mês',
     category: 'quality',
+    targetRole: 'Consultor',
   },
+}
+
+export const EXECUTIVE_BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
+  gestor_autonomia: {
+    key: 'gestor_autonomia',
+    name: 'Guardião da Autonomia',
+    emoji: '🛡️',
+    criteria: 'Pelo menos 3 clientes com autonomia acima de 80%',
+    category: 'autonomy',
+    targetRole: 'Executivo de Contas',
+  },
+  mestre_da_evolucao: {
+    key: 'mestre_da_evolucao',
+    name: 'Mestre da Evolução',
+    emoji: '📈',
+    criteria: 'Evolução positiva de autonomia mês a mês em clientes gerenciados',
+    category: 'client_evolution',
+    targetRole: 'Executivo de Contas',
+  },
+  scorecard_ouro: {
+    key: 'scorecard_ouro',
+    name: 'Scorecard Ouro',
+    emoji: '🌟',
+    criteria: 'Mais de 70% da carteira com scorecard de autonomia positivo',
+    category: 'autonomy',
+    targetRole: 'Executivo de Contas',
+  },
+  cliente_blindado: {
+    key: 'cliente_blindado',
+    name: 'Cliente Blindado',
+    emoji: '💎',
+    criteria: 'Cliente gerenciado com 100% de autonomia no período (zero evitáveis)',
+    category: 'autonomy',
+    targetRole: 'Executivo de Contas',
+  },
+  mentor_de_agencias: {
+    key: 'mentor_de_agencias',
+    name: 'Mentor de Agências',
+    emoji: '🎓',
+    criteria: 'Cliente com treinamento registrado e redução comprovada de contatos evitáveis',
+    category: 'client_evolution',
+    targetRole: 'Executivo de Contas',
+  },
+  carteira_satisfeita: {
+    key: 'carteira_satisfeita',
+    name: 'Carteira Satisfeita',
+    emoji: '✨',
+    criteria: '5+ atendimentos de clientes gerenciados com sentimento positivo',
+    category: 'quality',
+    targetRole: 'Executivo de Contas',
+  },
+  expansao_autonoma: {
+    key: 'expansao_autonoma',
+    name: 'Expansão Autônoma',
+    emoji: '🚀',
+    criteria: '5+ clientes ativos gerenciados operando com alta autonomia',
+    category: 'client_evolution',
+    targetRole: 'Executivo de Contas',
+  },
+  executivo_diamante: {
+    key: 'executivo_diamante',
+    name: 'Executivo Diamante',
+    emoji: '👑',
+    criteria: 'Top 1 no ranking de autonomia e progresso de clientes',
+    category: 'performance',
+    targetRole: 'Executivo de Contas',
+  },
+}
+
+export const BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
+  ...CONSULTANT_BADGE_DEFINITIONS,
+  ...EXECUTIVE_BADGE_DEFINITIONS,
 }
 
 export interface GamificationRecord {
@@ -229,4 +312,10 @@ export interface UserRankingEntry {
   serviceGroups: string[]
   departments: string[]
   bases: string[]
+  // Métricas específicas de progresso dos clientes para Executivos de Contas
+  managedClientsCount?: number
+  avgAutonomyRate?: number
+  highAutonomyClientsCount?: number
+  evolutionPositiveCount?: number
+  satisfactionCount?: number
 }

@@ -12,12 +12,14 @@ interface ConsultantGamificationProps {
   records?: ServiceRecord[]
   userName?: string
   userId?: string
+  userRole?: string
 }
 
 export function ConsultantGamification({
   records = [],
   userName = '',
   userId,
+  userRole,
 }: ConsultantGamificationProps) {
   const navigate = useNavigate()
   const [gamification, setGamification] = useState<GamificationRecord | null>(null)
@@ -56,7 +58,10 @@ export function ConsultantGamification({
       <CardHeader className="pb-2 relative z-10">
         <CardTitle className="text-sm font-bold text-white flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-amber-400" /> Meu Desempenho & XP
+            <Trophy className="h-4 w-4 text-amber-400" />{' '}
+            {userRole === 'Executivo de Contas'
+              ? 'Gamificação de Carteira & XP'
+              : 'Meu Desempenho & XP'}
           </span>
           <Badge
             variant="outline"
@@ -79,11 +84,16 @@ export function ConsultantGamification({
           </div>
           <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/5">
             <div className="flex items-center gap-1.5 text-xs text-slate-300">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Hoje
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />{' '}
+              {userRole === 'Executivo de Contas' ? 'Alta Autonomia' : 'Hoje'}
             </div>
             <p className="text-lg font-extrabold text-white mt-1">
-              {completedToday}{' '}
-              <span className="text-xs text-slate-300 font-normal">concluídos</span>
+              {userRole === 'Executivo de Contas'
+                ? `${gamification?.daily_record || 0}`
+                : completedToday}{' '}
+              <span className="text-xs text-slate-300 font-normal">
+                {userRole === 'Executivo de Contas' ? 'clientes >80%' : 'concluídos'}
+              </span>
             </p>
           </div>
         </div>

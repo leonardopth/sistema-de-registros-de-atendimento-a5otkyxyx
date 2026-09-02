@@ -17,14 +17,18 @@ export function BadgesShowcase({
   onBadgeClick,
 }: BadgesShowcaseProps) {
   const [filter, setFilter] = useState<'all' | 'unlocked' | 'locked'>('all')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'Consultor' | 'Executivo de Contas'>('all')
 
   const badgeList = Object.values(BADGE_DEFINITIONS)
   const unlockedSet = new Set(unlockedBadgeKeys)
 
   const filteredBadges = badgeList.filter((b) => {
     const isUnlocked = unlockedSet.has(b.key)
-    if (filter === 'unlocked') return isUnlocked
-    if (filter === 'locked') return !isUnlocked
+    if (filter === 'unlocked' && !isUnlocked) return false
+    if (filter === 'locked' && isUnlocked) return false
+    if (roleFilter !== 'all') {
+      if (b.targetRole && b.targetRole !== 'all' && b.targetRole !== roleFilter) return false
+    }
     return true
   })
 
@@ -41,31 +45,62 @@ export function BadgesShowcase({
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 self-start sm:self-auto">
-          <Button
-            variant={filter === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('all')}
-            className="h-7 text-xs px-2.5"
-          >
-            Todas ({badgeList.length})
-          </Button>
-          <Button
-            variant={filter === 'unlocked' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('unlocked')}
-            className="h-7 text-xs px-2.5 text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
-          >
-            Desbloqueadas ({unlockedSet.size})
-          </Button>
-          <Button
-            variant={filter === 'locked' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('locked')}
-            className="h-7 text-xs px-2.5"
-          >
-            Bloqueadas ({badgeList.length - unlockedSet.size})
-          </Button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {/* Filtro por Perfil */}
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+            <Button
+              variant={roleFilter === 'all' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setRoleFilter('all')}
+              className="h-6 text-[11px] px-2 rounded-md"
+            >
+              Todos
+            </Button>
+            <Button
+              variant={roleFilter === 'Consultor' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setRoleFilter('Consultor')}
+              className="h-6 text-[11px] px-2 rounded-md"
+            >
+              🎧 Consultores
+            </Button>
+            <Button
+              variant={roleFilter === 'Executivo de Contas' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setRoleFilter('Executivo de Contas')}
+              className="h-6 text-[11px] px-2 rounded-md"
+            >
+              📈 Executivos
+            </Button>
+          </div>
+
+          {/* Filtro por Status */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant={filter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('all')}
+              className="h-7 text-xs px-2"
+            >
+              Todas
+            </Button>
+            <Button
+              variant={filter === 'unlocked' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('unlocked')}
+              className="h-7 text-xs px-2 text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+            >
+              Desbloqueadas ({unlockedSet.size})
+            </Button>
+            <Button
+              variant={filter === 'locked' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('locked')}
+              className="h-7 text-xs px-2"
+            >
+              Bloqueadas
+            </Button>
+          </div>
         </div>
       </CardHeader>
 

@@ -74,6 +74,7 @@ export function RankingTable({ entries, currentUserId }: RankingTableProps) {
                   .slice(0, 2)
                   .join('')
                   .toUpperCase() || '?'
+              const isExec = entry.user.role === 'Executivo de Contas'
 
               return (
                 <TableRow
@@ -126,9 +127,11 @@ export function RankingTable({ entries, currentUserId }: RankingTableProps) {
                         </div>
                         <p className="text-[10px] text-slate-500 truncate">
                           {entry.user.role || 'Consultor'}
-                          {entry.serviceGroups && entry.serviceGroups.length > 0
-                            ? ` • ${entry.serviceGroups.join(', ')}`
-                            : ''}
+                          {isExec && entry.managedClientsCount !== undefined
+                            ? ` • ${entry.managedClientsCount} clientes gerenciados`
+                            : entry.serviceGroups && entry.serviceGroups.length > 0
+                              ? ` • ${entry.serviceGroups.join(', ')}`
+                              : ''}
                         </p>
                       </div>
                     </div>
@@ -148,10 +151,25 @@ export function RankingTable({ entries, currentUserId }: RankingTableProps) {
                       {entry.xp.toLocaleString('pt-BR')}{' '}
                       <span className="text-[10px] text-slate-400 font-normal">XP</span>
                     </span>
+                    {isExec && (
+                      <span className="block text-[9px] text-emerald-600 font-semibold">
+                        Autonomia: {entry.avgAutonomyRate ?? 85}%
+                      </span>
+                    )}
                   </TableCell>
 
                   <TableCell className="text-center text-xs font-medium text-slate-700">
-                    {entry.completedCount}
+                    {isExec ? (
+                      <span
+                        className="inline-flex items-center gap-1 font-semibold text-indigo-600"
+                        title="Clientes gerenciados / Em alta autonomia"
+                      >
+                        {entry.managedClientsCount ?? 0} ({entry.highAutonomyClientsCount ?? 0}{' '}
+                        &gt;80%)
+                      </span>
+                    ) : (
+                      entry.completedCount
+                    )}
                   </TableCell>
 
                   <TableCell className="text-center">
@@ -181,7 +199,19 @@ export function RankingTable({ entries, currentUserId }: RankingTableProps) {
                   </TableCell>
 
                   <TableCell className="text-center">
-                    {entry.streakDays > 0 ? (
+                    {isExec ? (
+                      entry.evolutionPositiveCount && entry.evolutionPositiveCount > 0 ? (
+                        <span
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200"
+                          title="Clientes com melhora de autonomia"
+                        >
+                          <Flame className="h-3 w-3 text-emerald-500 fill-emerald-500" />+
+                          {entry.evolutionPositiveCount} evoluindo
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">—</span>
+                      )
+                    ) : entry.streakDays > 0 ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                         <Flame className="h-3 w-3 text-amber-500 fill-amber-500" />
                         {entry.streakDays}d
@@ -257,10 +287,14 @@ export function RankingTable({ entries, currentUserId }: RankingTableProps) {
 
                 <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100">
                   <p className="text-[10px] font-semibold text-emerald-700 uppercase">
-                    Atendimentos Concluídos
+                    {selectedUser.user.role === 'Executivo de Contas'
+                      ? 'Autonomia da Carteira'
+                      : 'Atendimentos Concluídos'}
                   </p>
                   <p className="text-xl font-extrabold text-emerald-900 mt-0.5">
-                    {selectedUser.completedCount}
+                    {selectedUser.user.role === 'Executivo de Contas'
+                      ? `${selectedUser.avgAutonomyRate ?? 85}% (${selectedUser.managedClientsCount ?? 0} clientes)`
+                      : selectedUser.completedCount}
                   </p>
                 </div>
               </div>

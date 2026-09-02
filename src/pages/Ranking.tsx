@@ -61,10 +61,15 @@ export default function Ranking() {
   const [gamificationList, setGamificationList] = useState<GamificationRecord[]>([])
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [awards, setAwards] = useState<MonthlyAwardRecord[]>([])
+  const [clients, setClients] = useState<any[]>([])
+  const [trainings, setTrainings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
   // Filtros
+  const [rankingCategory, setRankingCategory] = useState<'consultants' | 'executives'>(
+    user?.role === 'Executivo de Contas' ? 'executives' : 'consultants',
+  )
   const [activeTab, setActiveTab] = useState<'geral' | 'nacional' | 'internacional' | 'base'>(
     'geral',
   )
@@ -78,16 +83,20 @@ export default function Ranking() {
   const loadAllData = useCallback(async () => {
     try {
       setRefreshing(true)
-      const [uList, gList, rList, aList] = await Promise.all([
+      const [uList, gList, rList, aList, cList, tList] = await Promise.all([
         getUsers().catch(() => []),
         getAllGamification().catch(() => []),
         getServiceRecords('', '-created').catch(() => []),
         getMonthlyAwards().catch(() => []),
+        import('@/services/clients').then((m) => m.getClients()).catch(() => []),
+        import('@/services/trainings').then((m) => m.getTrainings()).catch(() => []),
       ])
       setUsers(uList || [])
       setGamificationList(gList || [])
       setRecords(rList || [])
       setAwards(aList || [])
+      setClients(cList || [])
+      setTrainings(tList || [])
     } catch (e) {
       console.warn('Erro ao carregar dados do ranking:', e)
     } finally {
@@ -165,21 +174,98 @@ export default function Ranking() {
 
     const entries: UserRankingEntry[] = []
 
-    // Apenas usuários com role = 'Consultor' ou role = 'Executivo de Contas'
-    // Gestores, Supervisores, Líderes, Gerentes, Gestor Comercial e Master NÃO devem aparecer no ranking de gamificação
+    // Filtrar usuários elegíveis de acordo com a categoria selecionada (Consultores vs Executivos)
     const eligibleUsers = users.filter((u) => {
       const role = u.role
-      return role === 'Consultor' || role === 'Executivo de Contas'
+      if (rankingCategory === 'executives') {
+        return role === 'Executivo de Contas'
+      }
+      return role === 'Consultor'
     })
+
+    // Calcular métricas de clientes caso estejamos no ranking de executivos
+    const now = new Date()
+    const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const prevMonthPrefix = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`
 
     eligibleUsers.forEach((u) => {
       const g = gamificationMap.get(u.id)
-      const xp = g?.xp || 0
-      const level = g?.level || 'Aprendiz'
-      const badges = g?.badges || []
-      const dailyRecord = g?.daily_record || 0
-      const streakDays = g?.streak_days || 0
+      const isExec = u.role === 'Executivo de Contas'
+
+      let xp = g?.xp || 0
+      let level = g?.level || 'Aprendiz'
+      let badges = g?.badges || []
+      let dailyRecord = g?.daily_record || 0
+      let streakDays = g?.streak_days || 0
       const completedCount = userCompletedMap.get(u.id) || 0
+
+      let managedCount = 0
+      let avgAutonomy = 100
+      let highAutonomyCount = 0
+      let evolutionCount = 0
+
+      if (isExec) {
+        const managed = clients.filter(
+          (c) =>
+            c.account_executive === u.name ||
+            (c.account_executive_rel && c.account_executive_rel === u.id),
+        )
+        managedCount = managed.length
+        let totalAutonomySum = 0
+
+        managed.forEach((cl) => {
+          const clRecords = records.filter(
+            (r) => r.client === cl.id || (cl.company && r.client_company === cl.company),
+          )
+          const totalCl = clRecords.length
+          const avoidableCl = clRecords.filter((r) => r.avoidable_contact).length
+          const autonomyRate =
+            totalCl > 0 ? Math.round(((totalCl - avoidableCl) / totalCl) * 100) : 100
+          totalAutonomySum += autonomyRate
+
+          if (autonomyRate >= 80) highAutonomyCount += 1
+
+          const curMonthRecs = clRecords.filter((r) =>
+            (r.created || '').startsWith(currentMonthPrefix),
+          )
+          const prevMonthRecs = clRecords.filter((r) =>
+            (r.created || '').startsWith(prevMonthPrefix),
+          )
+          const curMonthAvoidable = curMonthRecs.filter((r) => r.avoidable_contact).length
+          const prevMonthAvoidable = prevMonthRecs.filter((r) => r.avoidable_contact).length
+
+          const curAutonomy =
+            curMonthRecs.length > 0
+              ? ((curMonthRecs.length - curMonthAvoidable) / curMonthRecs.length) * 100
+              : 100
+          const prevAutonomy =
+            prevMonthRecs.length > 0
+              ? ((prevMonthRecs.length - prevMonthAvoidable) / prevMonthRecs.length) * 100
+              : 100
+
+          if (curAutonomy > prevAutonomy || (curAutonomy >= 80 && prevMonthRecs.length === 0)) {
+            evolutionCount += 1
+          }
+        })
+
+        avgAutonomy = managedCount > 0 ? Math.round(totalAutonomySum / managedCount) : 100
+        const calculatedExecXP =
+          highAutonomyCount * 40 + evolutionCount * 50 + Math.round(avgAutonomy * 2)
+
+        if (calculatedExecXP > xp) {
+          xp = calculatedExecXP
+          if (xp >= 2000) level = 'Master'
+          else if (xp >= 1000) level = 'Expert'
+          else if (xp >= 600) level = 'Sênior'
+          else if (xp >= 300) level = 'Pleno'
+          else if (xp >= 100) level = 'Júnior'
+          else level = 'Aprendiz'
+        }
+
+        dailyRecord = highAutonomyCount
+        streakDays = evolutionCount
+      }
 
       const serviceGroups = (u.service_groups as string[] | undefined) || []
       const departments = (u.departments as string[] | undefined) || []
@@ -198,6 +284,10 @@ export default function Ranking() {
         serviceGroups,
         departments,
         bases,
+        managedClientsCount: managedCount,
+        avgAutonomyRate: avgAutonomy,
+        highAutonomyClientsCount: highAutonomyCount,
+        evolutionPositiveCount: evolutionCount,
       })
     })
 
@@ -213,7 +303,7 @@ export default function Ranking() {
     })
 
     return entries
-  }, [users, gamificationList, filteredRecords])
+  }, [users, gamificationList, filteredRecords, rankingCategory, clients, records])
 
   // Rankings filtrados por aba
   const filteredRanking = useMemo(() => {
@@ -321,16 +411,57 @@ export default function Ranking() {
         </div>
       </div>
 
+      {/* Seletor do Tipo de Gamificação: Consultores (Atendimento) vs Executivos de Contas (Progresso de Clientes) */}
+      <div className="flex items-center justify-between p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-indigo-950 px-2">Visualizar Gamificação:</span>
+          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-indigo-200">
+            <Button
+              variant={rankingCategory === 'consultants' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setRankingCategory('consultants')}
+              className={`h-8 text-xs font-semibold ${
+                rankingCategory === 'consultants'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              🎧 Consultores (Atendimentos)
+            </Button>
+            <Button
+              variant={rankingCategory === 'executives' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setRankingCategory('executives')}
+              className={`h-8 text-xs font-semibold ${
+                rankingCategory === 'executives'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              📈 Executivos de Contas (Progresso de Clientes)
+            </Button>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-slate-500 italic pr-2">
+          {rankingCategory === 'executives'
+            ? 'XP e conquistas calculados com base na evolução, scorecard e autonomia dos clientes'
+            : 'XP e conquistas calculados com base na agilidade, TMA e qualidade dos chamados'}
+        </div>
+      </div>
+
       {/* 1. WIDGET "MEU PROGRESSO" */}
       {user && (
         <MyProgressWidget
           userId={user.id}
-          userName={user.name || 'Consultor'}
+          userName={
+            user.name || (user.role === 'Executivo de Contas' ? 'Executivo de Contas' : 'Consultor')
+          }
           userGamification={currentUserGamification}
           onRefresh={loadAllData}
+          userRole={user.role}
         />
       )}
-
       {/* 2. RECONHECIMENTO SOCIAL (Colaborador do Mês e Evolução Notável) */}
       <SocialRecognitionBanner awards={awards} />
 
@@ -416,49 +547,86 @@ export default function Ranking() {
         {/* Guia de Pontuação XP & Níveis */}
         <Card className="border-slate-200 shadow-subtle bg-white">
           <CardHeader className="pb-3 border-b border-slate-100">
-            <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <HelpCircle className="h-4 w-4 text-indigo-600" />
-              Como Ganhar XP & Subir de Nível
+            <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <HelpCircle className="h-4 w-4 text-indigo-600" />
+                Como Ganhar XP & Subir de Nível
+              </span>
+              <Badge variant="outline" className="text-[10px]">
+                {rankingCategory === 'executives' ? 'Executivos de Contas' : 'Consultores'}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-4 text-xs">
-            <div className="space-y-1.5">
-              <p className="font-bold text-slate-800">Sistema de Pontos:</p>
-              <ul className="space-y-1 text-slate-600">
-                <li className="flex justify-between">
-                  <span>Atendimento concluído</span>
-                  <strong className="text-indigo-600">+10 XP</strong>
-                </li>
-                <li className="flex justify-between">
-                  <span>Concluído dentro do TMA</span>
-                  <strong className="text-emerald-600">+5 XP bônus</strong>
-                </li>
-                <li className="flex justify-between">
-                  <span>Contato evitável identificado</span>
-                  <strong className="text-purple-600">+3 XP</strong>
-                </li>
-                <li className="flex justify-between">
-                  <span>Categorização IA validada</span>
-                  <strong className="text-cyan-600">+2 XP</strong>
-                </li>
-                <li className="flex justify-between">
-                  <span>Sentimento positivo detectado</span>
-                  <strong className="text-amber-600">+5 XP</strong>
-                </li>
-                <li className="flex justify-between">
-                  <span>Resolver atendimento reaberto</span>
-                  <strong className="text-rose-600">+15 XP</strong>
-                </li>
-                <li className="flex justify-between">
-                  <span>Meta diária batida</span>
-                  <strong className="text-indigo-700">+20 XP bônus</strong>
-                </li>
-                <li className="flex justify-between">
-                  <span>Sequência de metas</span>
-                  <strong className="text-amber-700">Multiplicador ×1.1...×2.0</strong>
-                </li>
-              </ul>
-            </div>
+            {rankingCategory === 'executives' ? (
+              <div className="space-y-1.5">
+                <p className="font-bold text-emerald-800">Métricas de Progresso do Cliente:</p>
+                <ul className="space-y-1 text-slate-600">
+                  <li className="flex justify-between">
+                    <span>Cliente com Autonomia &gt; 80%</span>
+                    <strong className="text-emerald-600">+40 XP</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Cliente Blindado (100% Autonomia)</span>
+                    <strong className="text-indigo-600">+60 XP</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Melhora de Autonomia mês a mês</span>
+                    <strong className="text-purple-600">+50 XP</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Treinamento realizado para agência</span>
+                    <strong className="text-cyan-600">+30 XP</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Satisfação positiva na carteira</span>
+                    <strong className="text-amber-600">+10 XP</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Autonomia média da carteira</span>
+                    <strong className="text-emerald-700">Até +200 XP</strong>
+                  </li>
+                </ul>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <p className="font-bold text-slate-800">Sistema de Pontos (Atendimento):</p>
+                <ul className="space-y-1 text-slate-600">
+                  <li className="flex justify-between">
+                    <span>Atendimento concluído</span>
+                    <strong className="text-indigo-600">+10 XP</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Concluído dentro do TMA</span>
+                    <strong className="text-emerald-600">+5 XP bônus</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Contato evitável identificado</span>
+                    <strong className="text-purple-600">+3 XP</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Categorização IA validada</span>
+                    <strong className="text-cyan-600">+2 XP</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Sentimento positivo detectado</span>
+                    <strong className="text-amber-600">+5 XP</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Resolver atendimento reaberto</span>
+                    <strong className="text-rose-600">+15 XP</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Meta diária batida</span>
+                    <strong className="text-indigo-700">+20 XP bônus</strong>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Sequência de metas</span>
+                    <strong className="text-amber-700">Multiplicador ×1.1...×2.0</strong>
+                  </li>
+                </ul>
+              </div>
+            )}
 
             <div className="space-y-1.5 pt-2 border-t border-slate-100">
               <p className="font-bold text-slate-800">Níveis de Evolução:</p>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,14 +19,14 @@ import type { ClientRecord } from '@/types/service_record'
 interface NewTrainingDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  clients: ClientRecord[]
+  clients?: ClientRecord[]
   onSuccess?: () => void
 }
 
 export function NewTrainingDialog({
   open,
   onOpenChange,
-  clients,
+  clients: initialClients,
   onSuccess,
 }: NewTrainingDialogProps) {
   const [name, setName] = useState('')
@@ -35,10 +35,31 @@ export function NewTrainingDialog({
   const [description, setDescription] = useState('')
   const [planContent, setPlanContent] = useState('')
   const [loading, setLoading] = useState(false)
+  const [availableClients, setAvailableClients] = useState<ClientRecord[]>(initialClients || [])
   const { toast } = useToast()
 
-  const uniqueCompanies = Array.from(
-    new Map(clients.filter((c) => c.company).map((c) => [c.company, c])).values(),
+  // Sincronizar clientes recebidos ou buscar diretamente se não vierem na prop
+  useEffect(() => {
+    if (initialClients && initialClients.length > 0) {
+      setAvailableClients(initialClients)
+    } else if (open) {
+      import('@/services/clients').then(({ getClients }) => {
+        getClients()
+          .then((list) => {
+            if (Array.isArray(list) && list.length > 0) {
+              setAvailableClients(list)
+            }
+          })
+          .catch((err) => {
+            console.warn('Erro ao carregar clientes no NewTrainingDialog:', err)
+          })
+      })
+    }
+  }, [initialClients, open])
+
+  const safeClients = Array.isArray(availableClients) ? availableClients : []
+  const clientOptions = safeClients.filter(
+    (c) => (c.company && c.company.trim()) || (c.name && c.name.trim()),
   )
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,11 +113,18 @@ export function NewTrainingDialog({
                   <SelectValue placeholder="Selecionar..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {uniqueCompanies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.company}
+                  {clientOptions.length === 0 ? (
+                    <SelectItem value="__none__" disabled className="text-xs text-slate-400">
+                      Nenhum cliente cadastrado
                     </SelectItem>
-                  ))}
+                  ) : (
+                    clientOptions.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.company || c.name}{' '}
+                        {c.company && c.name && c.company !== c.name ? `(${c.name})` : ''}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

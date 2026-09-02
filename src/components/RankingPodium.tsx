@@ -134,7 +134,7 @@ export function RankingPodium({ topUsers }: RankingPodiumProps) {
             </div>
           </div>
 
-          {/* XP & Atendimentos */}
+          {/* XP & Atendimentos / Progresso de Clientes */}
           <div className="w-full bg-slate-50/80 rounded-xl p-2.5 border border-slate-200/60 grid grid-cols-2 gap-2">
             <div>
               <p className="text-[10px] text-slate-500 font-medium">Pontuação</p>
@@ -143,8 +143,16 @@ export function RankingPodium({ topUsers }: RankingPodiumProps) {
               </p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-500 font-medium">Concluídos</p>
-              <p className="text-base font-bold text-slate-800">{entry.completedCount}</p>
+              <p className="text-[10px] text-slate-500 font-medium">
+                {entry.user.role === 'Executivo de Contas' ? 'Autonomia Média' : 'Concluídos'}
+              </p>
+              <p
+                className={`text-base font-bold ${entry.user.role === 'Executivo de Contas' ? 'text-emerald-700' : 'text-slate-800'}`}
+              >
+                {entry.user.role === 'Executivo de Contas'
+                  ? `${entry.avgAutonomyRate ?? 85}%`
+                  : entry.completedCount}
+              </p>
             </div>
           </div>
 

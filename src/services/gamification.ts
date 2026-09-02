@@ -120,7 +120,8 @@ export async function recalculateGamification(userId?: string, all = false): Pro
   try {
     return await pb.send('/backend/v1/gamification/recalculate', {
       method: 'POST',
-      body: { user_id: userId, all },
+      body: JSON.stringify({ user_id: userId, all }),
+      headers: { 'Content-Type': 'application/json' },
     })
   } catch (err) {
     console.warn('Erro ao chamar recalculate gamification:', err)
@@ -128,11 +129,12 @@ export async function recalculateGamification(userId?: string, all = false): Pro
   }
 }
 
-export async function closeMonthAwards(monthYear?: string): Promise<any> {
+export async function closeMonthAwards(yearMonth?: string): Promise<any> {
   try {
     return await pb.send('/backend/v1/gamification/close-month', {
       method: 'POST',
-      body: { month_year: monthYear },
+      body: JSON.stringify({ year_month: yearMonth }),
+      headers: { 'Content-Type': 'application/json' },
     })
   } catch (err) {
     console.warn('Erro ao fechar mês:', err)

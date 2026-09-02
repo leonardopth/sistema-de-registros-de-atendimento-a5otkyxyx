@@ -12,6 +12,7 @@ interface MyProgressWidgetProps {
   userName: string
   userGamification: GamificationRecord | null
   onRefresh?: () => void
+  userRole?: string
 }
 
 export function MyProgressWidget({
@@ -19,6 +20,7 @@ export function MyProgressWidget({
   userName,
   userGamification,
   onRefresh,
+  userRole,
 }: MyProgressWidgetProps) {
   const [recalculating, setRecalculating] = useState(false)
   const xp = userGamification?.xp || 0
@@ -137,10 +139,12 @@ export function MyProgressWidget({
             </div>
             <div className="min-w-0">
               <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                Sequência Meta
+                {userRole === 'Executivo de Contas' ? 'Evolução de Clientes' : 'Sequência Meta'}
               </p>
               <p className="text-base font-bold text-emerald-300">
-                {streakDays} {streakDays === 1 ? 'dia' : 'dias'}
+                {userRole === 'Executivo de Contas'
+                  ? `${streakDays} em evolução`
+                  : `${streakDays} ${streakDays === 1 ? 'dia' : 'dias'}`}
               </p>
             </div>
           </div>
@@ -151,9 +155,13 @@ export function MyProgressWidget({
             </div>
             <div className="min-w-0">
               <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                Recorde Diário
+                {userRole === 'Executivo de Contas' ? 'Alta Autonomia (>80%)' : 'Recorde Diário'}
               </p>
-              <p className="text-base font-bold text-white">{dailyRecord} atendimentos</p>
+              <p className="text-base font-bold text-white">
+                {userRole === 'Executivo de Contas'
+                  ? `${dailyRecord} clientes`
+                  : `${dailyRecord} atendimentos`}
+              </p>
             </div>
           </div>
         </div>
