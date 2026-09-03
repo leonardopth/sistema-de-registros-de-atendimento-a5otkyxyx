@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-03T22:18:08.095Z",
+  "generatedAt": "2026-09-03T22:35:08.920Z",
   "collections": [
     {
       "name": "users",
@@ -2233,6 +2233,261 @@
         "CREATE INDEX idx_csl_user ON collaborator_status_logs (user)",
         "CREATE INDEX idx_csl_started ON collaborator_status_logs (started_at)",
         "CREATE INDEX idx_csl_user_started ON collaborator_status_logs (user, started_at DESC)"
+      ]
+    },
+    {
+      "name": "meta_snapshots",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != \"\" && (user_id = @request.auth.id || @request.auth.role = \"Gerente\" || @request.auth.role = \"Supervisor\" || @request.auth.role = \"Líder\" || @request.auth.role = \"Gestor Comercial\" || @request.auth.role = \"Gerentes\" || @request.auth.role = \"Supervisores\" || @request.auth.role = \"Líderes\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)",
+        "view": "@request.auth.id != \"\" && (user_id = @request.auth.id || @request.auth.role = \"Gerente\" || @request.auth.role = \"Supervisor\" || @request.auth.role = \"Líder\" || @request.auth.role = \"Gestor Comercial\" || @request.auth.role = \"Gerentes\" || @request.auth.role = \"Supervisores\" || @request.auth.role = \"Líderes\" || @request.auth.role = \"Master\" || @request.auth.master_access = true)",
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "year",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "month",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "period_label",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "month_year",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "user_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "user_role",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "assessment_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["individual", "team"]
+        },
+        {
+          "name": "team_members_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "total_attendance",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "resolved_attendance",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "resolution_rate",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "avg_duration_minutes",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "avoidable_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "avoidable_rate",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "reopen_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "reopen_rate",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "auto_categorized_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "auto_categorized_rate",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "categorization_accuracy",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "avg_satisfaction_score",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "target_attendance",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "target_min_resolution_rate",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "target_avg_response_time",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "target_auto_categorization",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "target_min_satisfaction",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "target_source",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["individual", "global"]
+        },
+        {
+          "name": "attendance_achievement_pct",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "hit_attendance",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "hit_resolution",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "hit_overall",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "attendance_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["atingiu", "perto", "abaixo"]
+        },
+        {
+          "name": "resolution_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["atingiu", "perto", "abaixo"]
+        },
+        {
+          "name": "overall_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["atingiu", "perto", "abaixo"]
+        },
+        {
+          "name": "snapshot_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "details",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_meta_snapshots_user_month_year ON meta_snapshots (user_id, month_year)",
+        "CREATE INDEX idx_meta_snapshots_month_year ON meta_snapshots (month_year)",
+        "CREATE INDEX idx_meta_snapshots_year_month ON meta_snapshots (year, month)",
+        "CREATE INDEX idx_meta_snapshots_user ON meta_snapshots (user_id)"
       ]
     }
   ]

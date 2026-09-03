@@ -70,9 +70,11 @@ import {
   type Status,
   type SentimentLogItem,
 } from '@/lib/metas'
-import { Users2, User, Send } from 'lucide-react'
+import { Users2, User, Send, Snowflake } from 'lucide-react'
 import { exportMetasCSV, exportMetasPDF } from '@/lib/metas-export'
 import { ExecutiveMonthlyReportModal } from '@/components/ExecutiveMonthlyReportModal'
+import { getMetaSnapshots, triggerFreezeSnapshots } from '@/services/meta-snapshots'
+import type { MetaSnapshotRecord } from '@/types/meta_snapshot'
 
 function ProgressBar({ value, max, status }: { value: number; max: number; status: Status }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
@@ -105,6 +107,8 @@ export default function MetasDesempenho() {
   const [deleting, setDeleting] = useState(false)
   const [historyUser, setHistoryUser] = useState<UserRecord | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [snapshots, setSnapshots] = useState<MetaSnapshotRecord[]>([])
+  const [freezing, setFreezing] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [executiveModalOpen, setExecutiveModalOpen] = useState(false)
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState<boolean>(
@@ -152,11 +156,12 @@ export default function MetasDesempenho() {
 
   const loadData = useCallback(async () => {
     try {
-      const [u, t, g, r, emailLogs, callLogs] = await Promise.all([
+      const [u, t, g, r, snap, emailLogs, callLogs] = await Promise.all([
         getUsers(),
         getUserTargets(),
         getGlobalTarget(),
         getServiceRecords(),
+        getMetaSnapshots().catch(() => [] as MetaSnapshotRecord[]),
         getEmailLogs().catch(() => [] as EmailLogRecord[]),
         getCallAnalysisLogs().catch(() => [] as CallAnalysisLogRecord[]),
       ])
@@ -178,6 +183,7 @@ export default function MetasDesempenho() {
       setTargets(t)
       setGlobalTarget(g)
       setRecords(r)
+      setSnapshots(snap)
 
       const sLogs: SentimentLogItem[] = [
         ...emailLogs.map((el) => ({
@@ -208,6 +214,7 @@ export default function MetasDesempenho() {
   useRealtime('user_targets', () => loadData())
   useRealtime('service_records', () => loadData())
   useRealtime('global_targets', () => loadData())
+  useRealtime('meta_snapshots', () => loadData())
   useRealtime('email_analysis_logs', () => loadData())
   useRealtime('call_analysis_logs', () => loadData())
 
@@ -449,6 +456,35 @@ export default function MetasDesempenho() {
           >
             <FileText className="h-4 w-4 mr-1.5" />
             Exportar PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              setFreezing(true)
+              try {
+                const res = await triggerFreezeSnapshots()
+                toast({
+                  title: 'Snapshots congelados com sucesso!',
+                  description: `${res.result.periodLabel}: ${res.result.totalEligible} colaboradores apurados (${res.result.created} criados, ${res.result.updated} atualizados).`,
+                })
+                await loadData()
+              } catch (err: any) {
+                toast({
+                  variant: 'destructive',
+                  title: 'Erro ao congelar snapshots',
+                  description: err?.message || 'Falha na comunicação com o backend.',
+                })
+              } finally {
+                setFreezing(false)
+              }
+            }}
+            disabled={freezing}
+            className="border-sky-300 text-sky-700 bg-sky-50 hover:bg-sky-100 font-semibold"
+            title="Congela ou atualiza os números consolidados imutáveis do mês anterior para todo o time"
+          >
+            <Snowflake className={cn('h-4 w-4 mr-1.5 text-sky-600', freezing && 'animate-spin')} />
+            {freezing ? 'Congelando...' : 'Congelar Mês Anterior'}
           </Button>
           <Button
             variant="outline"
@@ -895,6 +931,7 @@ export default function MetasDesempenho() {
         records={records}
         effective={historyUser ? effectiveByUser.get(historyUser.id) || null : null}
         allUsers={users}
+        snapshots={snapshots}
       />
 
       <ExecutiveMonthlyReportModal open={executiveModalOpen} onOpenChange={setExecutiveModalOpen} />

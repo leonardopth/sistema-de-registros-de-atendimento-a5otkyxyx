@@ -9,6 +9,7 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import type { UserRecord, ServiceRecord } from '@/types/service_record'
+import type { MetaSnapshotRecord } from '@/types/meta_snapshot'
 import {
   buildUserHistory,
   isLeadershipRole,
@@ -16,7 +17,8 @@ import {
   type EffectiveTarget,
   type HistoryRow,
 } from '@/lib/metas'
-import { History, UserCheck, Users2 } from 'lucide-react'
+import { History, UserCheck, Users2, Snowflake, Sparkles } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface UserHistoryDialogProps {
   open: boolean
@@ -25,6 +27,7 @@ interface UserHistoryDialogProps {
   records: ServiceRecord[]
   effective: EffectiveTarget | null
   allUsers?: UserRecord[]
+  snapshots?: MetaSnapshotRecord[]
 }
 
 export function UserHistoryDialog({
@@ -34,6 +37,7 @@ export function UserHistoryDialog({
   records,
   effective,
   allUsers,
+  snapshots,
 }: UserHistoryDialogProps) {
   if (!user || !effective) return null
 
@@ -45,6 +49,7 @@ export function UserHistoryDialog({
     12,
     undefined,
     allUsers,
+    snapshots,
   )
   const hits = history.filter((h) => h.hit).length
 
@@ -84,58 +89,95 @@ export function UserHistoryDialog({
         </DialogHeader>
 
         <div className="border rounded-md overflow-hidden mt-2">
-          <Table>
-            <TableHeader className="bg-slate-50 sticky top-0">
-              <TableRow>
-                <TableHead className="text-xs font-bold">Mês</TableHead>
-                <TableHead className="text-xs font-bold text-center">Volume (Real/Meta)</TableHead>
-                <TableHead className="text-xs font-bold text-center">Tempo Médio</TableHead>
-                <TableHead className="text-xs font-bold text-center">Categorização</TableHead>
-                <TableHead className="text-xs font-bold text-center">Satisfação</TableHead>
-                <TableHead className="text-xs font-bold text-center">Resolução</TableHead>
-                <TableHead className="text-xs font-bold text-center">Resultado</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {history.map((row) => (
-                <TableRow key={`${row.year}-${row.month}`} className="hover:bg-slate-50">
-                  <TableCell className="text-xs font-semibold capitalize">{row.label}</TableCell>
-                  <TableCell className="text-xs text-center">
-                    <span className="font-semibold text-slate-800">{row.real.total}</span> /{' '}
-                    <span className="text-slate-500">{row.attendanceTarget}</span>
-                  </TableCell>
-                  <TableCell className="text-xs text-center font-medium">
-                    {row.real.avgDuration} min
-                  </TableCell>
-                  <TableCell className="text-xs text-center">
-                    <span className="font-semibold">{row.real.autoCategorizedRate}%</span>
-                    <span className="text-[10px] text-slate-400 block">
-                      ({row.real.autoCategorizedCount} atend.)
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-xs text-center">
-                    <span className="font-semibold text-indigo-700">
-                      {row.real.avgSatisfactionScore} pts
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-xs text-center">
-                    {row.real.rate}%{' '}
-                    <span className="text-[10px] text-slate-400 font-normal">
-                      (mín. {row.minResolutionRate}%)
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge
-                      variant="secondary"
-                      className={`text-[10px] h-5 ${STATUS_STYLES[row.overall].badge}`}
-                    >
-                      {STATUS_STYLES[row.overall].label}
-                    </Badge>
-                  </TableCell>
+          <TooltipProvider>
+            <Table>
+              <TableHeader className="bg-slate-50 sticky top-0">
+                <TableRow>
+                  <TableHead className="text-xs font-bold">Mês</TableHead>
+                  <TableHead className="text-xs font-bold text-center">Origem / Status</TableHead>
+                  <TableHead className="text-xs font-bold text-center">
+                    Volume (Real/Meta)
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-center">Tempo Médio</TableHead>
+                  <TableHead className="text-xs font-bold text-center">Categorização</TableHead>
+                  <TableHead className="text-xs font-bold text-center">Satisfação</TableHead>
+                  <TableHead className="text-xs font-bold text-center">Resolução</TableHead>
+                  <TableHead className="text-xs font-bold text-center">Resultado</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {history.map((row) => (
+                  <TableRow key={`${row.year}-${row.month}`} className="hover:bg-slate-50">
+                    <TableCell className="text-xs font-semibold capitalize">
+                      <div className="flex items-center gap-1.5">
+                        <span>{row.label}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-center">
+                      {row.isFrozen ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 cursor-help">
+                              <Snowflake className="w-3 h-3 text-sky-500" />
+                              Congelado
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="text-xs max-w-xs">
+                            Snapshot imutável gerado na virada do mês. Números protegidos contra
+                            alterações retroativas.
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-help">
+                              <Sparkles className="w-3 h-3 text-emerald-500" />
+                              Ao vivo
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="text-xs max-w-xs">
+                            Mês corrente em aberto (cálculo em tempo real).
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-center">
+                      <span className="font-semibold text-slate-800">{row.real.total}</span> /{' '}
+                      <span className="text-slate-500">{row.attendanceTarget}</span>
+                    </TableCell>
+                    <TableCell className="text-xs text-center font-medium">
+                      {row.real.avgDuration} min
+                    </TableCell>
+                    <TableCell className="text-xs text-center">
+                      <span className="font-semibold">{row.real.autoCategorizedRate}%</span>
+                      <span className="text-[10px] text-slate-400 block">
+                        ({row.real.autoCategorizedCount} atend.)
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-xs text-center">
+                      <span className="font-semibold text-indigo-700">
+                        {row.real.avgSatisfactionScore} pts
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-xs text-center">
+                      {row.real.rate}%{' '}
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        (mín. {row.minResolutionRate}%)
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge
+                        variant="secondary"
+                        className={`text-[10px] h-5 ${STATUS_STYLES[row.overall].badge}`}
+                      >
+                        {STATUS_STYLES[row.overall].label}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TooltipProvider>
         </div>
       </DialogContent>
     </Dialog>

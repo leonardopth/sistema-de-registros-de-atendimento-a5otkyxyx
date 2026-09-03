@@ -1,5 +1,6 @@
 import type { UserRecord, GlobalTargetRecord, ServiceRecord } from '@/types/service_record'
 import type { UserTargetRecord } from '@/services/user-targets'
+import type { MetaSnapshotRecord } from '@/types/meta_snapshot'
 import { TIMEZONE } from '@/lib/timezone'
 
 /** Funções/papéis com permissão de gestão sobre metas. */
@@ -479,6 +480,8 @@ export interface HistoryRow {
   resolutionStatus: Status
   overall: Status
   hit: boolean
+  isFrozen?: boolean
+  snapshotId?: string
 }
 
 /**
@@ -597,6 +600,7 @@ export function buildUserHistory(
   monthsBack = 12,
   sentimentLogs?: SentimentLogItem[],
   allUsers?: UserRecord[],
+  snapshots?: MetaSnapshotRecord[],
 ): HistoryRow[] {
   const out: HistoryRow[] = []
   const now = currentGMT3Date()
@@ -605,49 +609,127 @@ export function buildUserHistory(
   const teamMembers =
     targetUser && allUsers && isLeader ? getTeamMembersForLeader(targetUser, allUsers) : []
 
+  // Mapa de snapshots existentes para o usuário: chave "YYYY-MM"
+  const snapshotMap = new Map<string, MetaSnapshotRecord>()
+  if (snapshots && snapshots.length > 0) {
+    for (const snap of snapshots) {
+      if (snap.user_id === userId) {
+        snapshotMap.set(snap.month_year, snap)
+      }
+    }
+  }
+
   for (let i = 0; i < monthsBack; i++) {
     const d = new Date(Date.UTC(now.year, now.month - i, 1, 12, 0, 0))
     const year = d.getUTCFullYear()
-    const month = d.getUTCMonth()
-    const statsMap = computeStatsByUserForMonth(records, year, month, sentimentLogs)
+    const month = d.getUTCMonth() // 0-based
+    const isCurrentMonth = year === now.year && month === now.month
+    const monthPadded = String(month + 1).padStart(2, '0')
+    const monthYearKey = `${year}-${monthPadded}`
 
-    let real: UserRealStats
-    if (isLeader && teamMembers.length > 0) {
-      real = aggregateTeamStats(teamMembers, statsMap)
-    } else {
-      real = statsMap.get(userId) || {
-        total: 0,
-        resolved: 0,
-        rate: 0,
-        avgDuration: 0,
-        avoidableCount: 0,
-        avoidableRate: 0,
-        autoCategorizedCount: 0,
-        autoCategorizedRate: 0,
-        categorizationAccuracy: 90,
-        avgSatisfactionScore: 90,
+    // Regra B5: Para meses anteriores, se houver snapshot imutável, lê exclusivamente dele
+    const existingSnap = !isCurrentMonth ? snapshotMap.get(monthYearKey) : undefined
+
+    if (existingSnap) {
+      const real: UserRealStats = {
+        total: existingSnap.total_attendance,
+        resolved: existingSnap.resolved_attendance,
+        rate: existingSnap.resolution_rate,
+        avgDuration: existingSnap.avg_duration_minutes,
+        avoidableCount: existingSnap.avoidable_count ?? 0,
+        avoidableRate: existingSnap.avoidable_rate ?? 0,
+        autoCategorizedCount: existingSnap.auto_categorized_count ?? 0,
+        autoCategorizedRate: existingSnap.auto_categorized_rate ?? 0,
+        categorizationAccuracy: existingSnap.categorization_accuracy ?? 85,
+        avgSatisfactionScore: existingSnap.avg_satisfaction_score ?? 90,
         positiveSentimentCount: 0,
         totalFeedbackCount: 0,
-        reopenedCount: 0,
-        reopenRate: 0,
+        reopenedCount: existingSnap.reopen_count ?? 0,
+        reopenRate: existingSnap.reopen_rate ?? 0,
+        isTeamConsolidated: existingSnap.assessment_type === 'team',
+        teamMemberCount: existingSnap.team_members_count,
       }
-    }
 
-    const attendanceStatus = getAttendanceStatus(real.total, effective.monthly_attendance_target)
-    const resolutionStatus = getResolutionStatus(real.rate, effective.min_resolution_rate)
-    const overall = getOverallStatus(attendanceStatus, resolutionStatus)
-    out.push({
-      year,
-      month,
-      label: monthLabel(year, month),
-      attendanceTarget: effective.monthly_attendance_target,
-      minResolutionRate: effective.min_resolution_rate,
-      real,
-      attendanceStatus,
-      resolutionStatus,
-      overall,
-      hit: attendanceStatus !== 'abaixo' && resolutionStatus !== 'abaixo',
-    })
+      const attendanceStatus: Status =
+        existingSnap.attendance_status === 'atingiu' ||
+        existingSnap.attendance_status === 'perto' ||
+        existingSnap.attendance_status === 'abaixo'
+          ? existingSnap.attendance_status
+          : getAttendanceStatus(real.total, existingSnap.target_attendance)
+
+      const resolutionStatus: Status =
+        existingSnap.resolution_status === 'atingiu' ||
+        existingSnap.resolution_status === 'perto' ||
+        existingSnap.resolution_status === 'abaixo'
+          ? existingSnap.resolution_status
+          : getResolutionStatus(real.rate, existingSnap.target_min_resolution_rate)
+
+      const overall: Status =
+        existingSnap.overall_status === 'atingiu' ||
+        existingSnap.overall_status === 'perto' ||
+        existingSnap.overall_status === 'abaixo'
+          ? existingSnap.overall_status
+          : getOverallStatus(attendanceStatus, resolutionStatus)
+
+      out.push({
+        year,
+        month,
+        label: existingSnap.period_label || monthLabel(year, month),
+        attendanceTarget: existingSnap.target_attendance,
+        minResolutionRate: existingSnap.target_min_resolution_rate,
+        real,
+        attendanceStatus,
+        resolutionStatus,
+        overall,
+        hit:
+          existingSnap.hit_overall ??
+          (attendanceStatus !== 'abaixo' && resolutionStatus !== 'abaixo'),
+        isFrozen: true,
+        snapshotId: existingSnap.id,
+      })
+    } else {
+      // Mês corrente (vivo) ou mês passado sem snapshot (fallback para cálculo vivo)
+      const statsMap = computeStatsByUserForMonth(records, year, month, sentimentLogs)
+
+      let real: UserRealStats
+      if (isLeader && teamMembers.length > 0) {
+        real = aggregateTeamStats(teamMembers, statsMap)
+      } else {
+        real = statsMap.get(userId) || {
+          total: 0,
+          resolved: 0,
+          rate: 0,
+          avgDuration: 0,
+          avoidableCount: 0,
+          avoidableRate: 0,
+          autoCategorizedCount: 0,
+          autoCategorizedRate: 0,
+          categorizationAccuracy: 90,
+          avgSatisfactionScore: 90,
+          positiveSentimentCount: 0,
+          totalFeedbackCount: 0,
+          reopenedCount: 0,
+          reopenRate: 0,
+        }
+      }
+
+      const attendanceStatus = getAttendanceStatus(real.total, effective.monthly_attendance_target)
+      const resolutionStatus = getResolutionStatus(real.rate, effective.min_resolution_rate)
+      const overall = getOverallStatus(attendanceStatus, resolutionStatus)
+      out.push({
+        year,
+        month,
+        label: monthLabel(year, month),
+        attendanceTarget: effective.monthly_attendance_target,
+        minResolutionRate: effective.min_resolution_rate,
+        real,
+        attendanceStatus,
+        resolutionStatus,
+        overall,
+        hit: attendanceStatus !== 'abaixo' && resolutionStatus !== 'abaixo',
+        isFrozen: false,
+      })
+    }
   }
   return out
 }
