@@ -526,77 +526,78 @@ export default function GestaoUsuarios() {
                         )}
                       </div>
                     </TableCell>
-                  <TableCell>
-                    <StatusBadge status={u.approval_status} />
-                  </TableCell>
-                  <TableCell className="text-sm text-slate-600">
-                    {u.service_groups?.length
-                      ? u.service_groups.join(', ')
-                      : u.bases?.length
-                        ? u.bases.join(', ')
-                        : '-'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setEditingUser(u)}
-                        title="Editar usuário"
-                      >
-                        <Pencil className="h-4 w-4 text-indigo-600" />
-                      </Button>
-                      {isMaster && (
+                    <TableCell>
+                      <StatusBadge status={u.approval_status} />
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-600">
+                      {u.service_groups?.length
+                        ? u.service_groups.join(', ')
+                        : u.bases?.length
+                          ? u.bases.join(', ')
+                          : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => setResetPasswordUser(u)}
-                          title="Resetar Senha"
+                          onClick={() => setEditingUser(u)}
+                          title="Editar usuário"
                         >
-                          <KeyRound className="h-4 w-4 text-amber-600" />
+                          <Pencil className="h-4 w-4 text-indigo-600" />
                         </Button>
-                      )}
-                      {u.approval_status === 'Pendente' && (
-                        <>
-                          <Button size="sm" variant="ghost" onClick={() => handleApprove(u.id)}>
-                            <Check className="h-4 w-4 text-green-600" />
+                        {isMaster && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setResetPasswordUser(u)}
+                            title="Resetar Senha"
+                          >
+                            <KeyRound className="h-4 w-4 text-amber-600" />
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleReject(u.id)}>
-                            <X className="h-4 w-4 text-red-600" />
+                        )}
+                        {u.approval_status === 'Pendente' && (
+                          <>
+                            <Button size="sm" variant="ghost" onClick={() => handleApprove(u.id)}>
+                              <Check className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleReject(u.id)}>
+                              <X className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </>
+                        )}
+                        {isMaster && u.id !== user?.id && u.role !== 'Master' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleToggleMaster(u.id, !u.master_access)}
+                            title={u.master_access ? 'Revogar Master' : 'Tornar Master'}
+                          >
+                            <Crown
+                              className={cn(
+                                'h-4 w-4',
+                                u.master_access ? 'text-amber-500' : 'text-slate-400',
+                              )}
+                            />
                           </Button>
-                        </>
-                      )}
-                      {isMaster && u.id !== user?.id && u.role !== 'Master' && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleToggleMaster(u.id, !u.master_access)}
-                          title={u.master_access ? 'Revogar Master' : 'Tornar Master'}
-                        >
-                          <Crown
-                            className={cn(
-                              'h-4 w-4',
-                              u.master_access ? 'text-amber-500' : 'text-slate-400',
-                            )}
-                          />
-                        </Button>
-                      )}
-                      {u.id !== user?.id && u.role !== 'Master' && (
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(u.id)}>
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {visibleUsers.length === 0 && (
+                        )}
+                        {u.id !== user?.id && u.role !== 'Master' && (
+                          <Button size="sm" variant="ghost" onClick={() => handleDelete(u.id)}>
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+              {visibleUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={isMaster ? 8 : 7} className="text-center text-slate-400 py-8">
                     Nenhum usuário encontrado.
                   </TableCell>
                 </TableRow>
-              )}
+              ) : null}
             </TableBody>
           </Table>
         </div>

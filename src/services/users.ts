@@ -183,7 +183,3 @@ export async function updateUserServiceGroups(userId: string, serviceGroups: str
 export async function updateUserBases(userId: string, bases: string[]) {
   return await pb.collection('users').update(userId, { bases })
 }
-
-export async function updateUserDepartments(userId: string, departments: string[]) {
-  return await pb.collection('users').update(userId, { departments })
-}
