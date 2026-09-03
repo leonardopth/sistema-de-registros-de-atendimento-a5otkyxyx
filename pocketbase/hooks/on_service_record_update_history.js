@@ -68,11 +68,23 @@ onRecordUpdateRequest((e) => {
     return val || ''
   }
 
+  var oldStatus = oldRecord.getString('status')
+  var newStatus = e.record.getString('status')
+  var isReopening = oldStatus === 'Concluído' && newStatus !== 'Concluído'
+
   var oldReopenJust = oldRecord.getString('reopen_justification')
   var newReopenJust = e.record.getString('reopen_justification')
   var justification = ''
   if (newReopenJust && newReopenJust !== oldReopenJust) {
     justification = newReopenJust
+  }
+
+  // Se o atendimento está sendo reaberto (de Concluído para outro status)
+  if (isReopening) {
+    e.record.set('is_reopened', true)
+    e.record.set('reopened_at', new Date().toISOString())
+    var currentCount = oldRecord.getInt('reopen_count') || 0
+    e.record.set('reopen_count', currentCount + 1)
   }
 
   var historyCol = null

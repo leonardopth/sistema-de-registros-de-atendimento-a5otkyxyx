@@ -202,10 +202,18 @@ export const updateServiceRecordWithHistory = async (
   const current = await getServiceRecord(id)
   const updated = await pb.collection('service_records').update<ServiceRecord>(id, data)
 
-  if (current && justification) {
+  if (
+    current &&
+    (justification ||
+      (current.status === 'Concluído' && data.status && data.status !== 'Concluído'))
+  ) {
     try {
+      const isReopening =
+        current.status === 'Concluído' && data.status && data.status !== 'Concluído'
       const changedFields: string[] = []
-      if (data.status && data.status !== current.status) {
+      if (isReopening) {
+        changedFields.push(`Reabertura de atendimento: Concluído -> ${data.status}`)
+      } else if (data.status && data.status !== current.status) {
         changedFields.push(`status: ${current.status} -> ${data.status}`)
       }
       if (data.description && data.description !== current.description) {
@@ -221,7 +229,7 @@ export const updateServiceRecordWithHistory = async (
         field: changedFields.join(', ') || 'alteração geral',
         old_value: current.status,
         new_value: data.status || current.status,
-        justification,
+        justification: justification || data.reopen_justification || '',
       })
     } catch (e) {
       console.warn('Failed to record history entry:', e)

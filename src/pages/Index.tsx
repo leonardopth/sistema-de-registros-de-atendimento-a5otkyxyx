@@ -53,6 +53,7 @@ import { CollaboratorStatusPanel } from '@/components/CollaboratorStatusPanel'
 import { filterClientsByUserAccess, filterRecordsByUserAccess } from '@/lib/service-group-access'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { getGMT3DateString } from '@/lib/timezone'
+import { calculateReopenRate } from '@/lib/reopen-utils'
 import {
   Zap,
   PlusCircle,
@@ -227,6 +228,8 @@ export default function Index() {
           ) / 10
         : 0
 
+    const reopenData = calculateReopenRate(consultantRecords)
+
     return {
       todayCount: consultantTodayRecords.length,
       totalCount: consultantRecords.length,
@@ -236,6 +239,8 @@ export default function Index() {
       avgTfr,
       tfrTarget: 15,
       wrongDeptCount: avoidableCount,
+      reopenedCount: reopenData.reopenedCount,
+      reopenRate: reopenData.rate,
     }
   }, [consultantRecords, consultantTodayRecords])
 
@@ -319,6 +324,8 @@ export default function Index() {
           ) / 10
         : 0
 
+    const reopenData = calculateReopenRate(teamRecords)
+
     return {
       todayCount: teamTodayRecords.length,
       totalCount: teamRecords.length,
@@ -328,6 +335,8 @@ export default function Index() {
       avgTfr,
       tfrTarget: 15,
       wrongDeptCount: avoidable,
+      reopenedCount: reopenData.reopenedCount,
+      reopenRate: reopenData.rate,
     }
   }, [teamRecords, teamTodayRecords])
 
@@ -549,6 +558,8 @@ export default function Index() {
           ) / 10
         : 0
 
+    const reopenData = calculateReopenRate(accessibleRecords)
+
     return {
       todayCount: generalTodayRecords.length,
       totalCount: accessibleRecords.length,
@@ -564,6 +575,8 @@ export default function Index() {
       avgTfr,
       tfrTarget: 15,
       wrongDeptCount: accessibleRecords.filter((r) => Boolean(r?.avoidable_contact)).length,
+      reopenedCount: reopenData.reopenedCount,
+      reopenRate: reopenData.rate,
     }
   }, [accessibleRecords, generalTodayRecords])
 

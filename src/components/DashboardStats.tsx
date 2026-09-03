@@ -1,5 +1,14 @@
 import { Card, CardContent } from '@/components/ui/card'
-import { Calendar, Clock, Activity, AlertOctagon, Info, ListChecks, Timer } from 'lucide-react'
+import {
+  Calendar,
+  Clock,
+  Activity,
+  AlertOctagon,
+  Info,
+  ListChecks,
+  Timer,
+  RotateCcw,
+} from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -26,6 +35,8 @@ interface DashboardStatsProps {
   avgTfr?: number
   tfrTarget?: number
   wrongDeptCount?: number
+  reopenedCount?: number
+  reopenRate?: number
   statusBreakdown?: Record<string, number>
 }
 const STATUS_LABELS: Record<string, string> = {
@@ -55,6 +66,8 @@ export function DashboardStats({
   avgTfr = 0,
   tfrTarget = 15,
   wrongDeptCount = 0,
+  reopenedCount = 0,
+  reopenRate = 0,
   statusBreakdown,
 }: DashboardStatsProps) {
   const safeTodayCount = Number.isFinite(todayCount) ? todayCount : 0
@@ -66,6 +79,8 @@ export function DashboardStats({
   const safeAvgDuration = Number.isFinite(avgDuration) ? avgDuration : 0
   const safeAvgTfr = Number.isFinite(avgTfr) ? avgTfr : 0
   const safeWrongDept = Number.isFinite(wrongDeptCount) ? wrongDeptCount : 0
+  const safeReopened = Number.isFinite(reopenedCount) ? reopenedCount : 0
+  const safeReopenRate = Number.isFinite(reopenRate) ? reopenRate : 0
 
   const todayLabel = isStatusFiltered
     ? `Atendimentos hoje – filtro: ${activeStatusFilter}`
@@ -143,10 +158,20 @@ export function DashboardStats({
       isTodayCard: false,
       isTotalCard: false,
     },
+    {
+      title: 'Taxa de Reabertura',
+      value: `${safeReopenRate}%`,
+      subtext: `${safeReopened} atendimento(s) reaberto(s)`,
+      icon: RotateCcw,
+      color: safeReopenRate > 10 ? 'text-amber-600' : 'text-indigo-600',
+      bgColor: safeReopenRate > 10 ? 'bg-amber-50' : 'bg-indigo-50',
+      isTodayCard: false,
+      isTotalCard: false,
+    },
   ]
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
       {statCards.map((stat, idx) => {
         const Icon = stat.icon
         return (

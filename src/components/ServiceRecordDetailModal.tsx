@@ -445,11 +445,16 @@ export function ServiceRecordDetailModal({
   const handleReopen = async (justification: string) => {
     setReopenLoading(true)
     try {
+      const nowIso = new Date().toISOString()
+      const currentReopenCount = Number(record.reopen_count) || 0
       await updateServiceRecordWithHistory(
         record.id,
         {
           status: 'Aberto',
           reopen_justification: justification,
+          is_reopened: true,
+          reopened_at: nowIso,
+          reopen_count: currentReopenCount + 1,
         },
         user?.id || '',
       )

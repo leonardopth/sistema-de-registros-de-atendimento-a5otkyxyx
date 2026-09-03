@@ -40,6 +40,7 @@ import {
   Smile,
   Award,
   Sparkles,
+  RotateCcw,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { getUsers } from '@/services/users'
@@ -61,6 +62,8 @@ interface AgentMetrics {
   resolutionRate: number // %
   avoidableRate: number // %
   satisfactionScore: number // score 0-100
+  reopenRate: number // %
+  reopenedCount: number
 }
 
 export default function ComparativoAgentes() {
@@ -205,6 +208,15 @@ export default function ComparativoAgentes() {
       const sumTfr = recsWithTfr.reduce((acc, curr) => acc + (curr.first_response_time || 0), 0)
       const avgTFR = recsWithTfr.length > 0 ? Number((sumTfr / recsWithTfr.length).toFixed(1)) : 0
 
+      const reopenedRecs = userRecords.filter(
+        (r) =>
+          r.is_reopened ||
+          (r.reopen_count && r.reopen_count > 0) ||
+          Boolean(r.reopen_justification),
+      )
+      const reopenedCount = reopenedRecs.length
+      const reopenRate = total > 0 ? Math.round((reopenedCount / total) * 100) : 0
+
       const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0
       const avoidableRate = total > 0 ? Math.round((avoidable / total) * 100) : 0
 
@@ -235,6 +247,8 @@ export default function ComparativoAgentes() {
         resolutionRate,
         avoidableRate,
         satisfactionScore,
+        reopenRate,
+        reopenedCount,
       }
     })
   }, [users, selectedUserIds, filteredPeriodRecords, filteredSentimentLogs])
@@ -261,12 +275,15 @@ export default function ComparativoAgentes() {
         worstAvoidable: null,
         bestSatisfaction: null,
         worstSatisfaction: null,
+        bestReopen: null,
+        worstReopen: null,
       }
     }
 
     const attendances = agentMetricsList.map((m) => m.totalAttendances)
     const tmas = agentMetricsList.map((m) => m.avgTMA)
     const tfrs = agentMetricsList.map((m) => m.avgTFR)
+    const reopens = agentMetricsList.map((m) => m.reopenRate)
     const resolutions = agentMetricsList.map((m) => m.resolutionRate)
     const avoidables = agentMetricsList.map((m) => m.avoidableRate)
     const satisfactions = agentMetricsList.map((m) => m.satisfactionScore)
@@ -289,6 +306,9 @@ export default function ComparativoAgentes() {
     const maxSat = Math.max(...satisfactions)
     const minSat = Math.min(...satisfactions)
 
+    const maxReopen = Math.max(...reopens)
+    const minReopen = Math.min(...reopens)
+
     return {
       bestAttendance: maxAtt !== minAtt ? maxAtt : null,
       worstAttendance: maxAtt !== minAtt ? minAtt : null,
@@ -302,6 +322,8 @@ export default function ComparativoAgentes() {
       worstAvoidable: maxAvo !== minAvo ? maxAvo : null, // Maior % de contatos evitáveis é pior
       bestSatisfaction: maxSat !== minSat ? maxSat : null,
       worstSatisfaction: maxSat !== minSat ? minSat : null,
+      bestReopen: maxReopen !== minReopen ? minReopen : null, // Menor taxa de reabertura é melhor
+      worstReopen: maxReopen !== minReopen ? maxReopen : null, // Maior taxa de reabertura é pior
     }
   }, [agentMetricsList])
 
@@ -316,6 +338,7 @@ export default function ComparativoAgentes() {
       'Taxa Resolução (%)': m.resolutionRate,
       'Evitáveis (%)': m.avoidableRate,
       'Satisfação (Score)': m.satisfactionScore,
+      'Taxa Reabertura (%)': m.reopenRate,
     }))
   }, [agentMetricsList])
 
@@ -324,6 +347,7 @@ export default function ComparativoAgentes() {
     TMA: { label: 'TMA (min)', color: '#0ea5e9' },
     'TFR (min)': { label: 'TFR (min)', color: '#f59e0b' },
     'Taxa Resolução (%)': { label: 'Taxa Resolução (%)', color: '#10b981' },
+    'Taxa Reabertura (%)': { label: 'Taxa Reabertura (%)', color: '#0284c7' },
     'Evitáveis (%)': { label: 'Evitáveis (%)', color: '#f43f5e' },
     'Satisfação (Score)': { label: 'Satisfação (Score)', color: '#8b5cf6' },
   }
@@ -609,6 +633,11 @@ export default function ComparativoAgentes() {
               const isWorstSatisfaction =
                 highlights.worstSatisfaction !== null &&
                 metric.satisfactionScore === highlights.worstSatisfaction
+
+              const isBestReopen =
+                highlights.bestReopen !== null && metric.reopenRate === highlights.bestReopen
+              const isWorstReopen =
+                highlights.worstReopen !== null && metric.reopenRate === highlights.worstReopen
 
               return (
                 <Card
@@ -907,6 +936,52 @@ export default function ComparativoAgentes() {
                         <span className="text-[10px] text-slate-400">qualidade IA</span>
                       </div>
                     </div>
+
+                    {/* 6. Taxa de Reabertura */}
+                    <div
+                      className={cn(
+                        'p-2.5 rounded-lg border transition-all',
+                        isBestReopen
+                          ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200'
+                          : isWorstReopen
+                            ? 'bg-rose-50/60 border-rose-300 ring-1 ring-rose-200'
+                            : 'bg-slate-50/60 border-slate-100',
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-slate-600 flex items-center gap-1.5">
+                          <RotateCcw className="h-3.5 w-3.5 text-indigo-600" />
+                          Taxa de Reabertura
+                        </span>
+                        {isBestReopen && (
+                          <Badge className="text-[9px] h-4 bg-emerald-600 hover:bg-emerald-600">
+                            Melhor (Menor)
+                          </Badge>
+                        )}
+                        {isWorstReopen && (
+                          <Badge className="text-[9px] h-4 bg-rose-600 hover:bg-rose-600">
+                            Maior
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="mt-1 flex items-baseline justify-between">
+                        <span
+                          className={cn(
+                            'text-xl font-black',
+                            isBestReopen
+                              ? 'text-emerald-700'
+                              : isWorstReopen
+                                ? 'text-rose-700'
+                                : 'text-slate-900',
+                          )}
+                        >
+                          {metric.reopenRate}%
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          {metric.reopenedCount} reaberto(s)
+                        </span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               )
@@ -1011,6 +1086,14 @@ export default function ComparativoAgentes() {
                     <Bar
                       dataKey="Taxa Resolução (%)"
                       fill="#10b981"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={45}
+                    />
+                  )}
+                  {(metricView === 'all' || metricView === 'rates') && (
+                    <Bar
+                      dataKey="Taxa Reabertura (%)"
+                      fill="#0284c7"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={45}
                     />

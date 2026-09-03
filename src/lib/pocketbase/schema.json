@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-03T17:04:34.459Z",
+  "generatedAt": "2026-09-03T17:41:59.983Z",
   "collections": [
     {
       "name": "users",
@@ -489,6 +489,24 @@
         {
           "name": "first_response_at",
           "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_reopened",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "reopened_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "reopen_count",
+          "type": "number",
           "required": false,
           "system": false
         }

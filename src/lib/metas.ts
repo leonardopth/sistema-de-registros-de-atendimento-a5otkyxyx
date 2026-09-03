@@ -147,6 +147,8 @@ export interface UserRealStats {
   avgSatisfactionScore: number // pontuação média de qualidade/satisfação (0-100)
   positiveSentimentCount: number
   totalFeedbackCount: number
+  reopenedCount: number
+  reopenRate: number
   isTeamConsolidated?: boolean
   teamMemberCount?: number
 }
@@ -234,12 +236,21 @@ export function computeStatsByUserForMonth(
       avgSatisfactionScore: 90,
       positiveSentimentCount: 0,
       totalFeedbackCount: 0,
+      reopenedCount: 0,
+      reopenRate: 0,
     }
 
     cur.total += 1
     if (r.status === 'Concluído') cur.resolved += 1
     if (r.avoidable_contact) cur.avoidableCount += 1
     cur.avgDuration += r.duration || 0
+    if (
+      r.is_reopened ||
+      (r.reopen_count && r.reopen_count > 0) ||
+      Boolean(r.reopen_justification)
+    ) {
+      cur.reopenedCount += 1
+    }
     // Considera categorizado se possui motivo específico diferente de 'outros'
     if (r.contact_reason && r.contact_reason !== 'outros') {
       cur.autoCategorizedCount = (cur.autoCategorizedCount || 0) + 1
@@ -270,6 +281,7 @@ export function computeStatsByUserForMonth(
     v.rate = v.total > 0 ? Math.round((v.resolved / v.total) * 100) : 0
     v.avoidableRate = v.total > 0 ? Math.round((v.avoidableCount / v.total) * 100) : 0
     v.avgDuration = v.total > 0 ? Number((v.avgDuration / v.total).toFixed(1)) : 0
+    v.reopenRate = v.total > 0 ? Math.round((v.reopenedCount / v.total) * 100) : 0
     v.autoCategorizedRate =
       v.total > 0 ? Math.round(((v.autoCategorizedCount || 0) / v.total) * 100) : 0
     // Acurácia da categorização estimada pela proporção de contatos categorizados assertivos
@@ -321,6 +333,7 @@ export function aggregateTeamStats(
   let totalSatisfactionWeight = 0
   let positiveSentimentCount = 0
   let totalFeedbackCount = 0
+  let reopenedCount = 0
 
   for (const member of teamMembers) {
     const memberStat = individualStatsMap.get(member.id)
@@ -335,9 +348,11 @@ export function aggregateTeamStats(
     totalSatisfactionWeight += memberStat.avgSatisfactionScore * memberStat.total
     positiveSentimentCount += memberStat.positiveSentimentCount
     totalFeedbackCount += memberStat.totalFeedbackCount
+    reopenedCount += memberStat.reopenedCount || 0
   }
 
   const rate = total > 0 ? Math.round((resolved / total) * 100) : 0
+  const reopenRate = total > 0 ? Math.round((reopenedCount / total) * 100) : 0
   const avoidableRate = total > 0 ? Math.round((avoidableCount / total) * 100) : 0
   const avgDuration = total > 0 ? Number((totalDurationWeight / total).toFixed(1)) : 0
   const autoCategorizedRate = total > 0 ? Math.round((autoCategorizedCount / total) * 100) : 0
@@ -372,6 +387,8 @@ export function aggregateTeamStats(
     avgSatisfactionScore,
     positiveSentimentCount,
     totalFeedbackCount,
+    reopenedCount,
+    reopenRate,
     isTeamConsolidated: true,
     teamMemberCount: teamMembers.length,
   }
@@ -408,6 +425,8 @@ export function computeEffectiveStatsByUsers(
         avgSatisfactionScore: 90,
         positiveSentimentCount: 0,
         totalFeedbackCount: 0,
+        reopenedCount: 0,
+        reopenRate: 0,
         isTeamConsolidated: false,
       }
       resultMap.set(u.id, stat)
@@ -492,12 +511,21 @@ export function computeStatsByAgentForMonth(
       avgSatisfactionScore: 90,
       positiveSentimentCount: 0,
       totalFeedbackCount: 0,
+      reopenedCount: 0,
+      reopenRate: 0,
     }
 
     cur.total += 1
     if (r.status === 'Concluído') cur.resolved += 1
     if (r.avoidable_contact) cur.avoidableCount += 1
     cur.avgDuration += r.duration || 0
+    if (
+      r.is_reopened ||
+      (r.reopen_count && r.reopen_count > 0) ||
+      Boolean(r.reopen_justification)
+    ) {
+      cur.reopenedCount += 1
+    }
 
     map.set(aid, cur)
   }
@@ -506,6 +534,7 @@ export function computeStatsByAgentForMonth(
     v.rate = v.total > 0 ? Math.round((v.resolved / v.total) * 100) : 0
     v.avoidableRate = v.total > 0 ? Math.round((v.avoidableCount / v.total) * 100) : 0
     v.avgDuration = v.total > 0 ? Math.round(v.avgDuration / v.total) : 0
+    v.reopenRate = v.total > 0 ? Math.round((v.reopenedCount / v.total) * 100) : 0
   }
   return map
 }

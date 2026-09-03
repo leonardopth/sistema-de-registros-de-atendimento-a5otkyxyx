@@ -28,6 +28,7 @@ import { FeedbackReviewPanel } from '@/components/FeedbackReviewPanel'
 import { ScheduledExportDialog } from '@/components/ScheduledExportDialog'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { isCreatedToday, isCreatedOrUpdatedToday } from '@/lib/date-utils'
+import { calculateReopenRate } from '@/lib/reopen-utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Info } from 'lucide-react'
 import {
@@ -110,6 +111,7 @@ export default function DashboardGeral() {
     const totalTfr = recordsWithTfr.reduce((a, r) => a + (r.first_response_time || 0), 0)
     const avgTfr =
       recordsWithTfr.length > 0 ? Math.round((totalTfr / recordsWithTfr.length) * 10) / 10 : 0
+    const reopenData = calculateReopenRate(filtered)
 
     const statusBreakdown = {
       Aberto: todayRecords.filter((r) => r.status === 'Aberto').length,
@@ -130,6 +132,8 @@ export default function DashboardGeral() {
       avgDuration: filtered.length > 0 ? Math.round(totalDur / filtered.length) : 0,
       avgTfr,
       wrongDeptCount: filtered.filter((r) => r.avoidable_contact).length,
+      reopenedCount: reopenData.reopenedCount,
+      reopenRate: reopenData.rate,
       statusBreakdown,
     }
   }, [filtered, accessibleRecords, filters.status])
@@ -240,6 +244,8 @@ export default function DashboardGeral() {
             avgTfr={stats.avgTfr}
             tfrTarget={15}
             wrongDeptCount={stats.wrongDeptCount}
+            reopenedCount={stats.reopenedCount}
+            reopenRate={stats.reopenRate}
             statusBreakdown={stats.statusBreakdown}
           />
 

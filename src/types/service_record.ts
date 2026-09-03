@@ -110,6 +110,9 @@ export interface ServiceRecord {
   timer_start?: string
   timer_running?: boolean
   reopen_justification?: string
+  is_reopened?: boolean
+  reopened_at?: string
+  reopen_count?: number
   first_response_time?: number // em minutos decorridos entre criação e primeira resposta
   first_response_at?: string // timestamp ISO da primeira resposta
   expand?: {
