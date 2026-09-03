@@ -49,6 +49,7 @@ import { AutonomyScorecard } from '@/components/AutonomyScorecard'
 import { TrainingPanel } from '@/components/TrainingPanel'
 import { PerformanceAlerts } from '@/components/PerformanceAlerts'
 import { StatusBadge } from '@/components/StatusBadge'
+import { CollaboratorStatusPanel } from '@/components/CollaboratorStatusPanel'
 import { filterClientsByUserAccess, filterRecordsByUserAccess } from '@/lib/service-group-access'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { getGMT3DateString } from '@/lib/timezone'
@@ -216,6 +217,15 @@ export default function Index() {
           )
         : 0
     const avoidableCount = consultantRecords.filter((r) => Boolean(r?.avoidable_contact)).length
+    const withTfr = consultantRecords.filter((r) => r?.first_response_time != null)
+    const avgTfr =
+      withTfr.length > 0
+        ? Math.round(
+            (withTfr.reduce((a, r) => a + (Number(r?.first_response_time) || 0), 0) /
+              withTfr.length) *
+              10,
+          ) / 10
+        : 0
 
     return {
       todayCount: consultantTodayRecords.length,
@@ -223,6 +233,8 @@ export default function Index() {
       inProgressCount: inProgress,
       completedTodayCount: completedToday,
       avgDuration,
+      avgTfr,
+      tfrTarget: 15,
       wrongDeptCount: avoidableCount,
     }
   }, [consultantRecords, consultantTodayRecords])
@@ -297,6 +309,15 @@ export default function Index() {
           )
         : 0
     const avoidable = teamRecords.filter((r) => Boolean(r?.avoidable_contact)).length
+    const withTfr = teamRecords.filter((r) => r?.first_response_time != null)
+    const avgTfr =
+      withTfr.length > 0
+        ? Math.round(
+            (withTfr.reduce((a, r) => a + (Number(r?.first_response_time) || 0), 0) /
+              withTfr.length) *
+              10,
+          ) / 10
+        : 0
 
     return {
       todayCount: teamTodayRecords.length,
@@ -304,6 +325,8 @@ export default function Index() {
       inProgressCount: inProgress,
       completedTodayCount: completedToday,
       avgDuration,
+      avgTfr,
+      tfrTarget: 15,
       wrongDeptCount: avoidable,
     }
   }, [teamRecords, teamTodayRecords])
@@ -516,6 +539,16 @@ export default function Index() {
   }, [accessibleRecords, todayStr])
 
   const generalStats = useMemo(() => {
+    const withTfr = accessibleRecords.filter((r) => r?.first_response_time != null)
+    const avgTfr =
+      withTfr.length > 0
+        ? Math.round(
+            (withTfr.reduce((a, r) => a + (Number(r?.first_response_time) || 0), 0) /
+              withTfr.length) *
+              10,
+          ) / 10
+        : 0
+
     return {
       todayCount: generalTodayRecords.length,
       totalCount: accessibleRecords.length,
@@ -528,6 +561,8 @@ export default function Index() {
                 accessibleRecords.length,
             )
           : 0,
+      avgTfr,
+      tfrTarget: 15,
       wrongDeptCount: accessibleRecords.filter((r) => Boolean(r?.avoidable_contact)).length,
     }
   }, [accessibleRecords, generalTodayRecords])
@@ -617,6 +652,9 @@ export default function Index() {
           {/* Cards de estatísticas */}
           <DashboardStats {...generalStats} />
 
+          {/* Disponibilidade da Equipe */}
+          <CollaboratorStatusPanel />
+
           {/* Reconhecimento Social */}
           <SocialRecognitionBanner awards={awards} />
 
@@ -695,6 +733,9 @@ export default function Index() {
       {/* ========================================================================= */}
       {!isFullView && isSupervisorOrLider && (
         <div className="space-y-6">
+          {/* Disponibilidade da Equipe */}
+          <CollaboratorStatusPanel />
+
           {/* Reconhecimento Social */}
           <SocialRecognitionBanner awards={awards} />
 
@@ -808,6 +849,9 @@ export default function Index() {
       {/* ========================================================================= */}
       {!isFullView && isConsultor && (
         <div className="space-y-6">
+          {/* Disponibilidade da Equipe */}
+          <CollaboratorStatusPanel />
+
           {/* Reconhecimento Social */}
           <SocialRecognitionBanner awards={awards} />
 
@@ -886,6 +930,9 @@ export default function Index() {
       {/* ========================================================================= */}
       {!isFullView && isExecutivoContas && (
         <div className="space-y-6">
+          {/* Disponibilidade da Equipe */}
+          <CollaboratorStatusPanel />
+
           {/* Reconhecimento Social */}
           <SocialRecognitionBanner awards={awards} />
 
@@ -1091,6 +1138,9 @@ export default function Index() {
       {/* ========================================================================= */}
       {!isFullView && isGestorComercial && (
         <div className="space-y-6">
+          {/* Disponibilidade da Equipe */}
+          <CollaboratorStatusPanel />
+
           {/* Reconhecimento Social */}
           <SocialRecognitionBanner awards={awards} />
 

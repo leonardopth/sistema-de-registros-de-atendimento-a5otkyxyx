@@ -53,6 +53,31 @@ export type ApprovalStatus = 'Pendente' | 'Aprovado' | 'Rejeitado'
 
 export type ServiceGroup = 'Concierge' | 'Exclusivo' | 'LOT' | 'BR1' | 'BR2' | 'SAO' | 'SPI' | 'SUL'
 
+export type CollaboratorStatus =
+  | 'Disponível'
+  | 'Em atendimento'
+  | 'Pausa'
+  | 'Almoço'
+  | 'Treinamento'
+  | 'Reunião'
+  | 'Offline'
+
+export interface CollaboratorStatusLog {
+  id: string
+  user: string
+  previous_status?: CollaboratorStatus
+  new_status: CollaboratorStatus
+  started_at: string
+  ended_at?: string
+  duration_seconds?: number
+  note?: string
+  created: string
+  updated: string
+  expand?: {
+    user?: UserRecord
+  }
+}
+
 export interface ServiceRecord {
   id: string
   client_name: string
@@ -85,6 +110,8 @@ export interface ServiceRecord {
   timer_start?: string
   timer_running?: boolean
   reopen_justification?: string
+  first_response_time?: number // em minutos decorridos entre criação e primeira resposta
+  first_response_at?: string // timestamp ISO da primeira resposta
   expand?: {
     account_executive?: AccountExecutiveRecord
     client?: ClientRecord
@@ -108,6 +135,8 @@ export interface UserRecord {
   service_groups?: ServiceGroup[]
   bases?: CommercialBase[]
   email_notifications?: boolean
+  current_status?: CollaboratorStatus
+  status_updated_at?: string
 }
 
 export interface ClientRecord {
@@ -269,6 +298,7 @@ export interface GlobalTargetRecord {
   avg_response_time_target?: number
   auto_categorization_target?: number
   min_satisfaction_target?: number
+  tfr_target?: number // Limite configurável para TFR (minutos)
   updated_by?: string
   created: string
   updated: string

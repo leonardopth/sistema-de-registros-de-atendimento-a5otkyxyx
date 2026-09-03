@@ -9,6 +9,7 @@ export const DEFAULT_GLOBAL_TARGET: GlobalTargetRecord = {
   avg_response_time_target: 15,
   auto_categorization_target: 80,
   min_satisfaction_target: 85,
+  tfr_target: 15,
   created: '',
   updated: '',
 }
@@ -61,6 +62,7 @@ export const saveGlobalTarget = async (
       data.auto_categorization_target != null ? Math.round(data.auto_categorization_target) : 80,
     min_satisfaction_target:
       data.min_satisfaction_target != null ? Math.round(data.min_satisfaction_target) : 85,
+    tfr_target: data.tfr_target != null ? Math.round(data.tfr_target) : 15,
     updated_by: pb.authStore.record?.id || '',
   }
   if (current && current.id && current.id !== 'default') {

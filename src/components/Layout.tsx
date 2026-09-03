@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { NotificationBell } from '@/components/NotificationBell'
 import { FeedbackButton } from '@/components/FeedbackButton'
+import { CollaboratorStatusSelector } from '@/components/CollaboratorStatusSelector'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -70,6 +71,12 @@ const NAV_GROUPS: NavGroup[] = [
         to: '/relatorios-grupo',
         icon: BarChart3,
         visible: (r) => MANAGER_ROLES.includes(r),
+      },
+      {
+        label: 'Análise por Motivo',
+        to: '/analise-motivos',
+        icon: HelpCircle,
+        visible: (r) => MANAGER_ROLES.includes(r) || r === 'Master',
       },
       {
         label: 'Comparativo',
@@ -380,6 +387,7 @@ export default function Layout() {
           </Sheet>
 
           <div className="flex items-center gap-2 ml-auto">
+            <CollaboratorStatusSelector />
             <FeedbackButton />
             <NotificationBell />
           </div>

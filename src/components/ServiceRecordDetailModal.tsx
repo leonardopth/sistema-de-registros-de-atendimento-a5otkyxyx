@@ -29,6 +29,7 @@ import {
 import { AVOIDABLE_CONTACT_REASONS } from '@/lib/constants'
 import { StatusBadge } from './StatusBadge'
 import { PriorityBadge } from './PriorityBadge'
+import { TfrBadge } from '@/components/TfrBadge'
 import { updateServiceRecordWithHistory, deleteServiceRecord } from '@/services/service_records'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { getUsers } from '@/services/users'
@@ -327,6 +328,17 @@ export function ServiceRecordDetailModal({
         ? (overrideStatus as ServiceStatus)
         : status
 
+    // Cálculo automático de TFR: se for a primeira resposta/interação e ainda não tiver TFR
+    let computedTfr = record.first_response_time
+    let computedTfrAt = record.first_response_at
+    if (computedTfr == null && record.created) {
+      const now = new Date()
+      computedTfrAt = now.toISOString()
+      const createdDate = new Date(record.created).getTime()
+      const diffMs = Math.max(0, now.getTime() - createdDate)
+      computedTfr = Math.round((diffMs / 60000) * 10) / 10 // em minutos (1 casa decimal)
+    }
+
     if (!channel) {
       toast({ variant: 'destructive', title: 'Canal é obrigatório' })
       return
@@ -404,6 +416,8 @@ export function ServiceRecordDetailModal({
               ? avoidableContactExplanation.trim()
               : '',
           assigned_user: assignedUserId,
+          first_response_time: computedTfr,
+          first_response_at: computedTfrAt,
         },
         user?.id || '',
       )
@@ -490,6 +504,9 @@ export function ServiceRecordDetailModal({
             <div className="flex items-center gap-2">
               <StatusBadge status={status} />
               <PriorityBadge priority={record.priority} />
+              {record.first_response_time != null && (
+                <TfrBadge tfrMinutes={record.first_response_time} targetMinutes={15} />
+              )}
             </div>
           </div>
         </DialogHeader>
@@ -586,13 +603,28 @@ export function ServiceRecordDetailModal({
               </div>
             </div>
 
-            <div className="text-sm">
-              <span className="text-xs font-medium text-slate-500 block mb-1">
-                Consultor Responsável
-              </span>
-              <div className="flex items-center gap-1.5 font-medium text-slate-800 text-xs">
-                <User className="h-3.5 w-3.5 text-slate-400" />
-                {record.expand?.assigned_user?.name || user?.name || 'Não atribuído'}
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-xs font-medium text-slate-500 block mb-1">
+                  Consultor Responsável
+                </span>
+                <div className="flex items-center gap-1.5 font-medium text-slate-800 text-xs">
+                  <User className="h-3.5 w-3.5 text-slate-400" />
+                  {record.expand?.assigned_user?.name || user?.name || 'Não atribuído'}
+                </div>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-slate-500 block mb-1">
+                  SLA — Tempo de Primeira Resposta (TFR)
+                </span>
+                <div className="flex items-center gap-2">
+                  <TfrBadge tfrMinutes={record.first_response_time} targetMinutes={15} />
+                  {record.first_response_at && (
+                    <span className="text-[11px] text-slate-400">
+                      Respondido em: {formatGMT3DateTimeAt(record.first_response_at)}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

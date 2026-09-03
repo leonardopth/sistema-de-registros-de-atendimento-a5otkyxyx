@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card'
-import { Calendar, Clock, Activity, AlertOctagon, Info, ListChecks } from 'lucide-react'
+import { Calendar, Clock, Activity, AlertOctagon, Info, ListChecks, Timer } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -23,10 +23,11 @@ interface DashboardStatsProps {
   inProgressCount?: number
   completedTodayCount?: number
   avgDuration?: number
+  avgTfr?: number
+  tfrTarget?: number
   wrongDeptCount?: number
-  statusBreakdown?: StatusBreakdown
+  statusBreakdown?: Record<string, number>
 }
-
 const STATUS_LABELS: Record<string, string> = {
   Aberto: 'Aberto',
   'Em Andamento': 'Em Andamento',
@@ -51,6 +52,8 @@ export function DashboardStats({
   inProgressCount = 0,
   completedTodayCount = 0,
   avgDuration = 0,
+  avgTfr = 0,
+  tfrTarget = 15,
   wrongDeptCount = 0,
   statusBreakdown,
 }: DashboardStatsProps) {
@@ -61,6 +64,7 @@ export function DashboardStats({
   const safeInProgress = Number.isFinite(inProgressCount) ? inProgressCount : 0
   const safeCompleted = Number.isFinite(completedTodayCount) ? completedTodayCount : 0
   const safeAvgDuration = Number.isFinite(avgDuration) ? avgDuration : 0
+  const safeAvgTfr = Number.isFinite(avgTfr) ? avgTfr : 0
   const safeWrongDept = Number.isFinite(wrongDeptCount) ? wrongDeptCount : 0
 
   const todayLabel = isStatusFiltered
@@ -107,12 +111,25 @@ export function DashboardStats({
       isTotalCard: false,
     },
     {
-      title: 'Tempo Médio',
+      title: 'Tempo Médio (TMA)',
       value: `${safeAvgDuration} min`,
       subtext: 'Duração média total',
       icon: Clock,
       color: 'text-cyan-600',
       bgColor: 'bg-cyan-50',
+      isTodayCard: false,
+      isTotalCard: false,
+    },
+    {
+      title: 'TFR Médio (SLA)',
+      value: `${safeAvgTfr} min`,
+      subtext:
+        safeAvgTfr > tfrTarget
+          ? `Acima da meta (≤ ${tfrTarget} min)`
+          : `Dentro da meta (≤ ${tfrTarget} min)`,
+      icon: Timer,
+      color: safeAvgTfr > tfrTarget ? 'text-rose-600' : 'text-emerald-600',
+      bgColor: safeAvgTfr > tfrTarget ? 'bg-rose-50' : 'bg-emerald-50',
       isTodayCard: false,
       isTotalCard: false,
     },
@@ -129,7 +146,7 @@ export function DashboardStats({
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
       {statCards.map((stat, idx) => {
         const Icon = stat.icon
         return (

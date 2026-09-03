@@ -106,6 +106,10 @@ export default function DashboardGeral() {
       ? todayRecords.filter((r) => r.status === filters.status)
       : todayRecords
     const totalDur = filtered.reduce((a, r) => a + (r.duration || 0), 0)
+    const recordsWithTfr = filtered.filter((r) => r.first_response_time != null)
+    const totalTfr = recordsWithTfr.reduce((a, r) => a + (r.first_response_time || 0), 0)
+    const avgTfr =
+      recordsWithTfr.length > 0 ? Math.round((totalTfr / recordsWithTfr.length) * 10) / 10 : 0
 
     const statusBreakdown = {
       Aberto: todayRecords.filter((r) => r.status === 'Aberto').length,
@@ -124,6 +128,7 @@ export default function DashboardGeral() {
       inProgressCount: filtered.filter((r) => r.status === 'Em Andamento').length,
       completedTodayCount: todayRecords.filter((r) => r.status === 'Concluído').length,
       avgDuration: filtered.length > 0 ? Math.round(totalDur / filtered.length) : 0,
+      avgTfr,
       wrongDeptCount: filtered.filter((r) => r.avoidable_contact).length,
       statusBreakdown,
     }
@@ -232,6 +237,8 @@ export default function DashboardGeral() {
             inProgressCount={stats.inProgressCount}
             completedTodayCount={stats.completedTodayCount}
             avgDuration={stats.avgDuration}
+            avgTfr={stats.avgTfr}
+            tfrTarget={15}
             wrongDeptCount={stats.wrongDeptCount}
             statusBreakdown={stats.statusBreakdown}
           />

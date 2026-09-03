@@ -34,6 +34,7 @@ import {
   X,
   TrendingUp,
   Clock,
+  Timer,
   CheckCircle2,
   AlertTriangle,
   Smile,
@@ -56,6 +57,7 @@ interface AgentMetrics {
   user: UserRecord
   totalAttendances: number
   avgTMA: number // minutos
+  avgTFR: number // minutos SLA primeira resposta
   resolutionRate: number // %
   avoidableRate: number // %
   satisfactionScore: number // score 0-100
@@ -199,6 +201,10 @@ export default function ComparativoAgentes() {
       const sumDuration = userRecords.reduce((acc, curr) => acc + (curr.duration || 0), 0)
       const avgTMA = total > 0 ? Number((sumDuration / total).toFixed(1)) : 0
 
+      const recsWithTfr = userRecords.filter((r) => r.first_response_time != null)
+      const sumTfr = recsWithTfr.reduce((acc, curr) => acc + (curr.first_response_time || 0), 0)
+      const avgTFR = recsWithTfr.length > 0 ? Number((sumTfr / recsWithTfr.length).toFixed(1)) : 0
+
       const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0
       const avoidableRate = total > 0 ? Math.round((avoidable / total) * 100) : 0
 
@@ -225,6 +231,7 @@ export default function ComparativoAgentes() {
         user: colab,
         totalAttendances: total,
         avgTMA,
+        avgTFR,
         resolutionRate,
         avoidableRate,
         satisfactionScore,
@@ -246,6 +253,8 @@ export default function ComparativoAgentes() {
         worstAttendance: null,
         bestTMA: null,
         worstTMA: null,
+        bestTFR: null,
+        worstTFR: null,
         bestResolution: null,
         worstResolution: null,
         bestAvoidable: null,
@@ -257,6 +266,7 @@ export default function ComparativoAgentes() {
 
     const attendances = agentMetricsList.map((m) => m.totalAttendances)
     const tmas = agentMetricsList.map((m) => m.avgTMA)
+    const tfrs = agentMetricsList.map((m) => m.avgTFR)
     const resolutions = agentMetricsList.map((m) => m.resolutionRate)
     const avoidables = agentMetricsList.map((m) => m.avoidableRate)
     const satisfactions = agentMetricsList.map((m) => m.satisfactionScore)
@@ -266,6 +276,9 @@ export default function ComparativoAgentes() {
 
     const maxTma = Math.max(...tmas)
     const minTma = Math.min(...tmas)
+
+    const maxTfr = Math.max(...tfrs)
+    const minTfr = Math.min(...tfrs)
 
     const maxRes = Math.max(...resolutions)
     const minRes = Math.min(...resolutions)
@@ -281,6 +294,8 @@ export default function ComparativoAgentes() {
       worstAttendance: maxAtt !== minAtt ? minAtt : null,
       bestTMA: maxTma !== minTma ? minTma : null, // Menor TMA é melhor
       worstTMA: maxTma !== minTma ? maxTma : null, // Maior TMA é pior
+      bestTFR: maxTfr !== minTfr ? minTfr : null, // Menor TFR é melhor
+      worstTFR: maxTfr !== minTfr ? maxTfr : null, // Maior TFR é pior
       bestResolution: maxRes !== minRes ? maxRes : null,
       worstResolution: maxRes !== minRes ? minRes : null,
       bestAvoidable: maxAvo !== minAvo ? minAvo : null, // Menor % de contatos evitáveis é melhor
@@ -297,6 +312,7 @@ export default function ComparativoAgentes() {
       fullName: m.user.name,
       Atendimentos: m.totalAttendances,
       TMA: m.avgTMA,
+      'TFR (min)': m.avgTFR,
       'Taxa Resolução (%)': m.resolutionRate,
       'Evitáveis (%)': m.avoidableRate,
       'Satisfação (Score)': m.satisfactionScore,
@@ -306,6 +322,7 @@ export default function ComparativoAgentes() {
   const chartConfig: ChartConfig = {
     Atendimentos: { label: 'Atendimentos', color: '#4f46e5' },
     TMA: { label: 'TMA (min)', color: '#0ea5e9' },
+    'TFR (min)': { label: 'TFR (min)', color: '#f59e0b' },
     'Taxa Resolução (%)': { label: 'Taxa Resolução (%)', color: '#10b981' },
     'Evitáveis (%)': { label: 'Evitáveis (%)', color: '#f43f5e' },
     'Satisfação (Score)': { label: 'Satisfação (Score)', color: '#8b5cf6' },
@@ -582,6 +599,10 @@ export default function ComparativoAgentes() {
                 highlights.worstAvoidable !== null &&
                 metric.avoidableRate === highlights.worstAvoidable
 
+              const isBestTFR = highlights.bestTFR !== null && metric.avgTFR === highlights.bestTFR
+              const isWorstTFR =
+                highlights.worstTFR !== null && metric.avgTFR === highlights.worstTFR
+
               const isBestSatisfaction =
                 highlights.bestSatisfaction !== null &&
                 metric.satisfactionScore === highlights.bestSatisfaction
@@ -700,6 +721,57 @@ export default function ComparativoAgentes() {
                           <span className="text-xs font-semibold text-slate-500">min</span>
                         </span>
                         <span className="text-[10px] text-slate-400">por atendimento</span>
+                      </div>
+                    </div>
+
+                    {/* 2.5. SLA — Tempo de Primeira Resposta (TFR) */}
+                    <div
+                      className={cn(
+                        'p-2.5 rounded-lg border transition-all',
+                        isBestTFR
+                          ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200'
+                          : isWorstTFR
+                            ? 'bg-rose-50/60 border-rose-300 ring-1 ring-rose-200'
+                            : 'bg-slate-50/60 border-slate-100',
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-slate-600 flex items-center gap-1.5">
+                          <Timer className="h-3.5 w-3.5 text-amber-600" />
+                          TFR Médio (SLA)
+                        </span>
+                        {isBestTFR && (
+                          <Badge className="text-[9px] h-4 bg-emerald-600 hover:bg-emerald-600">
+                            Mais Rápido
+                          </Badge>
+                        )}
+                        {isWorstTFR && (
+                          <Badge className="text-[9px] h-4 bg-rose-600 hover:bg-rose-600">
+                            Mais Lento
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="mt-1 flex items-baseline justify-between">
+                        <span
+                          className={cn(
+                            'text-xl font-black',
+                            isBestTFR
+                              ? 'text-emerald-700'
+                              : isWorstTFR
+                                ? 'text-rose-700'
+                                : 'text-slate-900',
+                          )}
+                        >
+                          {metric.avgTFR}{' '}
+                          <span className="text-xs font-semibold text-slate-500">min</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          {metric.avgTFR > 15 ? (
+                            <span className="text-rose-600 font-bold">Acima SLA (15m)</span>
+                          ) : (
+                            <span className="text-emerald-600 font-bold">No SLA (≤15m)</span>
+                          )}
+                        </span>
                       </div>
                     </div>
 
@@ -922,6 +994,15 @@ export default function ComparativoAgentes() {
                       dataKey="TMA"
                       name="TMA (min)"
                       fill="#0ea5e9"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={45}
+                    />
+                  )}
+                  {(metricView === 'all' || metricView === 'volume') && (
+                    <Bar
+                      dataKey="TFR (min)"
+                      name="TFR SLA (min)"
+                      fill="#f59e0b"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={45}
                     />

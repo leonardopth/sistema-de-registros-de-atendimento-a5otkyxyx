@@ -38,6 +38,7 @@ import {
 } from '@/types/service_record'
 import { StatusBadge } from '@/components/StatusBadge'
 import { PriorityBadge } from '@/components/PriorityBadge'
+import { TfrBadge } from '@/components/TfrBadge'
 import { ServiceRecordDetailModal } from '@/components/ServiceRecordDetailModal'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
@@ -940,6 +941,16 @@ export default function Atendimentos() {
                     onFilterChange={setColStatuses}
                   />
                   <SortableHeader
+                    label="TFR"
+                    field="first_response_time"
+                    currentSortField={sortField}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                    filterOptions={[]}
+                    filterSelected={[]}
+                    onFilterChange={() => {}}
+                  />
+                  <SortableHeader
                     label="Prioridade"
                     field="priority"
                     currentSortField={sortField}
@@ -1082,6 +1093,9 @@ export default function Atendimentos() {
                     <TableCell className="text-xs text-slate-700">{r.contact_reason}</TableCell>
                     <TableCell>
                       <StatusBadge status={r.status} />
+                    </TableCell>
+                    <TableCell>
+                      <TfrBadge tfrMinutes={r.first_response_time} targetMinutes={15} />
                     </TableCell>
                     <TableCell>
                       <PriorityBadge priority={r.priority} />

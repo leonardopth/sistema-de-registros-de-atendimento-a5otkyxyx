@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-03T14:55:48.361Z",
+  "generatedAt": "2026-09-03T17:04:34.459Z",
   "collections": [
     {
       "name": "users",
@@ -119,6 +119,27 @@
         {
           "name": "email_notifications",
           "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "current_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Disponível",
+            "Em atendimento",
+            "Pausa",
+            "Almoço",
+            "Treinamento",
+            "Reunião",
+            "Offline"
+          ]
+        },
+        {
+          "name": "status_updated_at",
+          "type": "date",
           "required": false,
           "system": false
         }
@@ -458,6 +479,18 @@
           "required": true,
           "system": false,
           "selectValues": ["Nacional", "Internacional"]
+        },
+        {
+          "name": "first_response_time",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "first_response_at",
+          "type": "date",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -1224,6 +1257,12 @@
           "type": "number",
           "required": false,
           "system": false
+        },
+        {
+          "name": "tfr_target",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -1535,6 +1574,12 @@
         },
         {
           "name": "min_satisfaction_target",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tfr_target",
           "type": "number",
           "required": false,
           "system": false
@@ -2060,6 +2105,99 @@
         "CREATE INDEX idx_reactions_item ON social_reactions (item_type, item_id)",
         "CREATE INDEX idx_reactions_user ON social_reactions (user_id)",
         "CREATE UNIQUE INDEX idx_reactions_unique_user_item ON social_reactions (user_id, item_type, item_id)"
+      ]
+    },
+    {
+      "name": "collaborator_status_logs",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != '' && (user = @request.auth.id || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true)"
+      },
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "previous_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Disponível",
+            "Em atendimento",
+            "Pausa",
+            "Almoço",
+            "Treinamento",
+            "Reunião",
+            "Offline"
+          ]
+        },
+        {
+          "name": "new_status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Disponível",
+            "Em atendimento",
+            "Pausa",
+            "Almoço",
+            "Treinamento",
+            "Reunião",
+            "Offline"
+          ]
+        },
+        {
+          "name": "started_at",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ended_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "duration_seconds",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_csl_user ON collaborator_status_logs (user)",
+        "CREATE INDEX idx_csl_started ON collaborator_status_logs (started_at)",
+        "CREATE INDEX idx_csl_user_started ON collaborator_status_logs (user, started_at DESC)"
       ]
     }
   ]
