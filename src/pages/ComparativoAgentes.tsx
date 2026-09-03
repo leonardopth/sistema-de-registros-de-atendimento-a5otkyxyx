@@ -204,8 +204,8 @@ export default function ComparativoAgentes() {
       const sumDuration = userRecords.reduce((acc, curr) => acc + (curr.duration || 0), 0)
       const avgTMA = total > 0 ? Number((sumDuration / total).toFixed(1)) : 0
 
-      const recsWithTfr = userRecords.filter((r) => r.first_response_time != null)
-      const sumTfr = recsWithTfr.reduce((acc, curr) => acc + (curr.first_response_time || 0), 0)
+      const recsWithTfr = userRecords.filter((r) => Number(r.first_response_time) > 0)
+      const sumTfr = recsWithTfr.reduce((acc, curr) => acc + Number(curr.first_response_time), 0)
       const avgTFR = recsWithTfr.length > 0 ? Number((sumTfr / recsWithTfr.length).toFixed(1)) : 0
 
       const reopenedRecs = userRecords.filter(

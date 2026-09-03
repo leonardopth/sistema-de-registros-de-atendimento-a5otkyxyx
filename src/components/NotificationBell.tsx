@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, CheckCheck, Trash2, BellOff, Settings, CheckCircle2 } from 'lucide-react'
+import { Bell, CheckCheck, Trash2, BellOff, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   getNotifications,
@@ -14,7 +13,6 @@ import {
 } from '@/services/notifications'
 import { useRealtime } from '@/hooks/use-realtime'
 import { NotificationRecord } from '@/types/service_record'
-import { TelegramSettings } from '@/components/TelegramSettings'
 import { cn } from '@/lib/utils'
 import { formatGMT3DateTimeAt } from '@/lib/timezone'
 
@@ -24,7 +22,6 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<NotificationRecord[]>([])
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState<FilterType>('all')
-  const [telegramOpen, setTelegramOpen] = useState(false)
   const navigate = useNavigate()
 
   const loadNotifications = async () => {
@@ -89,14 +86,6 @@ export function NotificationBell() {
           <div className="flex items-center justify-between p-3 border-b">
             <span className="text-sm font-bold text-slate-900">Notificações</span>
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setTelegramOpen(true)}
-              >
-                <Settings className="h-3.5 w-3.5 text-slate-500" />
-              </Button>
               {unreadCount > 0 && (
                 <Button variant="ghost" size="sm" className="text-xs h-7" onClick={handleMarkAll}>
                   <CheckCheck className="h-3.5 w-3.5 mr-1" /> Marcar todas
@@ -183,14 +172,6 @@ export function NotificationBell() {
           </ScrollArea>
         </PopoverContent>
       </Popover>
-      <Dialog open={telegramOpen} onOpenChange={setTelegramOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold">Configurar Telegram</DialogTitle>
-          </DialogHeader>
-          <TelegramSettings onSaved={() => setTelegramOpen(false)} />
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

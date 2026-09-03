@@ -328,15 +328,21 @@ export function ServiceRecordDetailModal({
         ? (overrideStatus as ServiceStatus)
         : status
 
-    // Cálculo automático de TFR: se for a primeira resposta/interação e ainda não tiver TFR
+    // Cálculo automático de TFR: se for a primeira resposta/interação e ainda não tiver TFR > 0
     let computedTfr = record.first_response_time
     let computedTfrAt = record.first_response_at
-    if (computedTfr == null && record.created) {
+    if (
+      (!computedTfr || computedTfr <= 0) &&
+      (effectiveStatus === 'Em Andamento' || effectiveStatus === 'Concluído') &&
+      record.created
+    ) {
       const now = new Date()
       computedTfrAt = now.toISOString()
       const createdDate = new Date(record.created).getTime()
       const diffMs = Math.max(0, now.getTime() - createdDate)
-      computedTfr = Math.round((diffMs / 60000) * 10) / 10 // em minutos (1 casa decimal)
+      let tfrCalc = Math.round((diffMs / 60000) * 10) / 10 // em minutos (1 casa decimal)
+      if (tfrCalc < 0.1) tfrCalc = 0.1
+      computedTfr = tfrCalc
     }
 
     if (!channel) {
@@ -509,7 +515,7 @@ export function ServiceRecordDetailModal({
             <div className="flex items-center gap-2">
               <StatusBadge status={status} />
               <PriorityBadge priority={record.priority} />
-              {record.first_response_time != null && (
+              {Number(record.first_response_time) > 0 && (
                 <TfrBadge tfrMinutes={record.first_response_time} targetMinutes={15} />
               )}
             </div>
@@ -623,11 +629,17 @@ export function ServiceRecordDetailModal({
                   SLA — Tempo de Primeira Resposta (TFR)
                 </span>
                 <div className="flex items-center gap-2">
-                  <TfrBadge tfrMinutes={record.first_response_time} targetMinutes={15} />
-                  {record.first_response_at && (
-                    <span className="text-[11px] text-slate-400">
-                      Respondido em: {formatGMT3DateTimeAt(record.first_response_at)}
-                    </span>
+                  {Number(record.first_response_time) > 0 ? (
+                    <>
+                      <TfrBadge tfrMinutes={record.first_response_time} targetMinutes={15} />
+                      {record.first_response_at && (
+                        <span className="text-[11px] text-slate-400">
+                          Respondido em: {formatGMT3DateTimeAt(record.first_response_at)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-xs text-slate-400">Aguardando 1ª resposta</span>
                   )}
                 </div>
               </div>

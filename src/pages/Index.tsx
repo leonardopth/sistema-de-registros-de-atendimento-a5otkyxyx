@@ -243,13 +243,11 @@ export default function Index() {
           )
         : 0
     const avoidableCount = consultantRecords.filter((r) => Boolean(r?.avoidable_contact)).length
-    const withTfr = consultantRecords.filter((r) => r?.first_response_time != null)
+    const withTfr = consultantRecords.filter((r) => Number(r?.first_response_time) > 0)
     const avgTfr =
       withTfr.length > 0
         ? Math.round(
-            (withTfr.reduce((a, r) => a + (Number(r?.first_response_time) || 0), 0) /
-              withTfr.length) *
-              10,
+            (withTfr.reduce((a, r) => a + Number(r?.first_response_time), 0) / withTfr.length) * 10,
           ) / 10
         : 0
 
@@ -339,13 +337,11 @@ export default function Index() {
           )
         : 0
     const avoidable = teamRecords.filter((r) => Boolean(r?.avoidable_contact)).length
-    const withTfr = teamRecords.filter((r) => r?.first_response_time != null)
+    const withTfr = teamRecords.filter((r) => Number(r?.first_response_time) > 0)
     const avgTfr =
       withTfr.length > 0
         ? Math.round(
-            (withTfr.reduce((a, r) => a + (Number(r?.first_response_time) || 0), 0) /
-              withTfr.length) *
-              10,
+            (withTfr.reduce((a, r) => a + Number(r?.first_response_time), 0) / withTfr.length) * 10,
           ) / 10
         : 0
 
@@ -573,13 +569,11 @@ export default function Index() {
   }, [accessibleRecords, todayStr])
 
   const generalStats = useMemo(() => {
-    const withTfr = accessibleRecords.filter((r) => r?.first_response_time != null)
+    const withTfr = accessibleRecords.filter((r) => Number(r?.first_response_time) > 0)
     const avgTfr =
       withTfr.length > 0
         ? Math.round(
-            (withTfr.reduce((a, r) => a + (Number(r?.first_response_time) || 0), 0) /
-              withTfr.length) *
-              10,
+            (withTfr.reduce((a, r) => a + Number(r?.first_response_time), 0) / withTfr.length) * 10,
           ) / 10
         : 0
 

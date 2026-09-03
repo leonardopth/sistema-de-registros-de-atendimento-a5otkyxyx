@@ -1325,7 +1325,11 @@ export default function Atendimentos() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <TfrBadge tfrMinutes={r.first_response_time} targetMinutes={15} />
+                      {Number(r.first_response_time) > 0 ? (
+                        <TfrBadge tfrMinutes={r.first_response_time} targetMinutes={15} />
+                      ) : (
+                        <span className="text-slate-400 text-xs">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <PriorityBadge priority={r.priority} />

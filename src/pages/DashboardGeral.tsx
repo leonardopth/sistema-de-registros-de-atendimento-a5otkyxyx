@@ -110,8 +110,8 @@ export default function DashboardGeral() {
       ? todayRecords.filter((r) => r.status === filters.status)
       : todayRecords
     const totalDur = filtered.reduce((a, r) => a + (r.duration || 0), 0)
-    const recordsWithTfr = filtered.filter((r) => r.first_response_time != null)
-    const totalTfr = recordsWithTfr.reduce((a, r) => a + (r.first_response_time || 0), 0)
+    const recordsWithTfr = filtered.filter((r) => Number(r.first_response_time) > 0)
+    const totalTfr = recordsWithTfr.reduce((a, r) => a + Number(r.first_response_time), 0)
     const avgTfr =
       recordsWithTfr.length > 0 ? Math.round((totalTfr / recordsWithTfr.length) * 10) / 10 : 0
     const reopenData = calculateReopenRate(filtered)
