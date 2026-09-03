@@ -299,6 +299,31 @@ export interface MonthlyAwardRecord {
   }
 }
 
+export type SocialReactionItemType =
+  | 'employee_of_month'
+  | 'notable_evolution'
+  | 'badge_unlock'
+  | 'level_up'
+
+export interface SocialReactionRecord {
+  id: string
+  user_id: string
+  item_type: SocialReactionItemType
+  item_id: string
+  emoji: string
+  created: string
+  updated: string
+  expand?: {
+    user_id?: UserRecord
+  }
+}
+
+export interface ReactionSummary {
+  emojiCounts: Record<string, number>
+  userReaction?: string
+  totalCount: number
+}
+
 export interface UserRankingEntry {
   rank: number
   user: UserRecord

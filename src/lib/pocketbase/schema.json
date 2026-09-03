@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-02T12:40:02.162Z",
+  "generatedAt": "2026-09-03T14:55:48.361Z",
   "collections": [
     {
       "name": "users",
@@ -2002,6 +2002,64 @@
         "CREATE INDEX idx_awards_month ON monthly_awards (month_year)",
         "CREATE INDEX idx_awards_type ON monthly_awards (award_type)",
         "CREATE UNIQUE INDEX idx_awards_user_type_month ON monthly_awards (user_id, award_type, month_year)"
+      ]
+    },
+    {
+      "name": "social_reactions",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && user_id = @request.auth.id",
+        "update": "@request.auth.id != '' && user_id = @request.auth.id",
+        "delete": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'Master' || @request.auth.master_access = true)"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "item_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["employee_of_month", "notable_evolution", "badge_unlock", "level_up"]
+        },
+        {
+          "name": "item_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "emoji",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_reactions_item ON social_reactions (item_type, item_id)",
+        "CREATE INDEX idx_reactions_user ON social_reactions (user_id)",
+        "CREATE UNIQUE INDEX idx_reactions_unique_user_item ON social_reactions (user_id, item_type, item_id)"
       ]
     }
   ]

@@ -1,9 +1,12 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { MonthlyAwardRecord } from '@/types/gamification'
-import { Trophy, TrendingUp, Sparkles, Star, Award, Calendar } from 'lucide-react'
+import { MonthlyAwardRecord, ReactionSummary } from '@/types/gamification'
+import { Trophy, Calendar } from 'lucide-react'
+import { ReactionBar } from '@/components/ReactionBar'
+import { getSocialReactions, groupReactionsByItemId } from '@/services/social_reactions'
+import { useAuth } from '@/hooks/use-auth'
 
 interface SocialRecognitionBannerProps {
   awards: MonthlyAwardRecord[]
@@ -11,6 +14,27 @@ interface SocialRecognitionBannerProps {
 }
 
 export function SocialRecognitionBanner({ awards = [], monthYear }: SocialRecognitionBannerProps) {
+  const { user } = useAuth()
+  const [reactionsByItem, setReactionsByItem] = useState<Record<string, ReactionSummary>>({})
+
+  useEffect(() => {
+    let isMounted = true
+    async function loadReactions() {
+      try {
+        const reactions = await getSocialReactions()
+        if (isMounted) {
+          const grouped = groupReactionsByItemId(reactions, user?.id)
+          setReactionsByItem(grouped)
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar reações sociais:', err)
+      }
+    }
+    loadReactions()
+    return () => {
+      isMounted = false
+    }
+  }, [user?.id])
   // Apenas Consultor e Executivo de Contas podem aparecer no reconhecimento social
   const isEligibleUser = (award: MonthlyAwardRecord) => {
     const userRole = award.expand?.user_id?.role
@@ -102,6 +126,28 @@ export function SocialRecognitionBanner({ awards = [], monthYear }: SocialRecogn
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Barra de Reações do Card */}
+        <div className="mt-3 pt-2.5 border-t border-slate-100/80 flex items-center justify-between">
+          <ReactionBar
+            itemType={award.award_type}
+            itemId={award.id || `${award.award_type}-${award.user_id}-${award.month_year}`}
+            summary={
+              reactionsByItem[award.id] ||
+              reactionsByItem[`${award.award_type}-${award.user_id}-${award.month_year}`] || {
+                emojiCounts: {},
+                totalCount: 0,
+              }
+            }
+            onReactionChange={(updated) => {
+              const key = award.id || `${award.award_type}-${award.user_id}-${award.month_year}`
+              setReactionsByItem((prev) => ({
+                ...prev,
+                [key]: updated,
+              }))
+            }}
+          />
         </div>
       </div>
     )

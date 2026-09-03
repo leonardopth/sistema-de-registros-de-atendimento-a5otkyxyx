@@ -4,15 +4,27 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { NotificationRecord } from '@/types/service_record'
 import { getAllGamification, getAllBadges } from '@/services/gamification'
-import { GamificationRecord, BadgeRecord, BADGE_DEFINITIONS, LEVELS } from '@/types/gamification'
-import { Sparkles, Trophy, Award, Flame, UserCheck, Star } from 'lucide-react'
+import {
+  GamificationRecord,
+  BadgeRecord,
+  BADGE_DEFINITIONS,
+  LEVELS,
+  SocialReactionItemType,
+  ReactionSummary,
+} from '@/types/gamification'
+import { Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { ReactionBar } from '@/components/ReactionBar'
+import { getSocialReactions, groupReactionsByItemId } from '@/services/social_reactions'
+import { useAuth } from '@/hooks/use-auth'
 
 interface AchievementFeedItem {
   id: string
   userName: string
   type: 'level_up' | 'badge_unlocked' | 'streak_record' | 'daily_record'
+  itemType: SocialReactionItemType
+  itemId: string
   title: string
   description: string
   timeAgo: string
@@ -26,24 +38,37 @@ interface AchievementFeedProps {
 }
 
 export function AchievementFeed({ notifications = [], limit = 6 }: AchievementFeedProps) {
+  const { user } = useAuth()
   const [gamificationList, setGamificationList] = useState<GamificationRecord[]>([])
   const [badgesList, setBadgesList] = useState<BadgeRecord[]>([])
+  const [reactionsByItem, setReactionsByItem] = useState<Record<string, ReactionSummary>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let isMounted = true
     async function loadFeed() {
       try {
-        const [gList, bList] = await Promise.all([getAllGamification(), getAllBadges()])
-        setGamificationList(gList || [])
-        setBadgesList(bList || [])
+        const [gList, bList, reactions] = await Promise.all([
+          getAllGamification(),
+          getAllBadges(),
+          getSocialReactions(),
+        ])
+        if (isMounted) {
+          setGamificationList(gList || [])
+          setBadgesList(bList || [])
+          setReactionsByItem(groupReactionsByItemId(reactions, user?.id))
+        }
       } catch (e) {
         console.warn('Erro ao carregar achievement feed:', e)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
     loadFeed()
-  }, [])
+    return () => {
+      isMounted = false
+    }
+  }, [user?.id])
 
   // Regra de Reconhecimento Social: Apenas Consultor e Executivo de Contas
   // Gestores, Supervisores, Líderes, Gerentes, Gestor Comercial e Master NÃO devem aparecer
@@ -63,12 +88,18 @@ export function AchievementFeed({ notifications = [], limit = 6 }: AchievementFe
     const bDef = BADGE_DEFINITIONS[b.badge_key]
 
     feedItems.push({
-      id: `badge-${b.id}`,
+      id: `badge-${b.id || b.badge_key + '-' + (b.user_id || '')}`,
       userName,
       type: 'badge_unlocked',
+      itemType: 'badge_unlock',
+      itemId: b.id || `badge-${b.user_id}-${b.badge_key}`,
       title: `${userName} desbloqueou o badge "${bDef?.name || b.badge_key}"!`,
       description: bDef ? bDef.criteria : 'Nova conquista desbloqueada no atendimento.',
-      timeAgo: b.unlocked_at ? formatTimeAgo(b.unlocked_at) : 'Recentemente',
+      timeAgo: b.unlocked_at
+        ? formatTimeAgo(b.unlocked_at)
+        : b.created
+          ? formatTimeAgo(b.created)
+          : 'Recentemente',
       icon: bDef?.emoji || '🏅',
       badgeBg: 'bg-amber-50 text-amber-700 border-amber-200',
     })
@@ -85,6 +116,8 @@ export function AchievementFeed({ notifications = [], limit = 6 }: AchievementFe
         id: `level-${g.id}`,
         userName,
         type: 'level_up',
+        itemType: 'level_up',
+        itemId: g.id,
         title: `${userName} atingiu o nível ${g.level}!`,
         description: `Com ${g.xp.toLocaleString('pt-BR')} XP acumulados e ${g.streak_days} dias de sequência.`,
         timeAgo: g.updated ? formatTimeAgo(g.updated) : 'Recentemente',
@@ -149,6 +182,28 @@ export function AchievementFeed({ notifications = [], limit = 6 }: AchievementFe
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] text-slate-400">{item.timeAgo}</span>
+                  </div>
+
+                  {/* Interação com reações no item do feed */}
+                  <div className="mt-2 pt-1.5 border-t border-slate-200/60 flex items-center justify-between">
+                    <ReactionBar
+                      itemType={item.itemType}
+                      itemId={item.itemId}
+                      size="sm"
+                      compact={true}
+                      summary={
+                        reactionsByItem[item.itemId] || {
+                          emojiCounts: {},
+                          totalCount: 0,
+                        }
+                      }
+                      onReactionChange={(updated) => {
+                        setReactionsByItem((prev) => ({
+                          ...prev,
+                          [item.itemId]: updated,
+                        }))
+                      }}
+                    />
                   </div>
                 </div>
               </div>
