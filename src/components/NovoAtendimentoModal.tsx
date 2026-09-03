@@ -14,6 +14,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { ClientAutocompleteCombobox } from '@/components/ClientAutocompleteCombobox'
 import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
 import { analyzeDescription } from '@/services/ai-analysis'
@@ -180,79 +181,60 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
               <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
                 Informações do Cliente
               </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-xs text-indigo-600 h-7"
-                onClick={() => form.setUseExisting(!form.useExisting)}
-              >
-                {form.useExisting ? 'Digitar Cliente Manualmente' : 'Selecionar Agência'}
-              </Button>
             </div>
-            {form.useExisting ? (
-              <div className="space-y-2">
+            <div className="space-y-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Agência / Cliente *</Label>
+                <ClientAutocompleteCombobox
+                  clients={form.clients}
+                  selectedClientId={form.selectedClientId}
+                  onSelectClient={(id, client) => form.handleSelectCompany(id, client)}
+                  placeholder="Busque ou cadastre a agência..."
+                  hasError={Boolean(form.clientError)}
+                />
+                {form.clientError && (
+                  <p className="text-xs text-red-500 font-medium">{form.clientError}</p>
+                )}
+                <div className="flex items-center space-x-2 pt-1">
+                  <Checkbox
+                    id="m-show-all-clients"
+                    checked={form.showAllClients}
+                    onCheckedChange={(c) => form.setShowAllClients(!!c)}
+                  />
+                  <Label htmlFor="m-show-all-clients" className="text-xs cursor-pointer">
+                    Mostrar todos os clientes
+                  </Label>
+                </div>
+              </div>
+              {form.selectedClientId && (
                 <div className="space-y-1">
-                  <Label className="text-xs">Selecionar Agência</Label>
+                  <Label className="text-xs">Selecionar Agente</Label>
                   <SearchableSelect
-                    options={form.clients
-                      .filter(
-                        (c, i, arr) =>
-                          c.company &&
-                          c.company.trim() &&
-                          arr.findIndex((c2) => c2.company === c.company) === i,
-                      )
-                      .map((c) => ({ value: c.id, label: c.company! }))}
-                    value={form.selectedClientId}
-                    onValueChange={form.handleSelectCompany}
-                    placeholder="Escolha uma empresa cadastrada"
-                    emptyText="Nenhuma empresa encontrada."
+                    options={form.agents.map((a) => ({ value: a.id, label: a.name }))}
+                    pinnedOptions={[{ value: '__new_agent__', label: '＋ Cadastrar novo Agente' }]}
+                    value={form.selectedAgentId}
+                    onValueChange={(val) => {
+                      if (val === '__new_agent__') {
+                        setNewAgentOpen(true)
+                        return
+                      }
+                      form.handleSelectAgent(val)
+                    }}
+                    placeholder="Escolha um agente da empresa"
+                    emptyText="Nenhum agente encontrado."
                     className="h-9"
                   />
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="m-show-all-clients"
-                      checked={form.showAllClients}
-                      onCheckedChange={(c) => form.setShowAllClients(!!c)}
-                    />
-                    <Label htmlFor="m-show-all-clients" className="text-xs cursor-pointer">
-                      Mostrar todos os clientes
-                    </Label>
-                  </div>
                 </div>
-                {form.selectedClientId && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Selecionar Agente</Label>
-                    <SearchableSelect
-                      options={form.agents.map((a) => ({ value: a.id, label: a.name }))}
-                      pinnedOptions={[
-                        { value: '__new_agent__', label: '＋ Cadastrar novo Agente' },
-                      ]}
-                      value={form.selectedAgentId}
-                      onValueChange={(val) => {
-                        if (val === '__new_agent__') {
-                          setNewAgentOpen(true)
-                          return
-                        }
-                        form.handleSelectAgent(val)
-                      }}
-                      placeholder="Escolha um agente da empresa"
-                      emptyText="Nenhum agente encontrado."
-                      className="h-9"
-                    />
-                  </div>
-                )}
-              </div>
-            ) : null}
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1 col-span-2">
-                <Label className="text-xs">Agência</Label>
+                <Label className="text-xs">Agência Selecionada</Label>
                 <Input
-                  className="h-9 text-xs"
+                  className="h-9 text-xs bg-white text-slate-700 font-medium"
                   value={form.clientCompany}
-                  onChange={(e) => form.setClientCompany(e.target.value)}
-                  placeholder="Nome da agência"
-                  disabled={form.useExisting}
+                  readOnly
+                  placeholder="Selecione ou cadastre uma agência acima"
                 />
               </div>
               <div className="space-y-1 col-span-2">
@@ -262,7 +244,7 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
                   required
                   value={form.clientName}
                   onChange={(e) => form.setClientName(e.target.value)}
-                  placeholder="Nome completo"
+                  placeholder="Nome completo do agente"
                   disabled={form.agentLocked}
                 />
               </div>

@@ -42,6 +42,7 @@ export function useServiceRecordForm(
   const [showAllClients, setShowAllClients] = useState(false)
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [selectedClientId, setSelectedClientId] = useState('')
+  const [clientError, setClientError] = useState('')
   const [selectedAgentId, setSelectedAgentId] = useState('')
   const [agents, setAgents] = useState<AgentRecord[]>([])
   const [agentLocked, setAgentLocked] = useState(false)
@@ -285,24 +286,32 @@ export function useServiceRecordForm(
     enabled,
   )
 
-  const handleSelectCompany = (id: string) => {
+  const handleSelectCompany = (id: string, clientRecord?: ClientRecord) => {
     setSelectedClientId(id)
+    if (id) {
+      setClientError('')
+    }
     setSelectedAgentId('')
     setAgents([])
     setAgentLocked(false)
     setClientName('')
     setClientEmail('')
     setClientPhone('')
-    const client = clients.find((c) => c.id === id)
+    const client = clientRecord || clients.find((c) => c.id === id)
     if (client) {
-      setClientCompany(client.company || '')
+      const companyName = client.company || client.name || ''
+      setClientCompany(companyName)
       setAutoExecutive(client.account_executive || client.expand?.account_executive_rel?.name || '')
       getAgents()
         .then((all) => {
           const ids = new Set(clients.filter((c) => c.company === client.company).map((c) => c.id))
+          ids.add(client.id)
           setAgents(all.filter((a) => ids.has(a.client_id)))
         })
         .catch(() => setAgents([]))
+    } else if (!id) {
+      setClientCompany('')
+      setAutoExecutive('')
     }
   }
 
@@ -412,6 +421,7 @@ export function useServiceRecordForm(
     setUseExisting(true)
     setShowAllClients(false)
     setSelectedClientId('')
+    setClientError('')
     setSelectedAgentId('')
     setAgents([])
     setAgentLocked(false)
@@ -465,6 +475,12 @@ export function useServiceRecordForm(
     overrideStatus?: ServiceStatus,
   ): Promise<boolean> => {
     e.preventDefault()
+    if (!selectedClientId) {
+      setClientError('Selecione um cliente cadastrado')
+      toast({ variant: 'destructive', title: 'Selecione um cliente cadastrado' })
+      return false
+    }
+    setClientError('')
     if (!clientName.trim()) {
       toast({ variant: 'destructive', title: 'Preencha o nome do agente' })
       return false
@@ -615,7 +631,18 @@ export function useServiceRecordForm(
     if (result.contact_reason) setContactReason(result.contact_reason as ContactReason)
     if (result.channel) setChannel(result.channel as ServiceChannel)
     if (result.travel_type) setTravelType(result.travel_type as TravelType)
-    if (result.agency_name) setClientCompany(result.agency_name)
+    if (result.agency_name) {
+      const match = clients.find(
+        (c) =>
+          c.company?.trim().toLowerCase() === result.agency_name?.trim().toLowerCase() ||
+          c.name?.trim().toLowerCase() === result.agency_name?.trim().toLowerCase(),
+      )
+      if (match) {
+        handleSelectCompany(match.id, match)
+      } else {
+        setClientCompany(result.agency_name)
+      }
+    }
     if (result.agent_name) setClientName(result.agent_name)
     if (result.client_email) setClientEmail(result.client_email)
     if (result.client_phone) setClientPhone(result.client_phone)
@@ -637,6 +664,9 @@ export function useServiceRecordForm(
     setShowAllClients,
     clients: filteredClients,
     selectedClientId,
+    setSelectedClientId,
+    clientError,
+    setClientError,
     handleSelectCompany,
     selectedAgentId,
     handleSelectAgent,

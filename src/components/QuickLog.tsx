@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { ClientAutocompleteCombobox } from '@/components/ClientAutocompleteCombobox'
 import { VoiceInputButton } from '@/components/VoiceInputButton'
 import { NewAgentDialog } from '@/components/NewAgentDialog'
 import { useServiceRecordForm } from '@/hooks/use-service-record-form'
@@ -99,19 +100,17 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Agência *</Label>
-            <SearchableSelect
-              options={form.clients
-                .filter(
-                  (c, i, arr) => c.company && arr.findIndex((c2) => c2.company === c.company) === i,
-                )
-                .map((c) => ({ value: c.id, label: c.company! }))}
-              value={form.selectedClientId}
-              onValueChange={form.handleSelectCompany}
-              placeholder="Selecione a agência..."
-              emptyText="Nenhuma agência encontrada."
-              className="h-9"
+            <Label className="text-xs font-semibold">Agência / Cliente *</Label>
+            <ClientAutocompleteCombobox
+              clients={form.clients}
+              selectedClientId={form.selectedClientId}
+              onSelectClient={(id, client) => form.handleSelectCompany(id, client)}
+              placeholder="Busque ou cadastre a agência..."
+              hasError={Boolean(form.clientError)}
             />
+            {form.clientError && (
+              <p className="text-xs text-red-500 font-medium">{form.clientError}</p>
+            )}
           </div>
           {form.selectedClientId && (
             <div className="space-y-1.5">

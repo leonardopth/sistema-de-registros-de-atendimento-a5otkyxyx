@@ -251,8 +251,8 @@ export function computeStatsByUserForMonth(
     ) {
       cur.reopenedCount += 1
     }
-    // Considera categorizado se possui motivo específico diferente de 'outros'
-    if (r.contact_reason && r.contact_reason !== 'outros') {
+    // Considera categorizado se possui motivo específico diferente de 'Outros'
+    if (r.contact_reason && (r.contact_reason as string) !== 'Outros') {
       cur.autoCategorizedCount = (cur.autoCategorizedCount || 0) + 1
     }
 
