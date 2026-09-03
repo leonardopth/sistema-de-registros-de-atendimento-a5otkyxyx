@@ -10,11 +10,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import {
-  CollaboratorStatus,
   COLLABORATOR_STATUSES,
   STATUS_CONFIG,
   updateCollaboratorStatus,
 } from '@/services/collaborator-status'
+import { CollaboratorStatus } from '@/types/service_record'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { ChevronDown, Loader2 } from 'lucide-react'

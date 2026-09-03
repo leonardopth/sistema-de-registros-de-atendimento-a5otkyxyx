@@ -13,14 +13,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
-  CollaboratorStatus,
   COLLABORATOR_STATUSES,
   STATUS_CONFIG,
   getCollaboratorStatusLogs,
   calculateTimePerStatus,
   formatMinutes,
 } from '@/services/collaborator-status'
-import { UserRecord, CollaboratorStatusLog } from '@/types/service_record'
+import { UserRecord, CollaboratorStatusLog, CollaboratorStatus } from '@/types/service_record'
 import { getUsers } from '@/services/users'
 import { useRealtime } from '@/hooks/use-realtime'
 import { cn } from '@/lib/utils'
