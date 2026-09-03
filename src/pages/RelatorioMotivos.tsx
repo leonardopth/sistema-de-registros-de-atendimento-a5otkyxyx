@@ -90,7 +90,7 @@ export default function RelatorioMotivos() {
     setLoading(true)
     try {
       const [recs, emails, calls] = await Promise.all([
-        getServiceRecords('', '-created').catch(() => [] as ServiceRecord[]),
+        getServiceRecords('-created').catch(() => [] as ServiceRecord[]),
         getEmailLogs().catch(() => [] as EmailLogRecord[]),
         getCallAnalysisLogs().catch(() => [] as CallAnalysisLogRecord[]),
       ])

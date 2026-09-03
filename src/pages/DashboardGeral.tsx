@@ -63,7 +63,7 @@ export default function DashboardGeral() {
     try {
       const [c, r, e, u] = await Promise.all([
         getClients(),
-        getServiceRecords('', '-created'),
+        getServiceRecords('-created'),
         getAccountExecutives(),
         getUsers(),
       ])

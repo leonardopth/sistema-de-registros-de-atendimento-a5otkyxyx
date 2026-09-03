@@ -97,43 +97,66 @@ export default function Index() {
   const loadData = async () => {
     try {
       setLoadError(null)
-      const [r, c, e, u, t, a] = await Promise.all([
-        getServiceRecords('', '-created').catch((err: any) => {
-          console.warn('Non-blocking error fetching service records:', err)
-          return []
-        }),
-        getClients().catch((err: any) => {
-          console.warn('Non-blocking error fetching clients:', err)
-          return []
-        }),
-        getAccountExecutives().catch((err: any) => {
-          console.warn('Non-blocking error fetching executives:', err)
-          return []
-        }),
-        getUsers().catch((err: any) => {
-          console.warn('Non-blocking error fetching users:', err)
-          return []
-        }),
-        getTrainings().catch((err: any) => {
-          console.warn('Non-blocking error fetching trainings:', err)
-          return []
-        }),
-        getMonthlyAwards().catch(() => []),
+      const results = await Promise.allSettled([
+        getServiceRecords('-created'),
+        getClients(),
+        getAccountExecutives(),
+        getUsers(),
+        getTrainings(),
+        getMonthlyAwards(),
       ])
-      setRecords(Array.isArray(r) ? r : [])
-      setClients(Array.isArray(c) ? c : [])
-      setExecutives(Array.isArray(e) ? e : [])
-      setUsers(Array.isArray(u) ? u : [])
-      setTrainings(Array.isArray(t) ? t : [])
-      setAwards(Array.isArray(a) ? a : [])
+
+      const [rRes, cRes, eRes, uRes, tRes, aRes] = results
+
+      if (rRes.status === 'fulfilled') {
+        setRecords(Array.isArray(rRes.value) ? rRes.value : [])
+      } else {
+        console.warn('Falha ao carregar atendimentos no Index:', rRes.reason)
+        setRecords([])
+      }
+
+      if (cRes.status === 'fulfilled') {
+        setClients(Array.isArray(cRes.value) ? cRes.value : [])
+      } else {
+        console.warn('Falha ao carregar clientes no Index:', cRes.reason)
+        setClients([])
+      }
+
+      if (eRes.status === 'fulfilled') {
+        setExecutives(Array.isArray(eRes.value) ? eRes.value : [])
+      } else {
+        console.warn('Falha ao carregar executivos no Index:', eRes.reason)
+        setExecutives([])
+      }
+
+      if (uRes.status === 'fulfilled') {
+        setUsers(Array.isArray(uRes.value) ? uRes.value : [])
+      } else {
+        console.warn('Falha ao carregar usuários no Index:', uRes.reason)
+        setUsers([])
+      }
+
+      if (tRes.status === 'fulfilled') {
+        setTrainings(Array.isArray(tRes.value) ? tRes.value : [])
+      } else {
+        console.warn('Falha ao carregar treinamentos no Index:', tRes.reason)
+        setTrainings([])
+      }
+
+      if (aRes.status === 'fulfilled') {
+        setAwards(Array.isArray(aRes.value) ? aRes.value : [])
+      } else {
+        setAwards([])
+      }
+
+      // Se atendimentos ou clientes falharem, exibe aviso não bloqueante com botão "Tentar novamente"
+      const hasFailures = results.some((r) => r.status === 'rejected')
+      if (hasFailures) {
+        setLoadError('Não foi possível sincronizar todos os dados do painel.')
+      }
     } catch (err: any) {
       console.error('Error loading dashboard data:', err)
       setLoadError('Não foi possível sincronizar todos os dados. Exibindo informações locais.')
-      setRecords([])
-      setClients([])
-      setExecutives([])
-      setUsers([])
-      setTrainings([])
     }
   }
 

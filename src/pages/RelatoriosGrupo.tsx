@@ -36,7 +36,7 @@ export default function RelatoriosGrupo() {
     try {
       const [allClients, allRecords, execs] = await Promise.all([
         getClients(),
-        getServiceRecords('', '-created'),
+        getServiceRecords('-created'),
         getAccountExecutives(),
       ])
 

@@ -2,19 +2,114 @@ import pb from '@/lib/pocketbase/client'
 import { ServiceRecord } from '@/types/service_record'
 
 export const getServiceRecords = async (
-  sort = '-created',
-  filter?: string,
+  sortOrFilter?: string,
+  filterOrSort?: string,
 ): Promise<ServiceRecord[]> => {
-  try {
-    const records = await pb.collection('service_records').getFullList<ServiceRecord>({
-      sort,
-      filter: filter || undefined,
-      expand: 'account_executive,client,agent,assigned_user,user_id',
+  // Normaliza parâmetros para suportar tanto getServiceRecords(sort, filter)
+  // quanto chamadas antigas getServiceRecords('', '-created') ou getServiceRecords(filter, sort)
+  let sort = '-created'
+  let filter: string | undefined = undefined
+
+  const p1 = (sortOrFilter ?? '').trim()
+  const p2 = (filterOrSort ?? '').trim()
+
+  const isSortString = (val: string) => {
+    if (!val) return false
+    // Se contém operadores lógicos ou de comparação, é filtro e não sort
+    if (
+      val.includes('=') ||
+      val.includes('~') ||
+      val.includes('||') ||
+      val.includes('&&') ||
+      val.includes('>') ||
+      val.includes('<')
+    ) {
+      return false
+    }
+    // Formato de sort do PocketBase: [-+]?[a-zA-Z0-9_@#]+(,\s*[-+]?[a-zA-Z0-9_@#]+)*
+    return /^[-+]?[a-zA-Z0-9_@#]+(\s*,\s*[-+]?[a-zA-Z0-9_@#]+)*$/.test(val)
+  }
+
+  if (p1 && p2) {
+    if (isSortString(p1) && !isSortString(p2)) {
+      sort = p1
+      filter = p2
+    } else if (!isSortString(p1) && isSortString(p2)) {
+      filter = p1
+      sort = p2
+    } else if (isSortString(p1) && isSortString(p2)) {
+      // Se p2 é -created ou algo similar, pode ter sido invertido
+      if (p2.startsWith('-') || p2.startsWith('+')) {
+        sort = p2
+        filter = p1
+      } else {
+        sort = p1
+        filter = p2
+      }
+    } else {
+      filter = p1
+      sort = '-created'
+    }
+  } else if (p1 && !p2) {
+    if (isSortString(p1)) {
+      sort = p1
+      filter = undefined
+    } else {
+      filter = p1
+      sort = '-created'
+    }
+  } else if (!p1 && p2) {
+    if (isSortString(p2)) {
+      sort = p2
+      filter = undefined
+    } else {
+      filter = p2
+      sort = '-created'
+    }
+  }
+
+  // Sanitiza sort se for vazio
+  if (!sort || !sort.trim()) {
+    sort = '-created'
+  }
+
+  const doFetch = async (useSort: string, useFilter?: string, useExpand = true) => {
+    return await pb.collection('service_records').getFullList<ServiceRecord>({
+      sort: useSort,
+      filter: useFilter || undefined,
+      ...(useExpand ? { expand: 'account_executive,client,agent,assigned_user,user_id' } : {}),
     })
+  }
+
+  try {
+    const records = await doFetch(sort, filter, true)
     return Array.isArray(records) ? records : []
-  } catch (error) {
-    console.error('Error fetching service records:', error)
-    return []
+  } catch (error: any) {
+    console.warn(
+      'Tentativa primária de buscar service_records falhou (status: ' + error?.status + '):',
+      error,
+    )
+
+    // Fallback 1: Se deu erro 400, tenta sem filtros/sort complexos ou com sort default '-created'
+    if (error?.status === 400) {
+      try {
+        console.warn('Executando fallback seguro sem filtro avançado e com sort padrão -created')
+        const fallbackRecords = await doFetch('-created', undefined, true)
+        return Array.isArray(fallbackRecords) ? fallbackRecords : []
+      } catch (fbErr: any) {
+        console.warn('Fallback 1 com expand falhou, tentando fallback 2 sem expand:', fbErr)
+        try {
+          // Fallback 2: sem expand
+          const noExpandRecords = await doFetch('-created', undefined, false)
+          return Array.isArray(noExpandRecords) ? noExpandRecords : []
+        } catch (fbErr2) {
+          console.error('Falha completa na recuperação de service_records:', fbErr2)
+          throw fbErr2
+        }
+      }
+    }
+
+    throw error
   }
 }
 
@@ -75,7 +170,7 @@ export const getConsultantReportData = async (
     // 1. Caso Master: sem nenhuma restrição no backend (vê todos os consultores e registros)
     if (isMaster) {
       const [records, users] = await Promise.all([
-        getServiceRecords('-created'),
+        getServiceRecords('-created').catch(() => []),
         pb
           .collection('users')
           .getFullList({ sort: 'name' })
@@ -132,14 +227,14 @@ export const getConsultantReportData = async (
         .map((id) => `user_id = "${id}" || assigned_user = "${id}"`)
         .join(' || ')
 
-      const records = await getServiceRecords('-created', userConditions)
+      const records = await getServiceRecords('-created', userConditions).catch(() => [])
       return { records, users: teamUsers }
     }
 
     // 3. Caso Consultor comum / não-master: busca no backend apenas os próprios dados
     const myFilter = `user_id = "${currentUser.id}" || assigned_user = "${currentUser.id}"`
     const [records, myUserRec] = await Promise.all([
-      getServiceRecords('-created', myFilter),
+      getServiceRecords('-created', myFilter).catch(() => []),
       pb
         .collection('users')
         .getOne(currentUser.id)

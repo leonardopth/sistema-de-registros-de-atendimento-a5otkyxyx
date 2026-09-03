@@ -86,7 +86,7 @@ export default function Ranking() {
       const [uList, gList, rList, aList, cList, tList] = await Promise.all([
         getUsers().catch(() => []),
         getAllGamification().catch(() => []),
-        getServiceRecords('', '-created').catch(() => []),
+        getServiceRecords('-created').catch(() => []),
         getMonthlyAwards().catch(() => []),
         import('@/services/clients').then((m) => m.getClients()).catch(() => []),
         import('@/services/trainings').then((m) => m.getTrainings()).catch(() => []),
