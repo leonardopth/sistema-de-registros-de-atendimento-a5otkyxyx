@@ -17,8 +17,6 @@ routerAdd(
           approved_by: u.getString('approved_by'),
           approved_by_id: u.getString('approved_by_id'),
           approved_at: u.getString('approved_at'),
-          telegram_id: u.getString('telegram_id'),
-          telegram_alerts: u.getBool('telegram_alerts'),
           service_groups: u.get('service_groups') || [],
           bases: u.get('bases') || [],
           departments: u.get('departments') || [],

@@ -97,13 +97,6 @@ export async function rejectUser(userId: string) {
   return updated
 }
 
-export async function updateTelegramSettings(userId: string, telegramId: string, alerts: boolean) {
-  return await pb.collection('users').update(userId, {
-    telegram_id: telegramId,
-    telegram_alerts: alerts,
-  })
-}
-
 export async function updateEmailNotifications(userId: string, enabled: boolean) {
   return await pb.collection('users').update(userId, {
     email_notifications: enabled,
@@ -123,19 +116,26 @@ export async function deleteUser(id: string) {
   return await pb.collection('users').delete(id)
 }
 
-export async function testTelegram(userId: string) {
-  return await pb.send('/backend/v1/telegram-test', {
-    method: 'POST',
-    body: JSON.stringify({ userId }),
-  })
-}
-
 export async function updateUserEmail(userId: string, email: string) {
   return await pb.send(`/backend/v1/users/${userId}/email`, {
     method: 'PATCH',
     body: JSON.stringify({ email }),
     headers: { 'Content-Type': 'application/json' },
   })
+}
+
+export async function updateUserDepartments(userId: string, departments: string[]) {
+  try {
+    await createAuditLog({
+      action: 'Updated User Departments',
+      entity: 'users',
+      entity_id: userId,
+      details: { departments },
+    })
+  } catch (e) {
+    console.error('Audit log user departments update error:', e)
+  }
+  return await pb.collection('users').update(userId, { departments })
 }
 
 export async function resetUserPassword(userId: string, password: string) {
