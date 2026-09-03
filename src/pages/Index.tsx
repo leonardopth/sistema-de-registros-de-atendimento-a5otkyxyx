@@ -49,6 +49,7 @@ import { AutonomyScorecard } from '@/components/AutonomyScorecard'
 import { TrainingPanel } from '@/components/TrainingPanel'
 import { PerformanceAlerts } from '@/components/PerformanceAlerts'
 import { StatusBadge } from '@/components/StatusBadge'
+import { ServiceVolumeTrendCard } from '@/components/ServiceVolumeTrendCard'
 import { ActiveBacklogQueue } from '@/components/ActiveBacklogQueue'
 import { CollaboratorStatusPanel } from '@/components/CollaboratorStatusPanel'
 import { filterClientsByUserAccess, filterRecordsByUserAccess } from '@/lib/service-group-access'
@@ -666,6 +667,13 @@ export default function Index() {
           {/* Cards de estatísticas */}
           <DashboardStats {...generalStats} />
 
+          {/* Volume de Atendimentos com Linha de Tendência e Projeção de Meta */}
+          <ServiceVolumeTrendCard
+            records={accessibleRecords}
+            title="Volume de Atendimentos & Linha de Tendência (Visão Geral)"
+            subtitle="Evolução diária dos chamados e projeção do ritmo para fechamento do mês corrente"
+          />
+
           {/* Disponibilidade da Equipe */}
           <CollaboratorStatusPanel />
 
@@ -790,6 +798,13 @@ export default function Index() {
           {/* Cards de estatísticas da equipe */}
           <DashboardStats {...teamStats} />
 
+          {/* Volume de Atendimentos com Linha de Tendência e Projeção de Meta */}
+          <ServiceVolumeTrendCard
+            records={teamRecords}
+            title="Volume de Atendimentos & Linha de Tendência da Equipe"
+            subtitle="Evolução diária da equipe liderada e estimativa de meta para o fim do mês"
+          />
+
           {/* Alertas de Desempenho dos Liderados */}
           <PerformanceAlerts records={teamRecords} />
 
@@ -887,6 +902,13 @@ export default function Index() {
 
           {/* Cards com suas próprias estatísticas */}
           <DashboardStats {...consultantStats} />
+
+          {/* Volume de Atendimentos com Linha de Tendência e Projeção de Meta */}
+          <ServiceVolumeTrendCard
+            records={consultantRecords}
+            title="Meu Volume de Atendimentos & Tendência"
+            subtitle="Ritmo pessoal diário e estimativa de fechamento para sua meta individual"
+          />
 
           {/* Grid com Gamificação e Seus Atendimentos Recentes */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

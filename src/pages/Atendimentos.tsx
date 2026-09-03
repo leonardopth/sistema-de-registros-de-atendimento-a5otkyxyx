@@ -26,6 +26,8 @@ import {
   getServiceRecords,
   batchUpdateStatus,
   batchDeleteServiceRecords,
+  batchReassignConsultant,
+  batchUpdateAvoidable,
   updateServiceRecord,
 } from '@/services/service_records'
 import {
@@ -58,7 +60,28 @@ import {
   Share2,
   Mail,
   Phone,
+  UserCheck,
+  ShieldCheck,
+  X,
+  FileSpreadsheet,
+  FileText,
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { filterRecordsByUserAccess } from '@/lib/service-group-access'
 import { Label } from '@/components/ui/label'
 import { FloatingServiceTimer } from '@/components/FloatingServiceTimer'
 import { useAuth } from '@/hooks/use-auth'
@@ -107,6 +130,14 @@ export default function Atendimentos() {
 
   const [selectedRecord, setSelectedRecord] = useState<ServiceRecord | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [batchStatusModalOpen, setBatchStatusModalOpen] = useState(false)
+  const [batchStatusValue, setBatchStatusValue] = useState<string>('Concluído')
+  const [batchConsultantModalOpen, setBatchConsultantModalOpen] = useState(false)
+  const [batchConsultantId, setBatchConsultantId] = useState<string>('')
+  const [batchAvoidableModalOpen, setBatchAvoidableModalOpen] = useState(false)
+  const [batchAvoidableValue, setBatchAvoidableValue] = useState<'sim' | 'nao'>('sim')
+  const [batchAvoidableExplanation, setBatchAvoidableExplanation] = useState('')
+  const [isProcessingBatch, setIsProcessingBatch] = useState(false)
   const [activeTimerRecordId, setActiveTimerRecordId] = useState<string | null>(null)
   const [timerStart, setTimerStart] = useState<string | null>(null)
   const [timerRunning, setTimerRunning] = useState(false)
@@ -461,9 +492,19 @@ export default function Atendimentos() {
     }
   }
 
+  // Registros selecionados validados pelo RBAC de acesso do usuário corrente
+  const selectedRecords = useMemo(() => {
+    const map = new Map(displayRecords.map((r) => [r.id, r]))
+    const picked = selectedIds.map((id) => map.get(id)).filter(Boolean) as ServiceRecord[]
+    return filterRecordsByUserAccess(picked, user)
+  }, [selectedIds, displayRecords, user])
+
+  const validSelectedIds = useMemo(() => selectedRecords.map((r) => r.id), [selectedRecords])
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(displayRecords.map((r) => r.id))
+      const allowed = filterRecordsByUserAccess(displayRecords, user)
+      setSelectedIds(allowed.map((r) => r.id))
     } else {
       setSelectedIds([])
     }
@@ -471,32 +512,117 @@ export default function Atendimentos() {
 
   const handleSelectRow = (id: string, checked: boolean) => {
     if (checked) {
-      setSelectedIds([...selectedIds, id])
+      const target = displayRecords.find((r) => r.id === id)
+      if (target && filterRecordsByUserAccess([target], user).length > 0) {
+        setSelectedIds((prev) => Array.from(new Set([...prev, id])))
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Acesso restrito',
+          description: 'Você não tem permissão para operar sobre este atendimento.',
+        })
+      }
     } else {
-      setSelectedIds(selectedIds.filter((i) => i !== id))
+      setSelectedIds((prev) => prev.filter((i) => i !== id))
     }
   }
 
-  const handleBatchComplete = async () => {
-    if (selectedIds.length === 0) return
+  const handleApplyBatchStatus = async () => {
+    if (validSelectedIds.length === 0) return
+    setIsProcessingBatch(true)
     try {
-      await batchUpdateStatus(selectedIds, 'Concluído')
+      await batchUpdateStatus(validSelectedIds, batchStatusValue)
       toast({
-        title: 'Atendimentos atualizados',
-        description: `${selectedIds.length} atendimento(s) marcados como concluídos.`,
+        title: 'Status atualizado em lote',
+        description: `${validSelectedIds.length} atendimento(s) alterados para "${batchStatusValue}".`,
       })
       setSelectedIds([])
+      setBatchStatusModalOpen(false)
       loadData()
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar em lote' })
+      console.error(err)
+      toast({ variant: 'destructive', title: 'Erro ao atualizar status em lote' })
+    } finally {
+      setIsProcessingBatch(false)
     }
+  }
+
+  const handleApplyBatchReassign = async () => {
+    if (validSelectedIds.length === 0 || !batchConsultantId) return
+    setIsProcessingBatch(true)
+    try {
+      const targetUser = users.find((u) => u.id === batchConsultantId)
+      await batchReassignConsultant(validSelectedIds, batchConsultantId, targetUser?.name)
+      toast({
+        title: 'Consultor reatribuído',
+        description: `${validSelectedIds.length} atendimento(s) reassociados a ${targetUser?.name || 'novo consultor'}.`,
+      })
+      setSelectedIds([])
+      setBatchConsultantModalOpen(false)
+      setBatchConsultantId('')
+      loadData()
+    } catch (err) {
+      console.error(err)
+      toast({ variant: 'destructive', title: 'Erro ao reassociar consultor em lote' })
+    } finally {
+      setIsProcessingBatch(false)
+    }
+  }
+
+  const handleApplyBatchAvoidable = async () => {
+    if (validSelectedIds.length === 0) return
+    setIsProcessingBatch(true)
+    try {
+      const isAvoidable = batchAvoidableValue === 'sim'
+      await batchUpdateAvoidable(validSelectedIds, isAvoidable, batchAvoidableExplanation)
+      toast({
+        title: 'Classificação atualizada',
+        description: `${validSelectedIds.length} atendimento(s) marcados como ${isAvoidable ? 'Evitável' : 'Não Evitável'}.`,
+      })
+      setSelectedIds([])
+      setBatchAvoidableModalOpen(false)
+      setBatchAvoidableExplanation('')
+      loadData()
+    } catch (err) {
+      console.error(err)
+      toast({ variant: 'destructive', title: 'Erro ao atualizar classificação evitável' })
+    } finally {
+      setIsProcessingBatch(false)
+    }
+  }
+
+  const handleExportSelectedCSV = () => {
+    if (selectedRecords.length === 0) return
+    downloadServiceRecordsCSV(selectedRecords, 'atendimentos-selecionados.csv')
+    toast({
+      title: 'Seleção exportada',
+      description: `${selectedRecords.length} atendimento(s) exportado(s) em CSV.`,
+    })
+  }
+
+  const handleExportSelectedExcel = () => {
+    if (selectedRecords.length === 0) return
+    downloadServiceRecordsExcel(selectedRecords)
+    toast({
+      title: 'Seleção exportada',
+      description: `${selectedRecords.length} atendimento(s) exportado(s) em Excel.`,
+    })
+  }
+
+  const handleExportSelectedPDF = () => {
+    if (selectedRecords.length === 0) return
+    downloadServiceRecordsPDF(selectedRecords)
+    toast({
+      title: 'Seleção exportada',
+      description: `${selectedRecords.length} atendimento(s) exportado(s) em PDF.`,
+    })
   }
 
   const handleBatchDelete = async () => {
-    if (selectedIds.length === 0) return
-    if (!confirm(`Deseja excluir ${selectedIds.length} atendimento(s)?`)) return
+    if (validSelectedIds.length === 0) return
+    if (!confirm(`Deseja excluir ${validSelectedIds.length} atendimento(s)?`)) return
     try {
-      await batchDeleteServiceRecords(selectedIds)
+      await batchDeleteServiceRecords(validSelectedIds)
       toast({ title: 'Atendimentos excluídos com sucesso' })
       setSelectedIds([])
       loadData()
@@ -841,26 +967,112 @@ export default function Atendimentos() {
           </div>
         </div>
 
+        {/* Barra de Ações em Lote: visível somente quando houver seleção */}
         {selectedIds.length > 0 && (
-          <div className="flex items-center justify-between bg-cyan-50 p-2 rounded-lg border border-cyan-100">
-            <span className="text-xs font-bold text-cyan-950">
-              {selectedIds.length} item(ns) selecionado(s)
-            </span>
-            <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gradient-to-r from-indigo-50 via-cyan-50 to-indigo-50 p-3 rounded-xl border border-indigo-200 shadow-sm animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <Badge className="bg-indigo-600 text-white font-bold text-xs px-2.5 py-0.5 shadow-xs">
+                {selectedRecords.length} selecionado(s)
+              </Badge>
+              <span className="text-xs text-slate-600 font-medium hidden sm:inline">
+                Ações em massa disponíveis para os atendimentos selecionados
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* Alterar Status em massa */}
               <Button
                 size="sm"
-                onClick={handleBatchComplete}
-                className="bg-emerald-600 hover:bg-emerald-700 h-7 text-xs font-semibold"
+                variant="outline"
+                className="h-8 text-xs font-semibold border-indigo-200 bg-white hover:bg-indigo-50 text-indigo-700"
+                onClick={() => setBatchStatusModalOpen(true)}
               >
-                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Concluir
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" />
+                Alterar Status
               </Button>
+
+              {/* Reassociar Consultor em massa */}
               <Button
                 size="sm"
-                variant="destructive"
-                onClick={handleBatchDelete}
-                className="h-7 text-xs font-semibold"
+                variant="outline"
+                className="h-8 text-xs font-semibold border-indigo-200 bg-white hover:bg-indigo-50 text-indigo-700"
+                onClick={() => setBatchConsultantModalOpen(true)}
               >
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+                <UserCheck className="h-3.5 w-3.5 mr-1 text-cyan-600" />
+                Reassociar Consultor
+              </Button>
+
+              {/* Marcar Evitável / Não Evitável em massa */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs font-semibold border-indigo-200 bg-white hover:bg-indigo-50 text-indigo-700"
+                onClick={() => setBatchAvoidableModalOpen(true)}
+              >
+                <ShieldCheck className="h-3.5 w-3.5 mr-1 text-amber-600" />
+                Classificar Evitável
+              </Button>
+
+              {/* Exportar Seleção */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs font-semibold border-indigo-200 bg-white hover:bg-indigo-50 text-indigo-700"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5 mr-1 text-indigo-600" />
+                    Exportar Seleção
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel className="text-xs">
+                    Exportar {selectedRecords.length} itens
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleExportSelectedCSV}
+                    className="text-xs cursor-pointer"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 text-emerald-600" /> CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleExportSelectedExcel}
+                    className="text-xs cursor-pointer"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 text-indigo-600" /> Excel (.xls)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleExportSelectedPDF}
+                    className="text-xs cursor-pointer"
+                  >
+                    <FileText className="h-3.5 w-3.5 mr-1.5 text-rose-600" /> PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Excluir em lote (opcional/útil) */}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleBatchDelete}
+                className="h-8 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold"
+                title="Excluir selecionados"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Excluir
+              </Button>
+
+              {/* Botão para limpar seleção */}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIds([])}
+                className="h-8 text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                title="Limpar seleção"
+              >
+                <X className="h-3.5 w-3.5 mr-1" />
+                Limpar
               </Button>
             </div>
           </div>
@@ -1237,6 +1449,187 @@ export default function Atendimentos() {
           position="bottom-right"
         />
       )}
+
+      {/* Modal: Alterar Status em Lote */}
+      <Dialog open={batchStatusModalOpen} onOpenChange={setBatchStatusModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              Alterar Status em Massa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-slate-600">
+              Você está alterando o status de{' '}
+              <strong className="text-slate-900">{validSelectedIds.length}</strong> atendimento(s)
+              selecionado(s).
+            </p>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Novo Status</Label>
+              <Select value={batchStatusValue} onValueChange={setBatchStatusValue}>
+                <SelectTrigger className="w-full text-xs">
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Aberto">Aberto</SelectItem>
+                  <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                  <SelectItem value="Concluído">Concluído</SelectItem>
+                  <SelectItem value="Cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setBatchStatusModalOpen(false)}
+              disabled={isProcessingBatch}
+              className="text-xs"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleApplyBatchStatus}
+              disabled={isProcessingBatch}
+              className="bg-indigo-600 hover:bg-indigo-700 text-xs text-white"
+            >
+              {isProcessingBatch ? 'Atualizando...' : 'Confirmar Alteração'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Reassociar Consultor em Lote */}
+      <Dialog open={batchConsultantModalOpen} onOpenChange={setBatchConsultantModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-cyan-600" />
+              Reassociar Consultor em Massa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-slate-600">
+              Selecione o novo consultor responsável para os{' '}
+              <strong className="text-slate-900">{validSelectedIds.length}</strong> atendimento(s)
+              selecionados.
+            </p>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Consultor / Usuário</Label>
+              <Select value={batchConsultantId} onValueChange={setBatchConsultantId}>
+                <SelectTrigger className="w-full text-xs">
+                  <SelectValue placeholder="Selecione o colaborador" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {users
+                    .filter((u) =>
+                      [
+                        'Consultor',
+                        'Consultores',
+                        'Líder',
+                        'Supervisor',
+                        'Gerente',
+                        'Executivo de Contas',
+                      ].includes(u.role || ''),
+                    )
+                    .map((u) => (
+                      <SelectItem key={u.id} value={u.id} className="text-xs">
+                        {u.name} ({u.role})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setBatchConsultantModalOpen(false)}
+              disabled={isProcessingBatch}
+              className="text-xs"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleApplyBatchReassign}
+              disabled={isProcessingBatch || !batchConsultantId}
+              className="bg-indigo-600 hover:bg-indigo-700 text-xs text-white"
+            >
+              {isProcessingBatch ? 'Reatribuindo...' : 'Reatribuir Selecionados'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Classificar Evitável em Lote */}
+      <Dialog open={batchAvoidableModalOpen} onOpenChange={setBatchAvoidableModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-amber-600" />
+              Classificar Evitável / Não Evitável
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-slate-600">
+              Atualize a classificação de contato evitável em{' '}
+              <strong className="text-slate-900">{validSelectedIds.length}</strong> atendimento(s).
+            </p>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Classificação</Label>
+              <Select
+                value={batchAvoidableValue}
+                onValueChange={(val: 'sim' | 'nao') => setBatchAvoidableValue(val)}
+              >
+                <SelectTrigger className="w-full text-xs">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sim">Sim (Contato Evitável / Dúvida)</SelectItem>
+                  <SelectItem value="nao">Não (Contato Não Evitável)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {batchAvoidableValue === 'sim' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">
+                  Justificativa / Motivo Evitável (opcional)
+                </Label>
+                <Input
+                  className="text-xs h-8"
+                  placeholder="Ex: Informação já disponível no portal / política de bagagem"
+                  value={batchAvoidableExplanation}
+                  onChange={(e) => setBatchAvoidableExplanation(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setBatchAvoidableModalOpen(false)}
+              disabled={isProcessingBatch}
+              className="text-xs"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleApplyBatchAvoidable}
+              disabled={isProcessingBatch}
+              className="bg-indigo-600 hover:bg-indigo-700 text-xs text-white"
+            >
+              {isProcessingBatch ? 'Atualizando...' : 'Confirmar Classificação'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

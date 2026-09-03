@@ -47,6 +47,7 @@ import { ActiveBacklogQueue } from '@/components/ActiveBacklogQueue'
 import { ThresholdSuggestionPanel } from '@/components/ThresholdSuggestionPanel'
 import { TravelTypeReportPanel } from '@/components/TravelTypeReportPanel'
 import { PerformanceAlerts } from '@/components/PerformanceAlerts'
+import { ServiceVolumeTrendCard } from '@/components/ServiceVolumeTrendCard'
 
 const PRIVILEGED_ROLES = ['Master', 'Gerente', 'Supervisor', 'Líder']
 
@@ -232,6 +233,13 @@ export default function DashboardGeral() {
           {filters.dateFrom && filters.dateTo && (
             <PeriodComparison currentCount={filtered.length} previousCount={prevCount} />
           )}
+
+          {/* Volume de Atendimentos com Linha de Tendência e Projeção de Meta */}
+          <ServiceVolumeTrendCard
+            records={accessibleRecords}
+            title="Volume de Atendimentos & Linha de Tendência Consolidada"
+            subtitle="Evolução diária de chamados em toda a operação com projeção para a meta do mês"
+          />
 
           <ProductivityHeatmap records={filtered} />
 

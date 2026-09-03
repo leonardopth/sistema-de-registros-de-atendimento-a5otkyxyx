@@ -255,6 +255,42 @@ export const batchUpdateStatus = async (
   }
 }
 
+export const batchReassignConsultant = async (
+  ids: string[],
+  assignedUserId: string,
+  assignedAgentName?: string,
+): Promise<void> => {
+  if (!Array.isArray(ids)) return
+  for (const id of ids) {
+    await updateServiceRecordWithHistory(
+      id,
+      {
+        assigned_user: assignedUserId,
+        assigned_agent: assignedAgentName,
+      },
+      `Reatribuição em lote para consultor: ${assignedAgentName || assignedUserId}`,
+    )
+  }
+}
+
+export const batchUpdateAvoidable = async (
+  ids: string[],
+  avoidable: boolean,
+  explanation?: string,
+): Promise<void> => {
+  if (!Array.isArray(ids)) return
+  for (const id of ids) {
+    await updateServiceRecordWithHistory(
+      id,
+      {
+        avoidable_contact: avoidable,
+        avoidable_contact_explanation: avoidable ? explanation : '',
+      },
+      avoidable ? 'Marcado como evitável em lote' : 'Marcado como não evitável em lote',
+    )
+  }
+}
+
 export const batchDeleteServiceRecords = async (ids: string[]): Promise<void> => {
   if (!Array.isArray(ids)) return
   for (const id of ids) {
