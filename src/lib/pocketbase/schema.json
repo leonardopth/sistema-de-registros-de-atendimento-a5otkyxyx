@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-03T21:25:27.828Z",
+  "generatedAt": "2026-09-03T21:46:59.871Z",
   "collections": [
     {
       "name": "users",
@@ -398,14 +398,19 @@
           "selectValues": [
             "Bagagem",
             "Assento",
-            "cálculo reemissão",
-            "reembolso",
-            "cotação",
-            "reserva",
-            "cancelamento",
-            "regras tarifárias",
-            "erro RF",
-            "outros"
+            "Cálculo de Reemissão",
+            "Reembolso",
+            "Cotação",
+            "Reserva",
+            "Cancelamento",
+            "Regras Tarifárias",
+            "Erro RF",
+            "Remarcação",
+            "Check-in",
+            "Alteração de Voo",
+            "Reclamação",
+            "Dúvida Geral",
+            "Outros"
           ]
         },
         {

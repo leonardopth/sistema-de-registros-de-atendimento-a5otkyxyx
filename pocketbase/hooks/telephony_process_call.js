@@ -407,19 +407,19 @@ routerAdd(
           var contactReasonMap = {
             Bagagem: 'Bagagem',
             Assento: 'Assento',
-            Reembolso: 'reembolso',
-            Cotação: 'cotação',
-            Cancelamento: 'cancelamento',
-            Venda: 'cotação',
-            Suporte: 'outros',
-            Informação: 'outros',
-            Reclamação: 'outros',
-            Alteração: 'outros',
+            Reembolso: 'Reembolso',
+            Cotação: 'Cotação',
+            Cancelamento: 'Cancelamento',
+            Venda: 'Cotação',
+            Suporte: 'Dúvida Geral',
+            Informação: 'Dúvida Geral',
+            Reclamação: 'Reclamação',
+            Alteração: 'Alteração de Voo',
           }
           var currentReason = targetSr.getString('contact_reason')
           if (
             contactReasonMap[analysis.category] &&
-            (!currentReason || currentReason === 'outros')
+            (!currentReason || currentReason === 'Outros' || currentReason === 'outros')
           ) {
             targetSr.set('contact_reason', contactReasonMap[analysis.category])
           }
@@ -699,19 +699,19 @@ routerAdd(
           var contactReasonMap = {
             Bagagem: 'Bagagem',
             Assento: 'Assento',
-            Reembolso: 'reembolso',
-            Cotação: 'cotação',
-            Cancelamento: 'cancelamento',
-            Venda: 'cotação',
-            Suporte: 'outros',
-            Informação: 'outros',
-            Reclamação: 'outros',
-            Alteração: 'outros',
+            Reembolso: 'Reembolso',
+            Cotação: 'Cotação',
+            Cancelamento: 'Cancelamento',
+            Venda: 'Cotação',
+            Suporte: 'Dúvida Geral',
+            Informação: 'Dúvida Geral',
+            Reclamação: 'Reclamação',
+            Alteração: 'Alteração de Voo',
           }
           var currentReason = targetSr.getString('contact_reason')
           if (
             contactReasonMap[analysis.category] &&
-            (!currentReason || currentReason === 'outros')
+            (!currentReason || currentReason === 'Outros' || currentReason === 'outros')
           ) {
             targetSr.set('contact_reason', contactReasonMap[analysis.category])
           }

@@ -9,14 +9,19 @@ routerAdd(
     var contactReasons = [
       'Bagagem',
       'Assento',
-      'c\u00e1lculo reemiss\u00e3o',
-      'reembolso',
-      'cota\u00e7\u00e3o',
-      'reserva',
-      'cancelamento',
-      'regras tarif\u00e1rias',
-      'erro RF',
-      'outros',
+      'Cálculo de Reemissão',
+      'Reembolso',
+      'Cotação',
+      'Reserva',
+      'Cancelamento',
+      'Regras Tarifárias',
+      'Erro RF',
+      'Remarcação',
+      'Check-in',
+      'Alteração de Voo',
+      'Reclamação',
+      'Dúvida Geral',
+      'Outros',
     ]
     var avoidableReasons = ['Dispon\u00edvel no RF', 'Fora do Escopo', 'Erro RF', 'Outros']
     var channels = ['Telefone', 'e-mail', 'whatsapp', 'comercial', 'outros']
@@ -80,7 +85,41 @@ routerAdd(
         })
       }
 
-      if (!contactReasons.includes(parsed.contact_reason)) parsed.contact_reason = 'outros'
+      // Mapeamento de normalização tolerante
+      var reasonNormMap = {
+        bagagem: 'Bagagem',
+        assento: 'Assento',
+        'calculo de reemissao': 'Cálculo de Reemissão',
+        'calculo reemissao': 'Cálculo de Reemissão',
+        reemissao: 'Cálculo de Reemissão',
+        reembolso: 'Reembolso',
+        cotacao: 'Cotação',
+        cotação: 'Cotação',
+        orcamento: 'Cotação',
+        reserva: 'Reserva',
+        cancelamento: 'Cancelamento',
+        'regras tarifarias': 'Regras Tarifárias',
+        'regras tarifárias': 'Regras Tarifárias',
+        'erro rf': 'Erro RF',
+        remarcacao: 'Remarcação',
+        remarcação: 'Remarcação',
+        'check-in': 'Check-in',
+        checkin: 'Check-in',
+        'alteracao de voo': 'Alteração de Voo',
+        'alteração de voo': 'Alteração de Voo',
+        reclamacao: 'Reclamação',
+        reclamação: 'Reclamação',
+        'duvida geral': 'Dúvida Geral',
+        duvida: 'Dúvida Geral',
+        dúvida: 'Dúvida Geral',
+        outros: 'Outros',
+      }
+      var cleanReason = (parsed.contact_reason || '').toLowerCase().trim()
+      if (reasonNormMap[cleanReason]) {
+        parsed.contact_reason = reasonNormMap[cleanReason]
+      } else if (!contactReasons.includes(parsed.contact_reason)) {
+        parsed.contact_reason = 'Outros'
+      }
       if (typeof parsed.avoidable_contact !== 'boolean') parsed.avoidable_contact = false
       if (parsed.avoidable_contact) {
         if (!avoidableReasons.includes(parsed.avoidable_contact_reason)) {

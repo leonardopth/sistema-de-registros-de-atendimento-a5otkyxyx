@@ -97,6 +97,7 @@ import { getEmailLogs, EmailLogRecord } from '@/services/outlook-integration'
 import { getCallAnalysisLogs, CallAnalysisLogRecord } from '@/services/telephony-integration'
 import { ServiceRecordShare } from '@/types/service_record'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
+import { CONTACT_REASONS, normalizeContactReason } from '@/constants/contactReasons'
 import { downloadServiceRecordsCSV } from '@/lib/report-export'
 import {
   downloadServiceRecordsExcel,
@@ -381,7 +382,8 @@ export default function Atendimentos() {
       (r.client_company && r.client_company.toLowerCase().includes(search.toLowerCase()))
 
     const matchesStatus = statusFilter === 'todos' || r.status === statusFilter
-    const matchesReason = reasonFilter === 'todos' || r.contact_reason === reasonFilter
+    const recordReason = normalizeContactReason(r.contact_reason) || r.contact_reason || ''
+    const matchesReason = reasonFilter === 'todos' || recordReason === reasonFilter
     const matchesWrongDept =
       wrongDeptFilter === 'todos' ||
       (wrongDeptFilter === 'sim' && r.avoidable_contact === true) ||
@@ -415,7 +417,10 @@ export default function Atendimentos() {
       colClients.includes(clientNameDisplay) ||
       colClients.includes(r.client_company || '') ||
       colClients.includes(r.client_name)
-    const matchesColReason = colReasons.length === 0 || colReasons.includes(r.contact_reason || '')
+    const matchesColReason =
+      colReasons.length === 0 ||
+      colReasons.includes(recordReason) ||
+      colReasons.includes(r.contact_reason || '')
     const matchesColStatus = colStatuses.length === 0 || colStatuses.includes(r.status || '')
     const matchesColPriority =
       colPriorities.length === 0 || colPriorities.includes(r.priority || '')
@@ -830,16 +835,11 @@ export default function Atendimentos() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os Motivos</SelectItem>
-                <SelectItem value="Bagagem">Bagagem</SelectItem>
-                <SelectItem value="Assento">Assento</SelectItem>
-                <SelectItem value="cálculo reemissão">cálculo reemissão</SelectItem>
-                <SelectItem value="reembolso">reembolso</SelectItem>
-                <SelectItem value="cotação">cotação</SelectItem>
-                <SelectItem value="reserva">reserva</SelectItem>
-                <SelectItem value="cancelamento">cancelamento</SelectItem>
-                <SelectItem value="regras tarifárias">regras tarifárias</SelectItem>
-                <SelectItem value="erro RF">erro RF</SelectItem>
-                <SelectItem value="outros">outros</SelectItem>
+                {CONTACT_REASONS.map((reason) => (
+                  <SelectItem key={reason} value={reason}>
+                    {reason}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -1139,7 +1139,13 @@ export default function Atendimentos() {
                     currentSortField={sortField}
                     currentSortDirection={sortDirection}
                     onSort={handleSort}
-                    filterOptions={records.map((r) => r.contact_reason).filter(Boolean) as string[]}
+                    filterOptions={Array.from(
+                      new Set(
+                        records
+                          .map((r) => normalizeContactReason(r.contact_reason) || r.contact_reason)
+                          .filter(Boolean) as string[],
+                      ),
+                    )}
                     filterSelected={colReasons}
                     onFilterChange={setColReasons}
                   />
@@ -1303,7 +1309,9 @@ export default function Atendimentos() {
                         })()}
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs text-slate-700">{r.contact_reason}</TableCell>
+                    <TableCell className="text-xs text-slate-700">
+                      {normalizeContactReason(r.contact_reason) || r.contact_reason || '-'}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <StatusBadge status={r.status} />

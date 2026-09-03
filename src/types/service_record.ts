@@ -8,17 +8,8 @@ export interface TaskItem {
   done_by?: string
 }
 
-export type ContactReason =
-  | 'Bagagem'
-  | 'Assento'
-  | 'cálculo reemissão'
-  | 'reembolso'
-  | 'cotação'
-  | 'reserva'
-  | 'cancelamento'
-  | 'regras tarifárias'
-  | 'erro RF'
-  | 'outros'
+import { type ContactReason } from '@/constants/contactReasons'
+export type { ContactReason } from '@/constants/contactReasons'
 
 export type ServiceChannel = 'Telefone' | 'e-mail' | 'whatsapp' | 'comercial' | 'outros'
 
