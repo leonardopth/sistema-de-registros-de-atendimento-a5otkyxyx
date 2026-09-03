@@ -23,6 +23,7 @@ import type {
   TravelType,
   ServiceChannel,
 } from '@/types/service_record'
+import { CONTACT_REASON_OPTIONS } from '@/constants/contactReasons'
 
 interface QuickLogProps {
   open: boolean
@@ -161,16 +162,11 @@ export function QuickLog({ open, onOpenChange, onSuccess }: QuickLogProps) {
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Bagagem">Bagagem</SelectItem>
-                  <SelectItem value="Assento">Assento</SelectItem>
-                  <SelectItem value="cálculo reemissão">cálculo reemissão</SelectItem>
-                  <SelectItem value="reembolso">reembolso</SelectItem>
-                  <SelectItem value="cotação">cotação</SelectItem>
-                  <SelectItem value="reserva">reserva</SelectItem>
-                  <SelectItem value="cancelamento">cancelamento</SelectItem>
-                  <SelectItem value="regras tarifárias">regras tarifárias</SelectItem>
-                  <SelectItem value="erro RF">erro RF</SelectItem>
-                  <SelectItem value="outros">outros</SelectItem>
+                  {CONTACT_REASON_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

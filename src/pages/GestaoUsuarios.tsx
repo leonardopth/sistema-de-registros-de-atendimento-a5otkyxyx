@@ -589,8 +589,8 @@ export default function GestaoUsuarios() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
+                )
+              })}
               {visibleUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={isMaster ? 8 : 7} className="text-center text-slate-400 py-8">

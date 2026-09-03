@@ -24,6 +24,7 @@ import { PriorityBadge } from '@/components/PriorityBadge'
 import { ServiceRecordDetailModal } from '@/components/ServiceRecordDetailModal'
 import { formatGMT3DateTime } from '@/lib/timezone'
 import { isRecordReopened } from '@/lib/reopen-utils'
+import { normalizeContactReason } from '@/constants/contactReasons'
 import {
   Clock,
   AlertCircle,
@@ -442,7 +443,9 @@ export function ActiveBacklogQueue({
                       {/* Motivo */}
                       <TableCell className="text-xs text-slate-700 py-2.5">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-medium">{record.contact_reason}</span>
+                          <span className="font-medium">
+                            {normalizeContactReason(record.contact_reason) || record.contact_reason}
+                          </span>
                           {record.avoidable_contact && (
                             <Badge
                               variant="outline"

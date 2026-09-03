@@ -41,6 +41,7 @@ import {
 import type { TrainingRecord } from '@/types/training'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
+import { normalizeContactReason } from '@/constants/contactReasons'
 import { DashboardStats } from '@/components/DashboardStats'
 import { ConsultantGamification } from '@/components/ConsultantGamification'
 import { AchievementFeed } from '@/components/AchievementFeed'
@@ -748,8 +749,10 @@ export default function Index() {
                         {r.client_company || r.client_name || 'Cliente'}
                       </p>
                       <p className="text-[10px] text-slate-500 truncate">
-                        {r.contact_reason || 'Atendimento'} —{' '}
-                        {(r.description || '').substring(0, 60)}
+                        {normalizeContactReason(r.contact_reason) ||
+                          r.contact_reason ||
+                          'Atendimento'}{' '}
+                        — {(r.description || '').substring(0, 60)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -888,8 +891,10 @@ export default function Index() {
                         )}
                       </div>
                       <p className="text-[10px] text-slate-500 truncate">
-                        {r.contact_reason || 'Atendimento'} —{' '}
-                        {(r.description || '').substring(0, 60)}
+                        {normalizeContactReason(r.contact_reason) ||
+                          r.contact_reason ||
+                          'Atendimento'}{' '}
+                        — {(r.description || '').substring(0, 60)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -967,8 +972,10 @@ export default function Index() {
                         {r.client_company || r.client_name || 'Cliente'}
                       </p>
                       <p className="text-[10px] text-slate-500 truncate">
-                        {r.contact_reason || 'Atendimento'} —{' '}
-                        {(r.description || '').substring(0, 60)}
+                        {normalizeContactReason(r.contact_reason) ||
+                          r.contact_reason ||
+                          'Atendimento'}{' '}
+                        — {(r.description || '').substring(0, 60)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -1184,8 +1191,10 @@ export default function Index() {
                         )}
                       </div>
                       <p className="text-[10px] text-slate-500 truncate">
-                        {r.contact_reason || 'Atendimento'} —{' '}
-                        {(r.description || '').substring(0, 70)}
+                        {normalizeContactReason(r.contact_reason) ||
+                          r.contact_reason ||
+                          'Atendimento'}{' '}
+                        — {(r.description || '').substring(0, 70)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

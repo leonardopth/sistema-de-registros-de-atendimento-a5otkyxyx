@@ -5,6 +5,7 @@ import { getCallAnalysisLogs, CallAnalysisLogRecord } from '@/services/telephony
 import { useAuth } from '@/hooks/use-auth'
 import { filterRecordsByUserAccess } from '@/lib/service-group-access'
 import { ServiceRecord } from '@/types/service_record'
+import { normalizeContactReason } from '@/constants/contactReasons'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -183,7 +184,7 @@ export default function RelatorioMotivos() {
     > = {}
 
     filteredRecords.forEach((r) => {
-      const reason = r.contact_reason || 'outros'
+      const reason = normalizeContactReason(r.contact_reason) || r.contact_reason || 'Outros'
       if (!groups[reason]) {
         groups[reason] = {
           count: 0,
@@ -744,7 +745,7 @@ export default function RelatorioMotivos() {
                                   : 'bg-indigo-600',
                             )}
                           />
-                          <span className="capitalize">{row.reason}</span>
+                          <span>{row.reason}</span>
                         </div>
                       </TableCell>
 

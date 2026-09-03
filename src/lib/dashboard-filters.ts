@@ -1,5 +1,6 @@
 import { ServiceRecord, ClientRecord } from '@/types/service_record'
 import { getGMT3DateString } from '@/lib/timezone'
+import { normalizeContactReason } from '@/constants/contactReasons'
 
 export interface DashboardFilters {
   searchTerm?: string
@@ -131,7 +132,7 @@ export function filterRecords(
     if (
       filters.contactReason &&
       filters.contactReason !== 'Todos' &&
-      r.contact_reason !== filters.contactReason
+      (normalizeContactReason(r.contact_reason) || r.contact_reason) !== filters.contactReason
     )
       return false
     if (filters.status && filters.status !== 'Todos' && r.status !== filters.status) return false

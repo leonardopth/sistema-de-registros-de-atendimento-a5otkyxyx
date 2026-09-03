@@ -420,7 +420,8 @@ export default function Atendimentos() {
     const matchesColReason =
       colReasons.length === 0 ||
       colReasons.includes(recordReason) ||
-      colReasons.includes(r.contact_reason || '')
+      colReasons.includes(r.contact_reason || '') ||
+      colReasons.some((cr) => normalizeContactReason(cr) === recordReason)
     const matchesColStatus = colStatuses.length === 0 || colStatuses.includes(r.status || '')
     const matchesColPriority =
       colPriorities.length === 0 || colPriorities.includes(r.priority || '')

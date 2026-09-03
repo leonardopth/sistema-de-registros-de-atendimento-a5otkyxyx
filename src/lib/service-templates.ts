@@ -10,7 +10,7 @@ export interface ServiceTemplate {
 
 export const SERVICE_TEMPLATES: ServiceTemplate[] = [
   {
-    reason: 'reembolso',
+    reason: 'Reembolso',
     label: 'Reembolso',
     description:
       'Cliente solicita reembolso de passagem/taxa. Verificar regras tarifárias e orientar sobre processo no RF.',
@@ -44,7 +44,7 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
     ],
   },
   {
-    reason: 'cotação',
+    reason: 'Cotação',
     label: 'Cotação',
     description: 'Cliente solicita cotação de passagem. Verificar rotas, datas e disponibilidade.',
     priority: 'Média',
@@ -54,7 +54,7 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
     ],
   },
   {
-    reason: 'reserva',
+    reason: 'Reserva',
     label: 'Reserva',
     description: 'Cliente solicita reserva de passagem. Coletar dados e confirmar disponibilidade.',
     priority: 'Alta',
@@ -65,7 +65,7 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
     ],
   },
   {
-    reason: 'cancelamento',
+    reason: 'Cancelamento',
     label: 'Cancelamento',
     description: 'Cliente solicita cancelamento. Verificar regras e orientar sobre penalidades.',
     priority: 'Alta',
@@ -76,7 +76,7 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
     ],
   },
   {
-    reason: 'erro RF',
+    reason: 'Erro RF',
     label: 'Erro RF',
     description: 'Cliente relata erro no sistema RF. Identificar o problema e orientar solução.',
     priority: 'Alta',
@@ -86,14 +86,14 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
     ],
   },
   {
-    reason: 'regras tarifárias',
+    reason: 'Regras Tarifárias',
     label: 'Regras Tarifárias',
     description: 'Dúvida sobre regras tarifárias. Consultar regras e orientar cliente.',
     priority: 'Baixa',
     tasks: [{ title: 'Consultar regras da tarifa', done: false }],
   },
   {
-    reason: 'cálculo reemissão',
+    reason: 'Cálculo de Reemissão',
     label: 'Cálculo Reemissão',
     description: 'Cliente solicita cálculo de reemissão. Verificar tarifa original e nova.',
     priority: 'Média',
@@ -103,7 +103,7 @@ export const SERVICE_TEMPLATES: ServiceTemplate[] = [
     ],
   },
   {
-    reason: 'outros',
+    reason: 'Outros',
     label: 'Outros',
     description: 'Atendimento de natureza diversa não classificada nas categorias anteriores.',
     priority: 'Baixa',

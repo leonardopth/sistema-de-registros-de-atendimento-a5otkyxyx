@@ -12,22 +12,11 @@ import {
 import { FilterX, SlidersHorizontal } from 'lucide-react'
 import { DashboardFilters, DEFAULT_FILTERS, hasActiveFilters } from '@/lib/dashboard-filters'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
+import { CONTACT_REASONS } from '@/constants/contactReasons'
 
 const STATUS_OPTIONS = ['Todos', 'Aberto', 'Em Andamento', 'Concluído', 'Cancelado']
 const PRIORITY_OPTIONS = ['Todas', 'Baixa', 'Média', 'Alta']
-const REASON_OPTIONS = [
-  'Todos',
-  'Bagagem',
-  'Assento',
-  'cálculo reemissão',
-  'reembolso',
-  'cotação',
-  'reserva',
-  'cancelamento',
-  'regras tarifárias',
-  'erro RF',
-  'outros',
-]
+const REASON_OPTIONS = ['Todos', ...CONTACT_REASONS]
 const CHANNEL_OPTIONS = ['Todos', 'Telefone', 'e-mail', 'whatsapp', 'comercial', 'outros']
 
 interface Props {

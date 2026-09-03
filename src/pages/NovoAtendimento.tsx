@@ -51,19 +51,9 @@ import type {
   TravelType,
 } from '@/types/service_record'
 import { AVOIDABLE_CONTACT_REASONS } from '@/lib/constants'
+import { CONTACT_REASON_OPTIONS } from '@/constants/contactReasons'
 
-const contactReasons: ContactReason[] = [
-  'Bagagem',
-  'Assento',
-  'cálculo reemissão',
-  'reembolso',
-  'cotação',
-  'reserva',
-  'cancelamento',
-  'regras tarifárias',
-  'erro RF',
-  'outros',
-]
+const contactReasons = CONTACT_REASON_OPTIONS
 const channels: ServiceChannel[] = ['Telefone', 'e-mail', 'whatsapp', 'comercial', 'outros']
 const avoidableReasons: AvoidableContactReason[] = AVOIDABLE_CONTACT_REASONS
 
@@ -406,8 +396,8 @@ export default function NovoAtendimento() {
                 </SelectTrigger>
                 <SelectContent>
                   {contactReasons.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -27,6 +27,7 @@ import {
   TravelType,
 } from '@/types/service_record'
 import { AVOIDABLE_CONTACT_REASONS } from '@/lib/constants'
+import { normalizeContactReason } from '@/constants/contactReasons'
 import { StatusBadge } from './StatusBadge'
 import { PriorityBadge } from './PriorityBadge'
 import { TfrBadge } from '@/components/TfrBadge'
@@ -600,7 +601,7 @@ export function ServiceRecordDetailModal({
                   Motivo do contato
                 </span>
                 <span className="font-semibold text-slate-800 bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md text-xs inline-block">
-                  {record.contact_reason}
+                  {normalizeContactReason(record.contact_reason) || record.contact_reason}
                 </span>
               </div>
               <div>

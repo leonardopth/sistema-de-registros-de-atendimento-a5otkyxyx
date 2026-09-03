@@ -13,20 +13,11 @@ export interface ConsolidatedReportData {
   priorityBreakdown: Record<string, number>
 }
 
+import { CONTACT_REASONS, normalizeContactReason } from '@/constants/contactReasons'
+
 const STATUSES = ['Aberto', 'Em Andamento', 'Concluído', 'Cancelado']
 const CHANNELS = ['Telefone', 'e-mail', 'whatsapp', 'comercial', 'outros']
-const REASONS = [
-  'Bagagem',
-  'Assento',
-  'cálculo reemissão',
-  'reembolso',
-  'cotação',
-  'reserva',
-  'cancelamento',
-  'regras tarifárias',
-  'erro RF',
-  'outros',
-]
+const REASONS = [...CONTACT_REASONS]
 const PRIORITIES = ['Baixa', 'Média', 'Alta']
 
 function initBreakdown(keys: string[]): Record<string, number> {
@@ -48,8 +39,10 @@ export function generateConsolidatedReport(records: ServiceRecord[]): Consolidat
   records.forEach((r) => {
     if (r.status && statusBreakdown[r.status] !== undefined) statusBreakdown[r.status]++
     if (r.channel && channelBreakdown[r.channel] !== undefined) channelBreakdown[r.channel]++
-    if (r.contact_reason && reasonBreakdown[r.contact_reason] !== undefined)
-      reasonBreakdown[r.contact_reason]++
+    const normReason = normalizeContactReason(r.contact_reason) || r.contact_reason
+    if (normReason && reasonBreakdown[normReason] !== undefined) {
+      reasonBreakdown[normReason]++
+    }
     if (r.priority && priorityBreakdown[r.priority] !== undefined) priorityBreakdown[r.priority]++
   })
 

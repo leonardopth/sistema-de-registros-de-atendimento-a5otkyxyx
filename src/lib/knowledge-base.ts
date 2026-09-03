@@ -1,3 +1,5 @@
+import { normalizeContactReason } from '@/constants/contactReasons'
+
 export interface KnowledgeArticle {
   id: string
   title: string
@@ -46,19 +48,19 @@ export const KNOWLEDGE_BASE: KnowledgeArticle[] = [
     id: 'rf-regras',
     title: 'Como consultar regras tarifárias no RF',
     summary: 'Tutorial para consulta de regras tarifárias no RF.',
-    tags: ['regras tarifárias', 'Disponível no RF'],
+    tags: ['Regras Tarifárias', 'regras tarifárias', 'Disponível no RF'],
   },
   {
-    id: 'rf-erro',
-    title: 'Erros comuns no RF e como resolver',
-    summary: 'Lista de erros frequentes no RF e soluções passo a passo.',
-    tags: ['erro RF', 'Erro RF'],
+    id: 'kb-5',
+    title: 'Erro RF: procedimentos e encaminhamento',
+    summary: 'Guia de troubleshooting para mensagens de erro comuns no RF.',
+    tags: ['Erro RF', 'erro RF'],
   },
   {
-    id: 'rf-reemissao',
-    title: 'Como calcular reemissão no RF',
-    summary: 'Guia para o cliente calcular reemissões no sistema RF.',
-    tags: ['cálculo reemissão', 'Disponível no RF'],
+    id: 'kb-6',
+    title: 'Cálculo de reemissão: passo a passo',
+    summary: 'Instruções para realizar cálculo de reemissão diretamente no sistema.',
+    tags: ['Cálculo de Reemissão', 'cálculo reemissão', 'Disponível no RF'],
   },
 ]
 
@@ -66,9 +68,11 @@ export function suggestArticles(
   contactReason: string,
   avoidableReason?: string,
 ): KnowledgeArticle[] {
+  const normReason = normalizeContactReason(contactReason) || contactReason
   return KNOWLEDGE_BASE.filter((article) => {
     if (avoidableReason && article.tags.includes(avoidableReason)) return true
     if (article.tags.includes(contactReason)) return true
+    if (normReason && article.tags.includes(normReason)) return true
     return false
   }).slice(0, 3)
 }

@@ -8,21 +8,11 @@ import {
   downloadConsolidatedPDF,
 } from '@/lib/consolidated-report'
 import { ExportMenu } from '@/components/ExportMenu'
+import { CONTACT_REASONS } from '@/constants/contactReasons'
 
 const STATUSES = ['Aberto', 'Em Andamento', 'Concluído', 'Cancelado']
 const CHANNELS = ['Telefone', 'e-mail', 'whatsapp', 'comercial', 'outros']
-const REASONS = [
-  'Bagagem',
-  'Assento',
-  'cálculo reemissão',
-  'reembolso',
-  'cotação',
-  'reserva',
-  'cancelamento',
-  'regras tarifárias',
-  'erro RF',
-  'outros',
-]
+const REASONS = [...CONTACT_REASONS]
 const PRIORITIES = ['Baixa', 'Média', 'Alta']
 
 function DistributionTable({
