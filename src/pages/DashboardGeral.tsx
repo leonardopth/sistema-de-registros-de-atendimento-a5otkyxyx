@@ -42,6 +42,8 @@ import { ShieldAlert, BarChart3, Users2 } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ComparativeView } from '@/components/ComparativeView'
 import { PeriodComparisonView } from '@/components/PeriodComparisonView'
+import { ProductivityHeatmap } from '@/components/ProductivityHeatmap'
+import { ActiveBacklogQueue } from '@/components/ActiveBacklogQueue'
 import { ThresholdSuggestionPanel } from '@/components/ThresholdSuggestionPanel'
 import { TravelTypeReportPanel } from '@/components/TravelTypeReportPanel'
 import { PerformanceAlerts } from '@/components/PerformanceAlerts'
@@ -231,6 +233,8 @@ export default function DashboardGeral() {
             <PeriodComparison currentCount={filtered.length} previousCount={prevCount} />
           )}
 
+          <ProductivityHeatmap records={filtered} />
+
           <DashboardStats
             todayCount={stats.todayCount}
             todayCountTotal={stats.todayCountTotal}
@@ -247,6 +251,14 @@ export default function DashboardGeral() {
             reopenedCount={stats.reopenedCount}
             reopenRate={stats.reopenRate}
             statusBreakdown={stats.statusBreakdown}
+          />
+
+          {/* Fila / Backlog ativo (aging) para os gestores */}
+          <ActiveBacklogQueue
+            records={accessibleRecords}
+            isWidget={true}
+            maxWidgetItems={6}
+            onUpdateRecord={loadData}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

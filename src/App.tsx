@@ -28,6 +28,7 @@ import EvolucaoPosTreinamento from '@/pages/EvolucaoPosTreinamento'
 import RelatorioConsultor from '@/pages/RelatorioConsultor'
 import ComparativoAgentes from '@/pages/ComparativoAgentes'
 import RelatorioMotivos from '@/pages/RelatorioMotivos'
+import FilaAtendimentos from '@/pages/FilaAtendimentos'
 import Auditoria from '@/pages/Auditoria'
 import MetasDesempenho from '@/pages/MetasDesempenho'
 import Login from '@/pages/Login'
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/novo-atendimento" element={<NovoAtendimento />} />
               <Route path="/atendimentos" element={<Atendimentos />} />
+              <Route path="/fila-atendimentos" element={<FilaAtendimentos />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/autonomia" element={<Autonomia />} />
               <Route

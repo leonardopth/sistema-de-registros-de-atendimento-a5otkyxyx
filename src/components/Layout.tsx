@@ -34,6 +34,7 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
+  Layers,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -60,6 +61,12 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Dashboard', to: '/', icon: LayoutDashboard, visible: () => true },
       { label: 'Novo Atendimento', to: '/novo-atendimento', icon: Headset, visible: () => true },
       { label: 'Atendimentos', to: '/atendimentos', icon: ClipboardList, visible: () => true },
+      {
+        label: 'Fila & Backlog',
+        to: '/fila-atendimentos',
+        icon: Layers,
+        visible: () => true,
+      },
       {
         label: 'Relatório Consultor',
         to: '/relatorio-consultor',

@@ -49,6 +49,7 @@ import { AutonomyScorecard } from '@/components/AutonomyScorecard'
 import { TrainingPanel } from '@/components/TrainingPanel'
 import { PerformanceAlerts } from '@/components/PerformanceAlerts'
 import { StatusBadge } from '@/components/StatusBadge'
+import { ActiveBacklogQueue } from '@/components/ActiveBacklogQueue'
 import { CollaboratorStatusPanel } from '@/components/CollaboratorStatusPanel'
 import { filterClientsByUserAccess, filterRecordsByUserAccess } from '@/lib/service-group-access'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
@@ -674,6 +675,14 @@ export default function Index() {
           {/* Alertas de Desempenho */}
           <PerformanceAlerts records={accessibleRecords} />
 
+          {/* Fila / Backlog ativo (aging) para Gestor / Master */}
+          <ActiveBacklogQueue
+            records={accessibleRecords}
+            isWidget={true}
+            maxWidgetItems={5}
+            onUpdateRecord={loadData}
+          />
+
           {/* Grid com Gamificação e Atendimentos Recentes */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <ConsultantGamification
@@ -783,6 +792,14 @@ export default function Index() {
 
           {/* Alertas de Desempenho dos Liderados */}
           <PerformanceAlerts records={teamRecords} />
+
+          {/* Fila / Backlog ativo (aging) para Líder / Supervisor */}
+          <ActiveBacklogQueue
+            records={teamRecords}
+            isWidget={true}
+            maxWidgetItems={5}
+            onUpdateRecord={loadData}
+          />
 
           {/* Grid com Gamificação e Conquistas da Equipe */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

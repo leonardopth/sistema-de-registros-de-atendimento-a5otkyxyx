@@ -568,6 +568,8 @@ export function buildAgentHistory(
       avgSatisfactionScore: 90,
       positiveSentimentCount: 0,
       totalFeedbackCount: 0,
+      reopenedCount: 0,
+      reopenRate: 0,
     }
     const attendanceStatus = getAttendanceStatus(real.total, effective.monthly_attendance_target)
     const resolutionStatus = getResolutionStatus(real.rate, effective.min_resolution_rate)
@@ -626,6 +628,8 @@ export function buildUserHistory(
         avgSatisfactionScore: 90,
         positiveSentimentCount: 0,
         totalFeedbackCount: 0,
+        reopenedCount: 0,
+        reopenRate: 0,
       }
     }
 
@@ -693,6 +697,8 @@ export function computePerformanceAlerts(
       avgSatisfactionScore: 90,
       positiveSentimentCount: 0,
       totalFeedbackCount: 0,
+      reopenedCount: 0,
+      reopenRate: 0,
     }
 
     if (eff.monthly_attendance_target > 0) {
@@ -793,6 +799,8 @@ export function buildComparisonRows(
         avgSatisfactionScore: 90,
         positiveSentimentCount: 0,
         totalFeedbackCount: 0,
+        reopenedCount: 0,
+        reopenRate: 0,
       }
       const attendanceStatus = getAttendanceStatus(real.total, eff.monthly_attendance_target)
       const resolutionStatus = getResolutionStatus(real.rate, eff.min_resolution_rate)

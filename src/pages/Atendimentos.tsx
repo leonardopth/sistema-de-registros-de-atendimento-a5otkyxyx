@@ -38,6 +38,7 @@ import {
 } from '@/types/service_record'
 import { StatusBadge } from '@/components/StatusBadge'
 import { PriorityBadge } from '@/components/PriorityBadge'
+import { isRecordReopened } from '@/lib/reopen-utils'
 import { TfrBadge } from '@/components/TfrBadge'
 import { ServiceRecordDetailModal } from '@/components/ServiceRecordDetailModal'
 import { useRealtime } from '@/hooks/use-realtime'
@@ -1092,7 +1093,24 @@ export default function Atendimentos() {
                     </TableCell>
                     <TableCell className="text-xs text-slate-700">{r.contact_reason}</TableCell>
                     <TableCell>
-                      <StatusBadge status={r.status} />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <StatusBadge status={r.status} />
+                        {isRecordReopened(r) && (
+                          <Badge
+                            variant="outline"
+                            className="bg-amber-50 text-amber-800 border-amber-300 font-semibold px-2 py-0.5 text-[10px] hover:bg-amber-100 flex items-center gap-1 shadow-xs"
+                            title={`Atendimento reaberto${r.reopen_count ? ` (${r.reopen_count}x)` : ''}${r.reopen_justification ? `: ${r.reopen_justification}` : ''}`}
+                          >
+                            <RotateCcw className="h-2.5 w-2.5 text-amber-600 shrink-0" />
+                            <span>Reaberto</span>
+                            {typeof r.reopen_count === 'number' && r.reopen_count > 1 && (
+                              <span className="text-[9px] font-bold px-1 rounded bg-amber-200 text-amber-900">
+                                {r.reopen_count}x
+                              </span>
+                            )}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <TfrBadge tfrMinutes={r.first_response_time} targetMinutes={15} />
