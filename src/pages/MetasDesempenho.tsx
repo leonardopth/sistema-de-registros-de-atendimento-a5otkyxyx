@@ -70,8 +70,9 @@ import {
   type Status,
   type SentimentLogItem,
 } from '@/lib/metas'
-import { Users2, User } from 'lucide-react'
+import { Users2, User, Send } from 'lucide-react'
 import { exportMetasCSV, exportMetasPDF } from '@/lib/metas-export'
+import { ExecutiveMonthlyReportModal } from '@/components/ExecutiveMonthlyReportModal'
 
 function ProgressBar({ value, max, status }: { value: number; max: number; status: Status }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
@@ -105,6 +106,7 @@ export default function MetasDesempenho() {
   const [historyUser, setHistoryUser] = useState<UserRecord | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [executiveModalOpen, setExecutiveModalOpen] = useState(false)
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState<boolean>(
     user?.email_notifications !== false,
   )
@@ -447,6 +449,15 @@ export default function MetasDesempenho() {
           >
             <FileText className="h-4 w-4 mr-1.5" />
             Exportar PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExecutiveModalOpen(true)}
+            className="border-indigo-300 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 font-semibold"
+          >
+            <Send className="h-4 w-4 mr-1.5 text-indigo-600" />
+            Relatório Executivo Mensal
           </Button>
           <Button
             variant="outline"
@@ -885,6 +896,8 @@ export default function MetasDesempenho() {
         effective={historyUser ? effectiveByUser.get(historyUser.id) || null : null}
         allUsers={users}
       />
+
+      <ExecutiveMonthlyReportModal open={executiveModalOpen} onOpenChange={setExecutiveModalOpen} />
 
       <AlertDialog open={Boolean(deleteId)} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>

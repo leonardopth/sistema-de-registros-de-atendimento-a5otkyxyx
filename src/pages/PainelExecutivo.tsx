@@ -7,9 +7,10 @@ import { getAccountExecutives } from '@/services/account_executives'
 import { ClientRecord, ServiceRecord, AccountExecutiveRecord } from '@/types/service_record'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
-import { Building2, Headset, AlertTriangle, ShieldAlert, FileText } from 'lucide-react'
+import { Building2, Headset, AlertTriangle, ShieldAlert, FileText, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { exportExecutivePanelCSV } from '@/lib/executive-panel-export'
+import { ExecutiveMonthlyReportModal } from '@/components/ExecutiveMonthlyReportModal'
 
 const AVOIDABLE_RATE_THRESHOLD = 30
 const AVOIDABLE_REASONS = ['Disponível no RF', 'Fora do Escopo', 'Erro RF', 'Outros']
@@ -19,6 +20,7 @@ export default function PainelExecutivo() {
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [executive, setExecutive] = useState<AccountExecutiveRecord | null>(null)
+  const [executiveModalOpen, setExecutiveModalOpen] = useState(false)
 
   const loadData = async () => {
     try {
@@ -130,9 +132,19 @@ export default function PainelExecutivo() {
               : 'Visão geral de todas as agências'}
           </p>
         </div>
-        <Button onClick={handleExportCSV} variant="outline" size="sm" className="text-xs">
-          <FileText className="h-3.5 w-3.5 mr-1.5" /> Exportar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setExecutiveModalOpen(true)}
+            variant="outline"
+            size="sm"
+            className="text-xs border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 font-semibold"
+          >
+            <Send className="h-3.5 w-3.5 mr-1.5 text-indigo-600" /> Relatório Executivo Mensal
+          </Button>
+          <Button onClick={handleExportCSV} variant="outline" size="sm" className="text-xs">
+            <FileText className="h-3.5 w-3.5 mr-1.5" /> Exportar
+          </Button>
+        </div>
       </div>
       {clientStats.length === 0 ? (
         <Card className="p-8 text-center">
@@ -199,6 +211,8 @@ export default function PainelExecutivo() {
           ))}
         </div>
       )}
+
+      <ExecutiveMonthlyReportModal open={executiveModalOpen} onOpenChange={setExecutiveModalOpen} />
     </div>
   )
 }
