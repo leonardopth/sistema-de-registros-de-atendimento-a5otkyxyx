@@ -19,6 +19,7 @@ import ExecutivosContas from '@/pages/ExecutivosContas'
 import GestaoUsuarios from '@/pages/GestaoUsuarios'
 import DiagnosticoEmail from '@/pages/DiagnosticoEmail'
 import Integracoes from '@/pages/Integracoes'
+import Ajuda from '@/pages/Ajuda'
 import CentralRelatorios from '@/pages/CentralRelatorios'
 import RelatorioEvitaveis from '@/pages/RelatorioEvitaveis'
 import PublicCsat from '@/pages/PublicCsat'
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="/atendimentos" element={<Atendimentos />} />
               <Route path="/fila-atendimentos" element={<FilaAtendimentos />} />
               <Route path="/central-relatorios" element={<CentralRelatorios />} />
+              <Route path="/ajuda" element={<Ajuda />} />
               <Route
                 path="/relatorio-evitaveis"
                 element={

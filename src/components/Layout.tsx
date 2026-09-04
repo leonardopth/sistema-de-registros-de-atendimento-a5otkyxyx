@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { QuickLog } from '@/components/QuickLog'
+import { GuidedTourModal } from '@/components/GuidedTourModal'
 import {
   LayoutDashboard,
   Headset,
@@ -34,6 +35,8 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
+  HelpCircle as HelpIcon,
+  Compass,
   Layers,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -162,6 +165,12 @@ const NAV_GROUPS: NavGroup[] = [
         to: '/auditoria',
         icon: ShieldCheck,
         visible: (r, masterAccess) => r === 'Master' || masterAccess === true,
+      },
+      {
+        label: 'Ajuda & Glossário',
+        to: '/ajuda',
+        icon: HelpIcon,
+        visible: () => true,
       },
     ],
   },
@@ -401,6 +410,16 @@ export default function Layout() {
           </Sheet>
 
           <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.dispatchEvent(new CustomEvent('restart-tour'))}
+              className="hidden sm:flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 hover:text-indigo-900 border border-indigo-200/60 h-8"
+              title="Iniciar tour guiado pelo sistema"
+            >
+              <Compass className="h-3.5 w-3.5 text-indigo-600" />
+              <span>Tour</span>
+            </Button>
             <CollaboratorStatusSelector />
             <FeedbackButton />
             <NotificationBell />
@@ -412,6 +431,7 @@ export default function Layout() {
         </main>
       </div>
       <QuickLog open={quickLogOpen} onOpenChange={setQuickLogOpen} />
+      <GuidedTourModal />
     </div>
   )
 }
