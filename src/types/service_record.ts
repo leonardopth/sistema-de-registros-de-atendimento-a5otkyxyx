@@ -106,6 +106,9 @@ export interface ServiceRecord {
   reopen_count?: number
   first_response_time?: number // em minutos decorridos entre criação e primeira resposta
   first_response_at?: string // timestamp ISO da primeira resposta
+  backlog_alert_2h_sent?: boolean
+  backlog_alert_24h_sent?: boolean
+  tfr_alert_sent?: boolean
   expand?: {
     account_executive?: AccountExecutiveRecord
     client?: ClientRecord

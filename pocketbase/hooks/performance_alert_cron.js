@@ -1,6 +1,11 @@
-// Cron job diário às 8h da manhã (0 8 * * * ou 0 11 * * * UTC para 8h GMT-3, executado via cronAdd)
-// Dispara e-mail para gestores/supervisores/masters com email_notifications ativo
-// quando houver alertas críticos de desempenho (menos de 50% da meta de atendimentos ou resolução > 20 p.p. abaixo do mínimo).
+// Cron job diário às 8h da manhã
+// Dispara alertas no sino (coleção notifications) e e-mails para:
+// 1. Alertas críticos de desempenho (menos de 50% da meta de atendimentos ou resolução > 20 p.p. abaixo do mínimo)
+// 2. Alertas de Ação Automáticos: Projeção de fim de mês cai abaixo de 70% da meta de atendimentos
+//    - Para cada consultor elegível com projeção < 70%, notifica o próprio consultor e seu líder/supervisor
+//    - Respeita apuração: consultores têm meta individual; lideranças não recebem alerta de meta individual (elas não atendem)
+//    - Envia notificação no sino + e-mail crítico respeitando email_notifications !== false
+//    - Dedup diário por link/data para não reenviar repetidamente no mesmo dia
 
 cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
   try {
@@ -39,11 +44,21 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
       0,
     )
 
+    var usersById = {}
+    for (var u0 = 0; u0 < users.length; u0++) {
+      usersById[users[u0].id] = users[u0]
+    }
+
     // 4. Calcular período do mês corrente (GMT-3)
     var now = new Date()
-    // GMT-3 offset
     var gmt3Ms = now.getTime() - 3 * 3600 * 1000
     var gmt3Date = new Date(gmt3Ms)
+    var currentYear = gmt3Date.getUTCFullYear()
+    var currentMonth = gmt3Date.getUTCMonth() + 1 // 1..12
+    var currentDay = gmt3Date.getUTCDate()
+    var daysInMonth = new Date(Date.UTC(currentYear, currentMonth, 0)).getUTCDate()
+    var todayIso = gmt3Date.toISOString().substring(0, 10)
+
     var startOfMonth = new Date(
       Date.UTC(gmt3Date.getUTCFullYear(), gmt3Date.getUTCMonth(), 1, 3, 0, 0),
     )
@@ -73,7 +88,6 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
       }
     }
 
-    // Mapeamento de usuários e grupos para consolidar equipes de líderes
     var leadershipRoles = [
       'Supervisor',
       'Líder',
@@ -91,8 +105,6 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
       return false
     }
 
-    // Identificar membros da equipe para cada líder
-    // Membros da equipe = consultores/colaboradores que compartilham os mesmos grupos de atendimento ou cujo supervisor_id é o líder
     function getTeamUserIds(leader) {
       var leaderId = leader.id
       var leaderRole = leader.getString('role') || ''
@@ -108,14 +120,12 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
         var otherId = otherUser.id
         var otherRole = otherUser.getString('role') || ''
 
-        // Checa se outro usuário tem supervisor_id apontando para o líder (se campo existir)
         var supId = otherUser.getString('supervisor_id')
         if (supId && supId === leaderId) {
           memberIds[otherId] = true
           continue
         }
 
-        // Se o líder tem grupos de serviço definidos, inclui colaboradores que pertencem ao mesmo grupo
         if (lGroups && lGroups.length > 0) {
           var oGroups = otherUser.get('service_groups') || []
           var hasCommonGroup = false
@@ -132,7 +142,6 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
             memberIds[otherId] = true
           }
         } else {
-          // Se o líder (ex: Gerente geral) não tem grupos específicos filtrados, a equipe abrange todos os consultores/liderados
           if (otherRole === 'Consultor' || otherRole === 'Consultores') {
             memberIds[otherId] = true
           }
@@ -148,23 +157,230 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
       return resultList
     }
 
-    // 5. Detectar alertas críticos
-    var alerts = []
+    // Helper para achar líderes/supervisores de um consultor
+    function getSupervisorsForConsultant(consultantUser) {
+      var matched = []
+      if (!consultantUser) return matched
+      var directSup = consultantUser.getString('supervisor_id')
+      if (directSup && usersById[directSup]) {
+        matched.push(usersById[directSup])
+      }
+
+      var cGroups = consultantUser.get('service_groups') || []
+      for (var u = 0; u < users.length; u++) {
+        var cand = users[u]
+        if (cand.id === consultantUser.id) continue
+        var candRole = cand.getString('role') || ''
+        if (
+          candRole === 'Supervisor' ||
+          candRole === 'Supervisores' ||
+          candRole === 'Líder' ||
+          candRole === 'Líderes'
+        ) {
+          if (directSup && cand.id === directSup) continue
+          var candGroups = cand.get('service_groups') || []
+          if (!candGroups || candGroups.length === 0) {
+            matched.push(cand)
+            continue
+          }
+          var hasCommon = false
+          for (var gA = 0; gA < cGroups.length; gA++) {
+            for (var gB = 0; gB < candGroups.length; gB++) {
+              if (cGroups[gA] === candGroups[gB]) {
+                hasCommon = true
+                break
+              }
+            }
+            if (hasCommon) break
+          }
+          if (hasCommon) {
+            matched.push(cand)
+          }
+        }
+      }
+      return matched
+    }
+
+    var notifCol = $app.findCollectionByNameOrId('notifications')
+
+    // 5. Alertas de Ação: Projeção de Meta < 70%
+    // Apenas para consultores elegíveis (não líderes)
+    // Fórmula: dailyPace = total / currentDay, projectedTotal = dailyPace * daysInMonth
+    // projectedPct = Math.round((projectedTotal / effAttendance) * 100)
+    // Gatilho: projectedPct < 70
+    var projectionAlerts = []
     for (var uIdx = 0; uIdx < users.length; uIdx++) {
       var usr = users[uIdx]
       var userId = usr.id
-      var userName = usr.getString('name') || 'Colaborador'
+      var userName = usr.getString('name') || 'Consultor'
       var userRole = usr.getString('role') || ''
       var isLdr = isLeaderRole(userRole)
+
+      // Somente consultores individuais têm apuração de meta individual
+      if (isLdr) continue
+      if (userRole !== 'Consultor' && userRole !== 'Consultores') continue
 
       var effAttendance = targetsByUser[userId]
         ? targetsByUser[userId].attendanceTarget
         : globalMonthlyTarget
-      var effResolution = targetsByUser[userId]
-        ? targetsByUser[userId].minResolution
+      if (!effAttendance || effAttendance <= 0) effAttendance = 100
+
+      var userStat = statsByUser[userId] || { total: 0, resolved: 0 }
+      var currentTotal = userStat.total
+      var dailyPace = currentDay > 0 ? currentTotal / currentDay : 0
+      var projectedTotal = Math.round(dailyPace * daysInMonth)
+      var projectedPct = Math.round((projectedTotal / effAttendance) * 100)
+
+      if (projectedPct < 70) {
+        projectionAlerts.push({
+          user: usr,
+          userId: userId,
+          userName: userName,
+          effAttendance: effAttendance,
+          currentTotal: currentTotal,
+          projectedTotal: projectedTotal,
+          projectedPct: projectedPct,
+        })
+      }
+    }
+
+    // Processar entrega de cada alerta de projeção < 70%
+    var senderAddress = 'noreply@rexturadvance.com.br'
+    var senderName = 'Sistema de Registros de Atendimento'
+    try {
+      if ($app.settings() && $app.settings().meta && $app.settings().meta.senderAddress) {
+        senderAddress = $app.settings().meta.senderAddress
+        senderName = $app.settings().meta.senderName || senderName
+      }
+    } catch (e) {}
+
+    for (var paIdx = 0; paIdx < projectionAlerts.length; paIdx++) {
+      var pa = projectionAlerts[paIdx]
+      var pLink = '/metas-desempenho?userId=' + pa.userId + '&date=' + todayIso
+      var pTitle = '📉 Meta em Risco: Projeção de ' + pa.projectedPct + '%'
+      var pMessage =
+        pa.userName +
+        ' está com projeção de ' +
+        pa.projectedPct +
+        '% da meta (' +
+        pa.projectedTotal +
+        ' de ' +
+        pa.effAttendance +
+        ' atendimentos estimados até o fim do mês).'
+
+      var targetRecipients = [pa.user]
+      var sups = getSupervisorsForConsultant(pa.user)
+      for (var spIdx = 0; spIdx < sups.length; spIdx++) {
+        targetRecipients.push(sups[spIdx])
+      }
+
+      for (var trIdx = 0; trIdx < targetRecipients.length; trIdx++) {
+        var recUser = targetRecipients[trIdx]
+        if (!recUser) continue
+
+        // 1. Sino (dedup por link de hoje)
+        try {
+          var existingPNotifs = $app.findRecordsByFilter(
+            'notifications',
+            "user_id = '" + recUser.id + "' && link = '" + pLink + "'",
+            '-created',
+            1,
+            0,
+          )
+          if (existingPNotifs.length === 0) {
+            var pNotif = new Record(notifCol)
+            pNotif.set('user_id', recUser.id)
+            pNotif.set('title', pTitle)
+            pNotif.set('message', pMessage)
+            pNotif.set('type', 'alert')
+            pNotif.set('read', false)
+            pNotif.set('link', pLink)
+            $app.save(pNotif)
+          }
+        } catch (pnErr) {
+          $app
+            .logger()
+            .error('Erro ao salvar notificação de meta em risco:', 'error', String(pnErr))
+        }
+
+        // 2. E-mail (respeita email_notifications !== false)
+        var recEmail = recUser.getString('email')
+        var recNotifEnabled = recUser.get('email_notifications')
+        if (recNotifEnabled !== false && recEmail && recEmail.indexOf('@') > 0) {
+          try {
+            var pHtml =
+              '<!DOCTYPE html><html><head><meta charset="utf-8"></head>' +
+              '<body style="font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #334155;">' +
+              '<div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden;">' +
+              '<div style="background-color: #e11d48; padding: 18px 24px; color: #ffffff;">' +
+              '<h1 style="margin: 0; font-size: 18px; font-weight: 700;">📉 Alerta de Ação: Meta em Risco (&lt; 70%)</h1>' +
+              '</div>' +
+              '<div style="padding: 24px;">' +
+              '<p style="margin: 0 0 14px; font-size: 14px;">Olá ' +
+              recUser.getString('name') +
+              ',</p>' +
+              '<p style="margin: 0 0 18px; font-size: 14px; line-height: 1.5;">O ritmo atual de atendimentos aponta que a meta mensal está abaixo do patamar de segurança de 70%:</p>' +
+              '<div style="background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 14px; margin-bottom: 20px;">' +
+              '<p style="margin: 0 0 6px; font-size: 13px;"><strong>Consultor:</strong> ' +
+              pa.userName +
+              '</p>' +
+              '<p style="margin: 0 0 6px; font-size: 13px;"><strong>Volume Atual:</strong> ' +
+              pa.currentTotal +
+              ' atendimentos (dia ' +
+              currentDay +
+              ' de ' +
+              daysInMonth +
+              ')</p>' +
+              '<p style="margin: 0 0 6px; font-size: 13px;"><strong>Projeção de Fim de Mês:</strong> <span style="color: #e11d48; font-weight: bold;">~' +
+              pa.projectedTotal +
+              ' atendimentos (' +
+              pa.projectedPct +
+              '% da meta)</span></p>' +
+              '<p style="margin: 0; font-size: 13px;"><strong>Meta Mensal Esperada:</strong> ' +
+              pa.effAttendance +
+              ' atendimentos</p>' +
+              '</div>' +
+              '<div style="text-align: center; margin: 24px 0 12px;">' +
+              '<a href="/metas-desempenho" style="background-color: #e11d48; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; font-size: 13px; display: inline-block;">Abrir Metas de Desempenho</a>' +
+              '</div>' +
+              '</div></div></body></html>'
+
+            var pMail = new MailerMessage({
+              from: { address: senderAddress, name: senderName },
+              to: [{ address: recEmail, name: recUser.getString('name') }],
+              subject:
+                '[Meta em Risco] Projeção de fim de mês em ' +
+                pa.projectedPct +
+                '% (' +
+                pa.userName +
+                ')',
+              html: pHtml,
+            })
+            $app.newMailClient().send(pMail)
+          } catch (pmErr) {
+            $app.logger().error('Erro ao enviar e-mail de meta em risco:', 'error', String(pmErr))
+          }
+        }
+      }
+    }
+
+    // 6. Detectar alertas críticos gerais de desempenho para gestores
+    var alerts = []
+    for (var uIdx2 = 0; uIdx2 < users.length; uIdx2++) {
+      var usr2 = users[uIdx2]
+      var userId2 = usr2.id
+      var userName2 = usr2.getString('name') || 'Colaborador'
+      var userRole2 = usr2.getString('role') || ''
+      var isLdr2 = isLeaderRole(userRole2)
+
+      var effAttendance2 = targetsByUser[userId2]
+        ? targetsByUser[userId2].attendanceTarget
+        : globalMonthlyTarget
+      var effResolution2 = targetsByUser[userId2]
+        ? targetsByUser[userId2].minResolution
         : globalMinResolution
 
-      var teamIds = getTeamUserIds(usr)
+      var teamIds = getTeamUserIds(usr2)
       var realTotal = 0
       var realResolved = 0
 
@@ -178,47 +394,42 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
       }
 
       var realRate = realTotal > 0 ? Math.round((realResolved / realTotal) * 100) : 0
-      var teamSuffix = isLdr ? ' (Equipe)' : ''
+      var teamSuffix = isLdr2 ? ' (Equipe)' : ''
 
-      // Alerta 1: Menos de 50% da meta de atendimentos
-      if (effAttendance > 0) {
-        var ratio = realTotal / effAttendance
+      if (effAttendance2 > 0) {
+        var ratio = realTotal / effAttendance2
         if (ratio < 0.5) {
           alerts.push({
-            userName: userName + (isLdr ? ' (Meta da Equipe)' : ''),
-            userRole: userRole,
+            userName: userName2 + (isLdr2 ? ' (Meta da Equipe)' : ''),
+            userRole: userRole2,
             metric: 'Atendimentos' + teamSuffix,
             realValue: String(realTotal) + ' atendimentos',
-            expectedValue: String(effAttendance) + ' atendimentos',
+            expectedValue: String(effAttendance2) + ' atendimentos',
             detail: Math.round(ratio * 100) + '% da meta da equipe esperada',
           })
         }
       }
 
-      // Alerta 2: Resolução mais de 20 p.p. abaixo do mínimo (apenas se tiver atendimentos)
-      if (effResolution > 0 && realTotal > 0) {
-        var diff = effResolution - realRate
+      if (effResolution2 > 0 && realTotal > 0) {
+        var diff = effResolution2 - realRate
         if (diff > 20) {
           alerts.push({
-            userName: userName + (isLdr ? ' (Meta da Equipe)' : ''),
-            userRole: userRole,
+            userName: userName2 + (isLdr2 ? ' (Meta da Equipe)' : ''),
+            userRole: userRole2,
             metric: 'Taxa de Resolução' + teamSuffix,
             realValue: String(realRate) + '%',
-            expectedValue: 'Mínimo ' + String(effResolution) + '%',
+            expectedValue: 'Mínimo ' + String(effResolution2) + '%',
             detail: String(diff) + ' p.p. abaixo do mínimo da equipe',
           })
         }
       }
     }
 
-    // Se não houver alertas críticos, não envia e-mail
     if (alerts.length === 0) {
       $app.logger().info('Cron Alertas Críticos: Nenhum colaborador em estado crítico hoje.')
       return
     }
 
-    // 6. Buscar gestores/supervisores/masters que devem receber os e-mails
-    // Regra: papel "Gerente", "Supervisor" ou "Master", com email_notifications !== false (por padrão true/opt-in)
     var managers = $app.findRecordsByFilter(
       'users',
       "(role = 'Gerente' || role = 'Supervisor' || role = 'Master' || role = 'Gerentes' || role = 'Supervisores') && approval_status = 'Aprovado'",
@@ -232,7 +443,6 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
       var mgr = managers[mIdx]
       var mgrEmail = mgr.getString('email')
       var emailNotifEnabled = mgr.get('email_notifications')
-      // Se email_notifications for explicitamente false, não recebe
       if (emailNotifEnabled === false) continue
       if (mgrEmail && mgrEmail.indexOf('@') > 0) {
         recipients.push({ address: mgrEmail, name: mgr.getString('name') })
@@ -248,7 +458,6 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
       return
     }
 
-    // 7. Montar template HTML do e-mail
     var rowsHtml = ''
     for (var aIdx = 0; aIdx < alerts.length; aIdx++) {
       var a = alerts[aIdx]
@@ -277,14 +486,10 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
         '</tr>'
     }
 
-    var appBaseUrl =
-      $os.getenv('APP_URL') ||
-      'https://sistema-de-registros-de-atendimento-b6923.shrd00.internal.goskip.dev'
     var metasUrl = '/metas-desempenho'
 
     var htmlContent =
-      '<!DOCTYPE html>' +
-      '<html><head><meta charset="utf-8"></head>' +
+      '<!DOCTYPE html><html><head><meta charset="utf-8"></head>' +
       '<body style="font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #334155;">' +
       '<div style="max-width: 650px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">' +
       '<div style="background-color: #dc2626; padding: 20px 24px; color: #ffffff;">' +
@@ -315,50 +520,25 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
       '</p>' +
       '</div></div></body></html>'
 
-    // 8. Disparo do e-mail
-    var senderAddress = 'noreply@rexturadvance.com.br'
-    var senderName = 'Sistema de Registros de Atendimento'
-    try {
-      if ($app.settings() && $app.settings().meta && $app.settings().meta.senderAddress) {
-        senderAddress = $app.settings().meta.senderAddress
-        senderName = $app.settings().meta.senderName || senderName
-      }
-    } catch (e) {}
-
     for (var r = 0; r < recipients.length; r++) {
       try {
         var msg = new MailerMessage({
-          from: {
-            address: senderAddress,
-            name: senderName,
-          },
+          from: { address: senderAddress, name: senderName },
           to: [{ address: recipients[r].address, name: recipients[r].name }],
           subject: '[Alerta de Desempenho] Colaboradores abaixo da meta esperada',
           html: htmlContent,
         })
         $app.newMailClient().send(msg)
       } catch (sendErr) {
-        // Fallback para $app.mails().send se disponível
-        try {
-          $app
-            .mails()
-            .send(
-              { address: senderAddress, name: senderName },
-              [{ address: recipients[r].address }],
-              '[Alerta de Desempenho] Colaboradores abaixo da meta esperada',
-              htmlContent,
-            )
-        } catch (fbErr) {
-          $app
-            .logger()
-            .error(
-              'Erro ao enviar e-mail de alerta de desempenho',
-              'recipient',
-              recipients[r].address,
-              'error',
-              String(sendErr || fbErr),
-            )
-        }
+        $app
+          .logger()
+          .error(
+            'Erro ao enviar e-mail de alerta de desempenho',
+            'recipient',
+            recipients[r].address,
+            'error',
+            String(sendErr),
+          )
       }
     }
 

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-03T22:35:08.920Z",
+  "generatedAt": "2026-09-04T20:59:39.117Z",
   "collections": [
     {
       "name": "users",
@@ -512,6 +512,24 @@
         {
           "name": "reopen_count",
           "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "backlog_alert_2h_sent",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "backlog_alert_24h_sent",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tfr_alert_sent",
+          "type": "bool",
           "required": false,
           "system": false
         }
