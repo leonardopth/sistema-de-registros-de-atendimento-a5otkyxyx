@@ -25,7 +25,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
-import { getServiceRecords } from '@/services/service_records'
+import { getPaginatedServiceRecords } from '@/services/service_records'
 import { getClients } from '@/services/clients'
 import { getAccountExecutives } from '@/services/account_executives'
 import { getUsers } from '@/services/users'
@@ -94,12 +94,16 @@ export default function Index() {
   const [commercialPeriod, setCommercialPeriod] = useState<'all' | 'month' | 'today' | '7days'>(
     'month',
   )
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(30)
+  const [totalRecordsCount, setTotalRecordsCount] = useState(0)
+  const [totalPagesCount, setTotalPagesCount] = useState(1)
 
-  const loadData = async () => {
+  const loadData = async (page = currentPage, perPage = pageSize) => {
     try {
       setLoadError(null)
       const results = await Promise.allSettled([
-        getServiceRecords('-created'),
+        getPaginatedServiceRecords(page, perPage, '-created'),
         getClients(),
         getAccountExecutives(),
         getUsers(),
@@ -110,7 +114,10 @@ export default function Index() {
       const [rRes, cRes, eRes, uRes, tRes, aRes] = results
 
       if (rRes.status === 'fulfilled') {
-        setRecords(Array.isArray(rRes.value) ? rRes.value : [])
+        const paginatedData = rRes.value
+        setRecords(Array.isArray(paginatedData.items) ? paginatedData.items : [])
+        setTotalRecordsCount(paginatedData.totalItems)
+        setTotalPagesCount(paginatedData.totalPages || 1)
       } else {
         console.warn('Falha ao carregar atendimentos no Index:', rRes.reason)
         setRecords([])
@@ -165,13 +172,14 @@ export default function Index() {
     loadData()
   }, [])
 
-  useRealtime('service_records', () => loadData())
-  useRealtime('clients', () => loadData())
-  useRealtime('trainings', () => loadData())
-  useRealtime('account_executives', () => loadData())
-  useRealtime('monthly_awards', () => loadData())
-  useRealtime('gamification', () => loadData())
-  useRealtime('badges', () => loadData())
+  // Subscrições realtime com debounce de 1000ms para evitar recargas excessivas em rajadas de eventos
+  useRealtime('service_records', () => loadData(), true, 1000)
+  useRealtime('clients', () => loadData(), true, 1000)
+  useRealtime('trainings', () => loadData(), true, 1000)
+  useRealtime('account_executives', () => loadData(), true, 1000)
+  useRealtime('monthly_awards', () => loadData(), true, 1000)
+  useRealtime('gamification', () => loadData(), true, 1000)
+  useRealtime('badges', () => loadData(), true, 1000)
 
   const safeFormatDate = (dateStr?: string) => {
     if (!dateStr) return ''
@@ -582,7 +590,7 @@ export default function Index() {
 
     return {
       todayCount: generalTodayRecords.length,
-      totalCount: accessibleRecords.length,
+      totalCount: totalRecordsCount > 0 ? totalRecordsCount : accessibleRecords.length,
       inProgressCount: accessibleRecords.filter((r) => r?.status === 'Em Andamento').length,
       completedTodayCount: generalTodayRecords.filter((r) => r?.status === 'Concluído').length,
       avgDuration:
@@ -598,7 +606,7 @@ export default function Index() {
       reopenedCount: reopenData.reopenedCount,
       reopenRate: reopenData.rate,
     }
-  }, [accessibleRecords, generalTodayRecords])
+  }, [accessibleRecords, generalTodayRecords, totalRecordsCount])
 
   const generalRecentRecords = useMemo(() => {
     return accessibleRecords.slice(0, 5)
@@ -658,7 +666,7 @@ export default function Index() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={loadData}
+            onClick={() => loadData(currentPage, pageSize)}
             className="h-7 text-xs text-amber-800 hover:bg-amber-100"
           >
             <RefreshCw className="h-3 w-3 mr-1" /> Tentar novamente
@@ -706,7 +714,7 @@ export default function Index() {
             records={accessibleRecords}
             isWidget={true}
             maxWidgetItems={5}
-            onUpdateRecord={loadData}
+            onUpdateRecord={() => loadData(currentPage, pageSize)}
           />
 
           {/* Grid com Gamificação e Atendimentos Recentes */}
@@ -763,6 +771,45 @@ export default function Index() {
                     </div>
                   </div>
                 ))}
+
+                {/* Controles de paginação server-side */}
+                {totalPagesCount > 1 && (
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <div>
+                      Página <span className="font-bold text-slate-800">{currentPage}</span> de{' '}
+                      <span className="font-bold text-slate-800">{totalPagesCount}</span> (
+                      {totalRecordsCount} registros)
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage <= 1}
+                        onClick={() => {
+                          const newP = currentPage - 1
+                          setCurrentPage(newP)
+                          loadData(newP, pageSize)
+                        }}
+                        className="h-7 text-xs px-2"
+                      >
+                        Anterior
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage >= totalPagesCount}
+                        onClick={() => {
+                          const newP = currentPage + 1
+                          setCurrentPage(newP)
+                          loadData(newP, pageSize)
+                        }}
+                        className="h-7 text-xs px-2"
+                      >
+                        Próxima
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -833,7 +880,7 @@ export default function Index() {
             records={teamRecords}
             isWidget={true}
             maxWidgetItems={5}
-            onUpdateRecord={loadData}
+            onUpdateRecord={() => loadData(currentPage, pageSize)}
           />
 
           {/* Grid com Gamificação e Conquistas da Equipe */}
@@ -905,6 +952,45 @@ export default function Index() {
                     </div>
                   </div>
                 ))}
+
+                {/* Controles de paginação server-side */}
+                {totalPagesCount > 1 && (
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <div>
+                      Página <span className="font-bold text-slate-800">{currentPage}</span> de{' '}
+                      <span className="font-bold text-slate-800">{totalPagesCount}</span> (
+                      {totalRecordsCount} registros)
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage <= 1}
+                        onClick={() => {
+                          const newP = currentPage - 1
+                          setCurrentPage(newP)
+                          loadData(newP, pageSize)
+                        }}
+                        className="h-7 text-xs px-2"
+                      >
+                        Anterior
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage >= totalPagesCount}
+                        onClick={() => {
+                          const newP = currentPage + 1
+                          setCurrentPage(newP)
+                          loadData(newP, pageSize)
+                        }}
+                        className="h-7 text-xs px-2"
+                      >
+                        Próxima
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -986,6 +1072,45 @@ export default function Index() {
                     </div>
                   </div>
                 ))}
+
+                {/* Controles de paginação server-side */}
+                {totalPagesCount > 1 && (
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <div>
+                      Página <span className="font-bold text-slate-800">{currentPage}</span> de{' '}
+                      <span className="font-bold text-slate-800">{totalPagesCount}</span> (
+                      {totalRecordsCount} registros)
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage <= 1}
+                        onClick={() => {
+                          const newP = currentPage - 1
+                          setCurrentPage(newP)
+                          loadData(newP, pageSize)
+                        }}
+                        className="h-7 text-xs px-2"
+                      >
+                        Anterior
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage >= totalPagesCount}
+                        onClick={() => {
+                          const newP = currentPage + 1
+                          setCurrentPage(newP)
+                          loadData(newP, pageSize)
+                        }}
+                        className="h-7 text-xs px-2"
+                      >
+                        Próxima
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

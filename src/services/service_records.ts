@@ -1,6 +1,95 @@
 import pb from '@/lib/pocketbase/client'
 import { ServiceRecord } from '@/types/service_record'
 
+export interface PaginatedServiceRecords {
+  items: ServiceRecord[]
+  page: number
+  perPage: number
+  totalItems: number
+  totalPages: number
+}
+
+export const getPaginatedServiceRecords = async (
+  page = 1,
+  perPage = 25,
+  sortOrFilter?: string,
+  filterOrSort?: string,
+): Promise<PaginatedServiceRecords> => {
+  let sort = '-created'
+  let filter: string | undefined = undefined
+
+  const p1 = (sortOrFilter ?? '').trim()
+  const p2 = (filterOrSort ?? '').trim()
+
+  const isSortString = (val: string) => {
+    if (!val) return false
+    if (
+      val.includes('=') ||
+      val.includes('~') ||
+      val.includes('||') ||
+      val.includes('&&') ||
+      val.includes('>') ||
+      val.includes('<')
+    ) {
+      return false
+    }
+    return /^[-+]?[a-zA-Z0-9_@#]+(\s*,\s*[-+]?[a-zA-Z0-9_@#]+)*$/.test(val)
+  }
+
+  if (p1 && p2) {
+    if (isSortString(p1) && !isSortString(p2)) {
+      sort = p1
+      filter = p2
+    } else if (!isSortString(p1) && isSortString(p2)) {
+      filter = p1
+      sort = p2
+    } else {
+      filter = p1
+      sort = '-created'
+    }
+  } else if (p1 && !p2) {
+    if (isSortString(p1)) {
+      sort = p1
+    } else {
+      filter = p1
+      sort = '-created'
+    }
+  } else if (!p1 && p2) {
+    if (isSortString(p2)) {
+      sort = p2
+    } else {
+      filter = p2
+      sort = '-created'
+    }
+  }
+
+  if (!sort || !sort.trim()) sort = '-created'
+
+  try {
+    const res = await pb.collection('service_records').getList<ServiceRecord>(page, perPage, {
+      sort,
+      filter: filter || undefined,
+      expand: 'account_executive,client,agent,assigned_user,user_id',
+    })
+    return {
+      items: res.items || [],
+      page: res.page,
+      perPage: res.perPage,
+      totalItems: res.totalItems,
+      totalPages: res.totalPages,
+    }
+  } catch (error: any) {
+    console.warn('Erro ao buscar página de service_records:', error)
+    return {
+      items: [],
+      page,
+      perPage,
+      totalItems: 0,
+      totalPages: 0,
+    }
+  }
+}
+
 export const getServiceRecords = async (
   sortOrFilter?: string,
   filterOrSort?: string,
