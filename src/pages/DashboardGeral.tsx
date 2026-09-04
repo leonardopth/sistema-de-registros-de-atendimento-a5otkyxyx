@@ -12,6 +12,7 @@ import { getServiceRecords } from '@/services/service_records'
 import { getClients } from '@/services/clients'
 import { getAccountExecutives } from '@/services/account_executives'
 import { getUsers } from '@/services/users'
+import { getCsatStats, CsatStatItem } from '@/services/csat'
 import {
   ClientRecord,
   ServiceRecord,
@@ -57,20 +58,23 @@ export default function DashboardGeral() {
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
   const [users, setUsers] = useState<UserRecord[]>([])
+  const [csatResponses, setCsatResponses] = useState<CsatStatItem[]>([])
   const [filters, setFilters] = useState<DashboardFilters>(DEFAULT_FILTERS)
 
   const loadData = async () => {
     try {
-      const [c, r, e, u] = await Promise.all([
+      const [c, r, e, u, csats] = await Promise.all([
         getClients(),
         getServiceRecords('-created'),
         getAccountExecutives(),
         getUsers(),
+        getCsatStats(),
       ])
       setClients(c)
       setRecords(r)
       setExecutives(e)
       setUsers(u)
+      setCsatResponses(csats)
     } catch (err) {
       console.error(err)
     }
@@ -123,6 +127,16 @@ export default function DashboardGeral() {
       Cancelado: todayRecords.filter((r) => r.status === 'Cancelado').length,
     }
 
+    // CSAT metrics cruzando com os chamados filtrados
+    const filteredRecordIds = new Set(filtered.map((r) => r.id))
+    const relevantCsats = csatResponses.filter((c) => filteredRecordIds.has(c.service_record_id))
+    const csatTotalResponses = relevantCsats.length
+    const csatSum = relevantCsats.reduce((acc, c) => acc + (c.rating || 0), 0)
+    const csatAvg = csatTotalResponses > 0 ? csatSum / csatTotalResponses : null
+    const csatPositiveCount = relevantCsats.filter((c) => c.rating >= 4).length
+    const csatPositiveRate =
+      csatTotalResponses > 0 ? Math.round((csatPositiveCount / csatTotalResponses) * 100) : null
+
     return {
       todayCount: todayCountSource.length,
       todayCountTotal: todayRecords.length,
@@ -138,9 +152,11 @@ export default function DashboardGeral() {
       reopenedCount: reopenData.reopenedCount,
       reopenRate: reopenData.rate,
       statusBreakdown,
+      csatAvg,
+      csatPositiveRate,
+      csatTotalResponses,
     }
-  }, [filtered, accessibleRecords, filters.status])
-
+  }, [filtered, accessibleRecords, filters.status, csatResponses])
   const groupStats = useMemo(() => {
     const coMap = new Map<string, string>()
     for (const c of clients) {
@@ -259,6 +275,9 @@ export default function DashboardGeral() {
             reopenedCount={stats.reopenedCount}
             reopenRate={stats.reopenRate}
             statusBreakdown={stats.statusBreakdown}
+            csatAvg={stats.csatAvg}
+            csatPositiveRate={stats.csatPositiveRate}
+            csatTotalResponses={stats.csatTotalResponses}
           />
 
           {/* Fila / Backlog ativo (aging) para os gestores */}

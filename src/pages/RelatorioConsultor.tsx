@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getConsultantReportData } from '@/services/service_records'
+import { getCsatStats, CsatStatItem } from '@/services/csat'
 import { ServiceRecord, UserRecord } from '@/types/service_record'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
@@ -28,15 +29,17 @@ export default function RelatorioConsultor() {
   const { user } = useAuth()
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [users, setUsers] = useState<UserRecord[]>([])
+  const [csatResponses, setCsatResponses] = useState<CsatStatItem[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async () => {
     if (!user) return
     try {
       setLoading(true)
-      const data = await getConsultantReportData(user)
+      const [data, csats] = await Promise.all([getConsultantReportData(user), getCsatStats()])
       setRecords(data.records)
       setUsers(data.users as UserRecord[])
+      setCsatResponses(csats)
     } catch (err) {
       console.error(err)
     } finally {
@@ -61,6 +64,57 @@ export default function RelatorioConsultor() {
   )
   const teamAvg = useMemo(() => computeTeamAverage(visibleStats), [visibleStats])
   const anonymizedNames = useMemo(() => buildAnonymizedNames(visibleStats), [visibleStats])
+
+  // Mapeamento de CSAT por consultor
+  const csatByConsultant = useMemo(() => {
+    const map = new Map<string, { avg: number; positiveRate: number; total: number }>()
+
+    // Mapear service_record_id -> assigned_user
+    const recordUserMap = new Map<string, string>()
+    records.forEach((r) => {
+      const assigned =
+        (typeof r.assigned_user === 'string' && r.assigned_user) ||
+        r.expand?.assigned_user?.id ||
+        r.user_id ||
+        ''
+      if (assigned) recordUserMap.set(r.id, assigned)
+    })
+
+    const grouped = new Map<string, number[]>()
+    csatResponses.forEach((c) => {
+      const u = c.assigned_user || recordUserMap.get(c.service_record_id) || c.user_id
+      if (u && c.rating > 0) {
+        if (!grouped.has(u)) grouped.set(u, [])
+        grouped.get(u)!.push(c.rating)
+      }
+    })
+
+    grouped.forEach((ratings, uid) => {
+      const sum = ratings.reduce((a, b) => a + b, 0)
+      const avg = sum / ratings.length
+      const positiveCount = ratings.filter((r) => r >= 4).length
+      const positiveRate = Math.round((positiveCount / ratings.length) * 100)
+      map.set(uid, { avg, positiveRate, total: ratings.length })
+    })
+
+    return map
+  }, [records, csatResponses])
+
+  // CSAT geral ou individual para o card
+  const activeCsat = useMemo(() => {
+    if (!isLeadership && myStats) {
+      return csatByConsultant.get(myStats.uid) || null
+    }
+    // Média geral para liderança
+    if (csatResponses.length === 0) return null
+    const ratings = csatResponses.map((c) => c.rating).filter((r) => r > 0)
+    if (ratings.length === 0) return null
+    const sum = ratings.reduce((a, b) => a + b, 0)
+    const avg = sum / ratings.length
+    const positiveCount = ratings.filter((r) => r >= 4).length
+    const positiveRate = Math.round((positiveCount / ratings.length) * 100)
+    return { avg, positiveRate, total: ratings.length }
+  }, [isLeadership, myStats, csatByConsultant, csatResponses])
 
   const displayName = (stat: ConsultantStat) => {
     if (!shouldAnonymize) return stat.user?.name || 'Consultor'
@@ -166,7 +220,7 @@ export default function RelatorioConsultor() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="border-slate-200 shadow-subtle">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
@@ -210,6 +264,22 @@ export default function RelatorioConsultor() {
             <CheckCircle2 className="h-8 w-8 text-emerald-500" />
           </CardContent>
         </Card>
+        <Card className="border-slate-200 shadow-subtle">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-indigo-700 uppercase">CSAT Direto</p>
+              <p className="text-2xl font-black text-slate-900">
+                {activeCsat ? `${activeCsat.avg.toFixed(1)}/5` : '—'}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {activeCsat
+                  ? `${activeCsat.positiveRate}% 👍 (${activeCsat.total})`
+                  : 'Sem respostas'}
+              </p>
+            </div>
+            <Award className="h-8 w-8 text-indigo-500" />
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="border-slate-200 shadow-subtle">
@@ -227,42 +297,63 @@ export default function RelatorioConsultor() {
                   <th className="py-2 font-bold text-slate-600 text-center">Tempo Médio</th>
                   <th className="py-2 font-bold text-slate-600 text-center">Evitáveis</th>
                   <th className="py-2 font-bold text-slate-600 text-center">Resolução</th>
+                  <th className="py-2 font-bold text-slate-600 text-center">CSAT</th>
                 </tr>
               </thead>
               <tbody>
-                {visibleStats.map((s) => (
-                  <tr
-                    key={s.uid}
-                    className={`border-b ${s.uid === user?.id ? 'bg-indigo-50' : ''}`}
-                  >
-                    <td className="py-2 font-medium text-slate-800">
-                      {s.uid === user?.id && (
-                        <Award className="inline h-3 w-3 text-indigo-600 mr-1" />
-                      )}
-                      {displayName(s)}
-                    </td>
-                    <td className="py-2 text-center text-slate-700">{s.total}</td>
-                    <td className="py-2 text-center text-slate-700">{s.avgDuration}min</td>
-                    <td className="py-2 text-center">
-                      <span
-                        className={
-                          s.avoidableRate > 30 ? 'font-bold text-rose-600' : 'text-slate-700'
-                        }
-                      >
-                        {s.avoidableRate}%
-                      </span>
-                    </td>
-                    <td className="py-2 text-center">
-                      <span
-                        className={
-                          s.resolutionRate >= 70 ? 'font-bold text-emerald-600' : 'text-slate-700'
-                        }
-                      >
-                        {s.resolutionRate}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {visibleStats.map((s) => {
+                  const cStat = csatByConsultant.get(s.uid)
+                  return (
+                    <tr
+                      key={s.uid}
+                      className={`border-b ${s.uid === user?.id ? 'bg-indigo-50' : ''}`}
+                    >
+                      <td className="py-2 font-medium text-slate-800">
+                        {s.uid === user?.id && (
+                          <Award className="inline h-3 w-3 text-indigo-600 mr-1" />
+                        )}
+                        {displayName(s)}
+                      </td>
+                      <td className="py-2 text-center text-slate-700">{s.total}</td>
+                      <td className="py-2 text-center text-slate-700">{s.avgDuration}min</td>
+                      <td className="py-2 text-center">
+                        <span
+                          className={
+                            s.avoidableRate > 30 ? 'font-bold text-rose-600' : 'text-slate-700'
+                          }
+                        >
+                          {s.avoidableRate}%
+                        </span>
+                      </td>
+                      <td className="py-2 text-center">
+                        <span
+                          className={
+                            s.resolutionRate >= 70 ? 'font-bold text-emerald-600' : 'text-slate-700'
+                          }
+                        >
+                          {s.resolutionRate}%
+                        </span>
+                      </td>
+                      <td className="py-2 text-center font-medium">
+                        {cStat ? (
+                          <span
+                            className={
+                              cStat.avg >= 4
+                                ? 'text-emerald-600 font-bold'
+                                : cStat.avg < 3
+                                  ? 'text-rose-600 font-bold'
+                                  : 'text-slate-700'
+                            }
+                          >
+                            {cStat.avg.toFixed(1)}/5 ({cStat.positiveRate}%)
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

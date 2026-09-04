@@ -21,6 +21,7 @@ import DiagnosticoEmail from '@/pages/DiagnosticoEmail'
 import Integracoes from '@/pages/Integracoes'
 import CentralRelatorios from '@/pages/CentralRelatorios'
 import RelatorioEvitaveis from '@/pages/RelatorioEvitaveis'
+import PublicCsat from '@/pages/PublicCsat'
 import Ranking from '@/pages/Ranking'
 import PainelExecutivo from '@/pages/PainelExecutivo'
 import RelatoriosGrupo from '@/pages/RelatoriosGrupo'
@@ -45,6 +46,7 @@ const App = () => (
         <ErrorBoundary>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/csat/:token" element={<PublicCsat />} />
             <Route
               element={
                 <ProtectedRoute>
@@ -52,6 +54,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
+              {' '}
               <Route path="/" element={<Index />} />
               <Route path="/novo-atendimento" element={<NovoAtendimento />} />
               <Route path="/atendimentos" element={<Atendimentos />} />

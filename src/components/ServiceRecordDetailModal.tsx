@@ -64,7 +64,9 @@ import { SharedUsersList } from './SharedUsersList'
 import { getSharesByRecord } from '@/services/service_record_shares'
 import { getEmailLogsByRecord, EmailLogRecord } from '@/services/outlook-integration'
 import { getCallRecordsByRecord, CallAnalysisLogRecord } from '@/services/telephony-integration'
+import { getCsatByRecordId, CsatRecordResponse } from '@/services/csat'
 import { Badge } from '@/components/ui/badge'
+import { ThumbsUp, ThumbsDown, Star, Copy } from 'lucide-react'
 
 interface ServiceRecordDetailModalProps {
   record: ServiceRecord | null
@@ -127,6 +129,8 @@ export function ServiceRecordDetailModal({
   const [loadingEmailLogs, setLoadingEmailLogs] = useState(false)
   const [linkedCallRecords, setLinkedCallRecords] = useState<CallAnalysisLogRecord[]>([])
   const [loadingCallRecords, setLoadingCallRecords] = useState(false)
+  const [csatInfo, setCsatInfo] = useState<CsatRecordResponse | null>(null)
+  const [loadingCsat, setLoadingCsat] = useState(false)
 
   const isOwner = record
     ? record.user_id === user?.id || record.assigned_user === user?.id || user?.role === 'Master'
@@ -173,6 +177,12 @@ export function ServiceRecordDetailModal({
         .then((calls) => setLinkedCallRecords(calls))
         .catch(() => setLinkedCallRecords([]))
         .finally(() => setLoadingCallRecords(false))
+
+      setLoadingCsat(true)
+      getCsatByRecordId(record.id)
+        .then((res) => setCsatInfo(res))
+        .catch(() => setCsatInfo(null))
+        .finally(() => setLoadingCsat(false))
     }
   }, [record])
 
@@ -644,6 +654,80 @@ export function ServiceRecordDetailModal({
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Painel / Badge de CSAT direto */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="space-y-1">
+                  <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Star className="h-3.5 w-3.5 text-amber-500" />
+                    Pesquisa de Satisfação (CSAT)
+                  </span>
+                  {loadingCsat ? (
+                    <span className="text-xs text-slate-400">Carregando CSAT...</span>
+                  ) : csatInfo && csatInfo.rating && csatInfo.rating > 0 ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge
+                        variant="outline"
+                        className={`text-xs font-bold gap-1 px-2 py-0.5 ${
+                          csatInfo.rating >= 4
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                            : csatInfo.rating === 3
+                              ? 'bg-amber-50 text-amber-700 border-amber-300'
+                              : 'bg-rose-50 text-rose-700 border-rose-300'
+                        }`}
+                      >
+                        {csatInfo.rating >= 4 ? (
+                          <ThumbsUp className="h-3 w-3 text-emerald-600" />
+                        ) : (
+                          <ThumbsDown className="h-3 w-3 text-rose-600" />
+                        )}
+                        <span>
+                          {csatInfo.rating} / 5 {csatInfo.rating >= 4 ? '(Positivo)' : '(Negativo)'}
+                        </span>
+                      </Badge>
+                      {csatInfo.responded_at && (
+                        <span className="text-[10px] text-slate-400">
+                          Respondido em{' '}
+                          {new Date(csatInfo.responded_at).toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400 italic">
+                      Ainda não avaliado pelo cliente
+                    </span>
+                  )}
+                </div>
+
+                {csatInfo?.token && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 shrink-0"
+                    onClick={() => {
+                      const url = `${window.location.origin}/csat/${csatInfo.token}`
+                      navigator.clipboard.writeText(url)
+                      toast({
+                        title: 'Link copiado!',
+                        description:
+                          'Link público de avaliação copiado para a área de transferência.',
+                      })
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copiar link de avaliação
+                  </Button>
+                )}
+              </div>
+
+              {csatInfo?.comment && (
+                <div className="mt-2 text-xs bg-white p-2 rounded border border-slate-200 text-slate-700 italic">
+                  "{csatInfo.comment}"
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4 items-center">

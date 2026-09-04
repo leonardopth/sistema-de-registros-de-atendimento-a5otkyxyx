@@ -38,6 +38,9 @@ interface DashboardStatsProps {
   reopenedCount?: number
   reopenRate?: number
   statusBreakdown?: Record<string, number>
+  csatAvg?: number | null
+  csatPositiveRate?: number | null
+  csatTotalResponses?: number
 }
 const STATUS_LABELS: Record<string, string> = {
   Aberto: 'Aberto',
@@ -69,6 +72,9 @@ export function DashboardStats({
   reopenedCount = 0,
   reopenRate = 0,
   statusBreakdown,
+  csatAvg = null,
+  csatPositiveRate = null,
+  csatTotalResponses = 0,
 }: DashboardStatsProps) {
   const safeTodayCount = Number.isFinite(todayCount) ? todayCount : 0
   const safeTodayTotal = Number.isFinite(todayCountTotal) ? todayCountTotal : 0
@@ -168,10 +174,33 @@ export function DashboardStats({
       isTodayCard: false,
       isTotalCard: false,
     },
+    {
+      title: 'CSAT (Satisfação)',
+      value: csatAvg !== null && !isNaN(csatAvg) ? `${csatAvg.toFixed(1)} / 5` : '—',
+      subtext:
+        csatPositiveRate !== null && !isNaN(csatPositiveRate)
+          ? `${csatPositiveRate}% 👍 (${csatTotalResponses} avaliação(ões))`
+          : 'Aguardando respostas',
+      icon: Activity,
+      color:
+        csatAvg !== null && csatAvg >= 4
+          ? 'text-emerald-600'
+          : csatAvg !== null && csatAvg < 3
+            ? 'text-rose-600'
+            : 'text-indigo-600',
+      bgColor:
+        csatAvg !== null && csatAvg >= 4
+          ? 'bg-emerald-50'
+          : csatAvg !== null && csatAvg < 3
+            ? 'bg-rose-50'
+            : 'bg-indigo-50',
+      isTodayCard: false,
+      isTotalCard: false,
+    },
   ]
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4">
       {statCards.map((stat, idx) => {
         const Icon = stat.icon
         return (
