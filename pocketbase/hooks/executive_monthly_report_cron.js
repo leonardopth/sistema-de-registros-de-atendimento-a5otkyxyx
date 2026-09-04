@@ -637,7 +637,9 @@ cronAdd('executive_monthly_report_cron', '0 11 * * 1-5', function () {
 
     var emailLogsCol = null
     try {
-      if ($app.hasTable('email_logs')) {
+      if ($app.hasTable('email_analysis_logs')) {
+        emailLogsCol = $app.findCollectionByNameOrId('email_analysis_logs')
+      } else if ($app.hasTable('email_logs')) {
         emailLogsCol = $app.findCollectionByNameOrId('email_logs')
       }
     } catch (_) {}
@@ -1370,7 +1372,9 @@ routerAdd(
 
     var emailLogsCol = null
     try {
-      if ($app.hasTable('email_logs')) {
+      if ($app.hasTable('email_analysis_logs')) {
+        emailLogsCol = $app.findCollectionByNameOrId('email_analysis_logs')
+      } else if ($app.hasTable('email_logs')) {
         emailLogsCol = $app.findCollectionByNameOrId('email_logs')
       }
     } catch (_) {}

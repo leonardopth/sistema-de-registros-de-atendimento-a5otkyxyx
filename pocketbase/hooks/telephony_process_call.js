@@ -463,10 +463,9 @@ routerAdd(
       $app.logger().warn('Erro ao salvar em call_analysis_logs: ' + logErr)
     }
 
-    // Salva também em `call_records` para compatibilidade total
     var savedRecordId = ''
-    try {
-      if ($app.hasTable('call_records')) {
+    if (!savedLogId && $app.hasTable('call_records')) {
+      try {
         var callRecordsCol = $app.findCollectionByNameOrId('call_records')
         var rec = new Record(callRecordsCol)
         rec.set('call_sid', callSid)
@@ -486,9 +485,9 @@ routerAdd(
 
         $app.save(rec)
         savedRecordId = rec.id
+      } catch (crErr) {
+        $app.logger().warn('Erro ao salvar em call_records: ' + crErr)
       }
-    } catch (crErr) {
-      $app.logger().warn('Erro ao salvar em call_records: ' + crErr)
     }
 
     // Registra log de auditoria
@@ -755,8 +754,8 @@ routerAdd(
     }
 
     var savedRecordId = ''
-    try {
-      if ($app.hasTable('call_records')) {
+    if (!savedLogId && $app.hasTable('call_records')) {
+      try {
         var callRecordsCol = $app.findCollectionByNameOrId('call_records')
         var rec = new Record(callRecordsCol)
         rec.set('call_sid', callSid)
@@ -776,9 +775,9 @@ routerAdd(
 
         $app.save(rec)
         savedRecordId = rec.id
+      } catch (crErr) {
+        $app.logger().warn('Erro ao salvar em call_records: ' + crErr)
       }
-    } catch (crErr) {
-      $app.logger().warn('Erro ao salvar em call_records: ' + crErr)
     }
 
     return e.json(200, {

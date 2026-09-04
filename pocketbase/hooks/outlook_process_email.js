@@ -249,8 +249,8 @@ routerAdd(
       }
     }
 
-    // Manter compatibilidade com email_logs se existir
-    if ($app.hasTable('email_logs')) {
+    // Se porventura a coleção legada email_logs existir isoladamente
+    if (!savedLogId && $app.hasTable('email_logs')) {
       try {
         var emailLogsCol = $app.findCollectionByNameOrId('email_logs')
         var logRecord = new Record(emailLogsCol)
@@ -270,7 +270,7 @@ routerAdd(
         logRecord.set('received_at', nowIso)
 
         $app.save(logRecord)
-        if (!savedLogId) savedLogId = logRecord.id
+        savedLogId = logRecord.id
       } catch (_) {}
     }
 

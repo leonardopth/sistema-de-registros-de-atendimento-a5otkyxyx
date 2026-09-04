@@ -183,13 +183,14 @@ export const processTelephonyCall = processTelephonyRecording
  */
 export const getCallAnalysisLogs = async (): Promise<CallAnalysisLogRecord[]> => {
   try {
+    // Coleção consolidada: call_analysis_logs
     const logs = await pb.collection('call_analysis_logs').getFullList<CallAnalysisLogRecord>({
       sort: '-created',
       expand: 'client,service_record,processed_by',
     })
     return Array.isArray(logs) ? logs : []
   } catch (error) {
-    // Fallback gracioso para call_records se call_analysis_logs ainda não tiver registros
+    // Fallback defensivo caso call_records legada ainda exista
     try {
       const records = await pb.collection('call_records').getFullList<any>({
         sort: '-created',
@@ -220,8 +221,8 @@ export const getCallAnalysisLogs = async (): Promise<CallAnalysisLogRecord[]> =>
           processed_by: r.expand?.agent_user,
         },
       }))
-    } catch (errFallback) {
-      console.error('Error fetching call analysis logs:', error, errFallback)
+    } catch {
+      console.error('Error fetching call analysis logs:', error)
       return []
     }
   }
@@ -240,44 +241,52 @@ export const getCallRecordsByRecord = async (
 ): Promise<CallAnalysisLogRecord[]> => {
   if (!serviceRecordId) return []
   try {
-    // Tenta primeiro em call_analysis_logs
-    const logs = await pb.collection('call_analysis_logs').getFullList<CallAnalysisLogRecord>({
-      filter: `service_record = "${serviceRecordId}"`,
-      sort: '-created',
-      expand: 'client,processed_by',
-    })
-    if (logs && logs.length > 0) return logs
+    // Coleção consolidada: call_analysis_logs
+    try {
+      const logs = await pb.collection('call_analysis_logs').getFullList<CallAnalysisLogRecord>({
+        filter: `service_record = "${serviceRecordId}"`,
+        sort: '-created',
+        expand: 'client,processed_by',
+      })
+      if (Array.isArray(logs) && logs.length > 0) return logs
+    } catch {
+      /* intentionally ignored */
+    }
 
-    // Fallback para call_records
-    const records = await pb.collection('call_records').getFullList<any>({
-      filter: `service_record = "${serviceRecordId}"`,
-      sort: '-created',
-      expand: 'client,agent_user',
-    })
-    return records.map((r) => ({
-      id: r.id,
-      call_sid: r.call_sid,
-      provider: 'twilio',
-      from_number: r.from_number,
-      to_number: r.to_number,
-      recording_url: r.recording_url,
-      duration: r.duration,
-      transcription: r.transcription,
-      summary: r.summary,
-      category: r.category,
-      sentiment: r.sentiment,
-      keywords: r.keywords,
-      quality_score: r.quality_score,
-      service_record: r.service_record,
-      client: r.client,
-      processed_by: r.agent_user,
-      created: r.created,
-      updated: r.updated,
-      expand: {
-        client: r.expand?.client,
-        processed_by: r.expand?.agent_user,
-      },
-    }))
+    // Fallback defensivo para call_records
+    try {
+      const records = await pb.collection('call_records').getFullList<any>({
+        filter: `service_record = "${serviceRecordId}"`,
+        sort: '-created',
+        expand: 'client,agent_user',
+      })
+      return records.map((r) => ({
+        id: r.id,
+        call_sid: r.call_sid,
+        provider: 'twilio',
+        from_number: r.from_number,
+        to_number: r.to_number,
+        recording_url: r.recording_url,
+        duration: r.duration,
+        transcription: r.transcription,
+        summary: r.summary,
+        category: r.category,
+        sentiment: r.sentiment,
+        keywords: r.keywords,
+        quality_score: r.quality_score,
+        service_record: r.service_record,
+        client: r.client,
+        processed_by: r.agent_user,
+        created: r.created,
+        updated: r.updated,
+        expand: {
+          client: r.expand?.client,
+          processed_by: r.expand?.agent_user,
+        },
+      }))
+    } catch {
+      return []
+    }
   } catch (err) {
     console.error('Error fetching call records by service record:', err)
     return []

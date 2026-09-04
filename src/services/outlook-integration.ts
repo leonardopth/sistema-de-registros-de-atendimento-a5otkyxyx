@@ -110,25 +110,29 @@ export const processOutlookEmail = async (
 
 export const getEmailLogs = async (): Promise<EmailLogRecord[]> => {
   try {
-    // Tenta primeiro a coleção oficial email_analysis_logs
+    // Coleção consolidada: email_analysis_logs
     try {
       const logs = await pb.collection('email_analysis_logs').getFullList<EmailLogRecord>({
         sort: '-created',
         expand: 'client,service_record,processed_by',
       })
-      if (Array.isArray(logs) && logs.length > 0) {
+      if (Array.isArray(logs)) {
         return logs
       }
     } catch {
       /* intentionally ignored */
     }
 
-    // Fallback para email_logs
-    const records = await pb.collection('email_logs').getFullList<EmailLogRecord>({
-      sort: '-created',
-      expand: 'client,service_record,processed_by',
-    })
-    return Array.isArray(records) ? records : []
+    // Fallback defensivo caso a coleção legada ainda exista
+    try {
+      const records = await pb.collection('email_logs').getFullList<EmailLogRecord>({
+        sort: '-created',
+        expand: 'client,service_record,processed_by',
+      })
+      return Array.isArray(records) ? records : []
+    } catch {
+      return []
+    }
   } catch (error) {
     console.error('Error fetching email logs:', error)
     return []
@@ -138,23 +142,29 @@ export const getEmailLogs = async (): Promise<EmailLogRecord[]> => {
 export const getEmailLogsByRecord = async (serviceRecordId: string): Promise<EmailLogRecord[]> => {
   if (!serviceRecordId) return []
   try {
+    // Coleção consolidada: email_analysis_logs
     try {
       const logs = await pb.collection('email_analysis_logs').getFullList<EmailLogRecord>({
         filter: `service_record = "${serviceRecordId}"`,
         sort: '-created',
         expand: 'client,processed_by',
       })
-      if (Array.isArray(logs) && logs.length > 0) return logs
+      if (Array.isArray(logs)) return logs
     } catch {
       /* intentionally ignored */
     }
 
-    const records = await pb.collection('email_logs').getFullList<EmailLogRecord>({
-      filter: `service_record = "${serviceRecordId}"`,
-      sort: '-created',
-      expand: 'client,processed_by',
-    })
-    return Array.isArray(records) ? records : []
+    // Fallback defensivo
+    try {
+      const records = await pb.collection('email_logs').getFullList<EmailLogRecord>({
+        filter: `service_record = "${serviceRecordId}"`,
+        sort: '-created',
+        expand: 'client,processed_by',
+      })
+      return Array.isArray(records) ? records : []
+    } catch {
+      return []
+    }
   } catch (err) {
     console.error('Error getting email logs for record:', err)
     return []
