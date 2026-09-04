@@ -23,7 +23,28 @@ function esc(value: string): string {
   return `"${value.replace(/"/g, '""')}"`
 }
 
-export function downloadGroupReportCSV(stats: GroupReportStat[]): void {
+export interface ExportMetadataOptions {
+  period?: string
+  filters?: string
+  generatedBy?: string
+}
+
+function formatMetaHeaderLine(meta?: ExportMetadataOptions): string | null {
+  if (!meta) return null
+  const parts: string[] = []
+  if (meta.period) parts.push(`Período: ${meta.period}`)
+  if (meta.filters) parts.push(`Filtros: ${meta.filters}`)
+  const timestamp = new Date().toLocaleString('pt-BR')
+  const author = meta.generatedBy || 'Sistema'
+  parts.push(`Gerado por: ${author} em ${timestamp}`)
+  return parts.join(' | ')
+}
+
+export function downloadGroupReportCSV(
+  stats: GroupReportStat[],
+  meta?: ExportMetadataOptions,
+): void {
+  const metaLine = formatMetaHeaderLine(meta)
   const rows = stats.map((s) =>
     [
       s.label,
@@ -35,7 +56,10 @@ export function downloadGroupReportCSV(stats: GroupReportStat[]): void {
       .map(esc)
       .join(','),
   )
-  const csv = '\uFEFF' + [HEADERS.map(esc).join(','), ...rows].join('\r\n')
+  const headerLines = metaLine
+    ? [esc(metaLine), HEADERS.map(esc).join(',')]
+    : [HEADERS.map(esc).join(',')]
+  const csv = '\uFEFF' + [...headerLines, ...rows].join('\r\n')
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

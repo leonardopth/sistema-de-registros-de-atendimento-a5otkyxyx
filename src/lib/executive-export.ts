@@ -31,10 +31,26 @@ function formatDate(dateStr?: string): string {
   }
 }
 
+export interface ExecutiveExportMeta {
+  period?: string
+  filters?: string
+  generatedBy?: string
+}
+
 export function exportServiceRecordsByExecutiveCSV(
   records: ServiceRecord[],
   filename = 'relatorio-atendimentos.csv',
+  meta?: ExecutiveExportMeta,
 ): void {
+  const metaParts: string[] = []
+  if (meta) {
+    if (meta.period) metaParts.push(`Período: ${meta.period}`)
+    if (meta.filters) metaParts.push(`Filtros: ${meta.filters}`)
+    const timestamp = new Date().toLocaleString('pt-BR')
+    metaParts.push(`Gerado por: ${meta.generatedBy || 'Sistema'} em ${timestamp}`)
+  }
+  const metaHeaderLine = metaParts.length > 0 ? escapeCsv(metaParts.join(' | ')) : null
+
   const rows = records.map((r) =>
     [
       r.client_name || '',
@@ -53,7 +69,10 @@ export function exportServiceRecordsByExecutiveCSV(
       .map(escapeCsv)
       .join(','),
   )
-  const csv = '\uFEFF' + [HEADERS.map(escapeCsv).join(','), ...rows].join('\r\n')
+  const headerRows = metaHeaderLine
+    ? [metaHeaderLine, HEADERS.map(escapeCsv).join(',')]
+    : [HEADERS.map(escapeCsv).join(',')]
+  const csv = '\uFEFF' + [...headerRows, ...rows].join('\r\n')
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

@@ -76,13 +76,17 @@ export type SortField =
   | 'reason'
 export type ChartMetricView = 'volume_tma' | 'avoidable_vs_total' | 'satisfaction'
 
+import { useSearchParams } from 'react-router-dom'
+
 export default function RelatorioMotivos() {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [emailLogs, setEmailLogs] = useState<EmailLogRecord[]>([])
   const [callLogs, setCallLogs] = useState<CallAnalysisLogRecord[]>([])
   const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState<PeriodFilter>('all')
+  const initialPeriod = (searchParams.get('period') as PeriodFilter) || 'all'
+  const [period, setPeriod] = useState<PeriodFilter>(initialPeriod)
   const [sortField, setSortField] = useState<SortField>('totalCount')
   const [sortAsc, setSortAsc] = useState(false)
   const [chartMetric, setChartMetric] = useState<ChartMetricView>('volume_tma')
@@ -326,6 +330,17 @@ export default function RelatorioMotivos() {
 
   // Exportação CSV
   const handleExportCSV = () => {
+    const periodLabel =
+      period === 'current_month'
+        ? 'Mês atual'
+        : period === 'last_30_days'
+          ? 'Últimos 30 dias'
+          : period === 'last_90_days'
+            ? 'Últimos 90 dias'
+            : 'Todo o período'
+
+    const metaLine = `"Período: ${periodLabel} | Filtros: Classificação canônica | Gerado por: ${user?.name || 'Usuário'} em ${new Date().toLocaleString('pt-BR')}"`
+
     const headers = [
       'Motivo de Contato',
       'Total Atendimentos',
@@ -349,7 +364,7 @@ export default function RelatorioMotivos() {
     ])
 
     const csvContent =
-      '\uFEFF' + [headers.join(';'), ...rows.map((row) => row.join(';'))].join('\r\n')
+      '\uFEFF' + [metaLine, headers.join(';'), ...rows.map((row) => row.join(';'))].join('\r\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)

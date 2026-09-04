@@ -221,6 +221,8 @@ export interface ScheduledReportRecord {
   format: ReportFormat
   active: boolean
   last_sent?: string
+  last_run?: string
+  next_run?: string
   filters?: Record<string, unknown>
   created: string
   updated: string

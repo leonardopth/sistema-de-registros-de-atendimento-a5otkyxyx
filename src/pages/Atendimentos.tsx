@@ -147,11 +147,12 @@ export default function Atendimentos() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [view, setView] = useState<'all' | 'mine'>('all')
   const [wrongDeptFilter, setWrongDeptFilter] = useState<string>('todos')
+  const [searchParams, setSearchParams] = useSearchParams()
   const [executiveFilter, setExecutiveFilter] = useState<string>('todos')
   const [filterByUser, setFilterByUser] = useState(false)
   const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateFrom, setDateFrom] = useState(searchParams.get('dateFrom') || '')
+  const [dateTo, setDateTo] = useState(searchParams.get('dateTo') || '')
   const [serviceGroupFilter, setServiceGroupFilter] = useState<string>('todos')
   const [travelTypeFilter, setTravelTypeFilter] = useState<string>('todos')
   const [clients, setClients] = useState<ClientRecord[]>([])
@@ -167,8 +168,6 @@ export default function Atendimentos() {
   const [callsByRecordMap, setCallsByRecordMap] = useState<Map<string, CallAnalysisLogRecord[]>>(
     new Map(),
   )
-
-  const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
     const wdParam = searchParams.get('avoidable_contact')

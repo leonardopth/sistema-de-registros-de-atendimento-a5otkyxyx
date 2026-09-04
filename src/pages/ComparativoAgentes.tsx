@@ -66,14 +66,18 @@ interface AgentMetrics {
   reopenedCount: number
 }
 
+import { useSearchParams } from 'react-router-dom'
+
 export default function ComparativoAgentes() {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [users, setUsers] = useState<UserRecord[]>([])
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [sentimentLogs, setSentimentLogs] = useState<SentimentLogItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  const [selectedPeriod, setSelectedPeriod] = useState<ComparisonPeriod>('current_month')
+  const queryPeriod = (searchParams.get('period') as ComparisonPeriod) || 'current_month'
+  const [selectedPeriod, setSelectedPeriod] = useState<ComparisonPeriod>(queryPeriod)
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
   const [selectOpen, setSelectOpen] = useState(false)
   const [metricView, setMetricView] = useState<'all' | 'volume' | 'rates' | 'tma_csat'>('all')

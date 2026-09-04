@@ -135,7 +135,13 @@ export default function RelatoriosGrupo() {
         </div>
         <ExportMenu
           label="Exportar Relatório"
-          onCSV={() => downloadGroupReportCSV(groupStats)}
+          onCSV={() =>
+            downloadGroupReportCSV(groupStats, {
+              period: 'Geral consolidado',
+              filters: colGroups.length > 0 ? `Grupos: ${colGroups.join(', ')}` : 'Todos os Grupos',
+              generatedBy: user?.name,
+            })
+          }
           onExcel={() => downloadGroupReportExcel(groupStats)}
           onPDF={() => downloadGroupReportPDF(groupStats)}
         />

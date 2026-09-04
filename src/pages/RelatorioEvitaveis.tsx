@@ -87,7 +87,10 @@ export default function RelatorioEvitaveis() {
   }, [filteredRecords, clients])
 
   const handleExportCSV = () => {
-    exportServiceRecordsByExecutiveCSV(filteredRecords, 'relatorio-evitaveis.csv')
+    exportServiceRecordsByExecutiveCSV(filteredRecords, 'relatorio-evitaveis.csv', {
+      period: 'Todos os registros',
+      filters: `Agência: ${agencyFilter === 'todos' ? 'Todas' : agencyFilter} | Motivo: ${reasonFilter}`,
+    })
     toast({
       title: 'Relatório exportado',
       description: `${filteredRecords.length} registro(s) em CSV.`,

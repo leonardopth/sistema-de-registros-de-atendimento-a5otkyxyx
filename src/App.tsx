@@ -19,6 +19,8 @@ import ExecutivosContas from '@/pages/ExecutivosContas'
 import GestaoUsuarios from '@/pages/GestaoUsuarios'
 import DiagnosticoEmail from '@/pages/DiagnosticoEmail'
 import Integracoes from '@/pages/Integracoes'
+import CentralRelatorios from '@/pages/CentralRelatorios'
+import RelatorioEvitaveis from '@/pages/RelatorioEvitaveis'
 import Ranking from '@/pages/Ranking'
 import PainelExecutivo from '@/pages/PainelExecutivo'
 import RelatoriosGrupo from '@/pages/RelatoriosGrupo'
@@ -54,6 +56,15 @@ const App = () => (
               <Route path="/novo-atendimento" element={<NovoAtendimento />} />
               <Route path="/atendimentos" element={<Atendimentos />} />
               <Route path="/fila-atendimentos" element={<FilaAtendimentos />} />
+              <Route path="/central-relatorios" element={<CentralRelatorios />} />
+              <Route
+                path="/relatorio-evitaveis"
+                element={
+                  <ManagerRoute>
+                    <RelatorioEvitaveis />
+                  </ManagerRoute>
+                }
+              />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/autonomia" element={<Autonomia />} />
               <Route

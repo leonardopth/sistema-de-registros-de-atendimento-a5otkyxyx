@@ -101,11 +101,26 @@ export function consolidatedReportToCSV(data: ConsolidatedReportData): string {
   return lines.join('\r\n')
 }
 
+export interface ConsolidatedExportMeta {
+  period?: string
+  filters?: string
+  generatedBy?: string
+}
+
 export function downloadConsolidatedCSV(
   data: ConsolidatedReportData,
   filename = 'relatorio-consolidado.csv',
+  meta?: ConsolidatedExportMeta,
 ): void {
-  const csv = '\uFEFF' + consolidatedReportToCSV(data)
+  const metaParts: string[] = []
+  if (meta) {
+    if (meta.period) metaParts.push(`Período: ${meta.period}`)
+    if (meta.filters) metaParts.push(`Filtros: ${meta.filters}`)
+    const timestamp = new Date().toLocaleString('pt-BR')
+    metaParts.push(`Gerado por: ${meta.generatedBy || 'Sistema'} em ${timestamp}`)
+  }
+  const prefix = metaParts.length > 0 ? `"${metaParts.join(' | ').replace(/"/g, '""')}"\r\n` : ''
+  const csv = '\uFEFF' + prefix + consolidatedReportToCSV(data)
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

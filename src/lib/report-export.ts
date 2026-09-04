@@ -138,7 +138,25 @@ function formatDateTime(dateStr?: string): string {
   }
 }
 
-export function serviceRecordsToCSV(rows: ServiceRecordExportRow[]): string {
+export interface ServiceRecordExportMeta {
+  period?: string
+  filters?: string
+  generatedBy?: string
+}
+
+export function serviceRecordsToCSV(
+  rows: ServiceRecordExportRow[],
+  meta?: ServiceRecordExportMeta,
+): string {
+  const metaParts: string[] = []
+  if (meta) {
+    if (meta.period) metaParts.push(`Período: ${meta.period}`)
+    if (meta.filters) metaParts.push(`Filtros: ${meta.filters}`)
+    const timestamp = new Date().toLocaleString('pt-BR')
+    metaParts.push(`Gerado por: ${meta.generatedBy || 'Sistema'} em ${timestamp}`)
+  }
+  const metaHeaderLine = metaParts.length > 0 ? escapeCsvCell(metaParts.join(' | ')) : null
+
   const dataRows = rows.map((r) =>
     [
       r.client_name || '',
@@ -161,14 +179,18 @@ export function serviceRecordsToCSV(rows: ServiceRecordExportRow[]): string {
       .map(escapeCsvCell)
       .join(','),
   )
-  return [SERVICE_EXPORT_HEADERS.map(escapeCsvCell).join(','), ...dataRows].join('\r\n')
+  const headerLines = metaHeaderLine
+    ? [metaHeaderLine, SERVICE_EXPORT_HEADERS.map(escapeCsvCell).join(',')]
+    : [SERVICE_EXPORT_HEADERS.map(escapeCsvCell).join(',')]
+  return [...headerLines, ...dataRows].join('\r\n')
 }
 
 export function downloadServiceRecordsCSV(
   rows: ServiceRecordExportRow[],
   filename: string = 'relatorio-atendimentos.csv',
+  meta?: ServiceRecordExportMeta,
 ): void {
-  const csv = '\uFEFF' + serviceRecordsToCSV(rows)
+  const csv = '\uFEFF' + serviceRecordsToCSV(rows, meta)
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

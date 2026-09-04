@@ -140,6 +140,12 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Gestão & Integrações',
     items: [
       {
+        label: 'Central de Relatórios',
+        to: '/central-relatorios',
+        icon: BarChart3,
+        visible: () => true,
+      },
+      {
         label: 'Gestão de Usuários',
         to: '/gestao-usuarios',
         icon: UserCog,
