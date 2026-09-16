@@ -50,6 +50,7 @@ import { EditUserDialog } from '@/components/EditUserDialog'
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog'
 import { MasterAccessHistoryDialog } from '@/components/MasterAccessHistoryDialog'
 import { TableColumnFilter } from '@/components/TableColumnFilter'
+import { isCommercialUser } from '@/lib/service-group-access'
 import type { UserRecord, ApprovalStatus, TravelType } from '@/types/service_record'
 
 function StatusBadge({ status }: { status?: ApprovalStatus }) {
@@ -156,13 +157,16 @@ export default function GestaoUsuarios() {
     colGroups.length > 0 ||
     filterMissingDeptOnly
 
-  const missingDeptUsers = useMemo(
-    () => users.filter((u) => !u.departments || u.departments.length === 0),
-    [users],
-  )
+  // Usuários do comercial são organizados por regional e não possuem departamento;
+  // o alerta e o preenchimento em lote de departamento devem ignorá-los.
+  const userNeedsDepartment = (u: UserRecord) => !isCommercialUser(u)
+  const isMissingDepartment = (u: UserRecord) =>
+    userNeedsDepartment(u) && (!u.departments || u.departments.length === 0)
+
+  const missingDeptUsers = useMemo(() => users.filter(isMissingDepartment), [users])
 
   const visibleUsers = (showMasterOnly ? filtered.filter((u) => u.master_access) : filtered)
-    .filter((u) => (!filterMissingDeptOnly ? true : !u.departments || u.departments.length === 0))
+    .filter((u) => (!filterMissingDeptOnly ? true : isMissingDepartment(u)))
     .filter((u) => {
       const matchesName = colNames.length === 0 || colNames.includes(u.name || '-')
       const matchesEmail = colEmails.length === 0 || colEmails.includes(u.email || '-')
@@ -438,9 +442,9 @@ export default function GestaoUsuarios() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center justify-between gap-1">
-                    <span>Grupos / Bases</span>
+                    <span>Núcleos / Regionais</span>
                     <TableColumnFilter
-                      title="Grupos"
+                      title="Núcleos / Regionais"
                       options={users.map((u) =>
                         u.service_groups?.length
                           ? u.service_groups.join(', ')
@@ -459,7 +463,8 @@ export default function GestaoUsuarios() {
             <TableBody>
               {visibleUsers.map((u) => {
                 const isSelected = selectedUserIds.includes(u.id)
-                const hasNoDept = !u.departments || u.departments.length === 0
+                const isCommercial = isCommercialUser(u)
+                const hasNoDept = isMissingDepartment(u)
                 return (
                   <TableRow
                     key={u.id}
@@ -502,7 +507,9 @@ export default function GestaoUsuarios() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {u.departments && u.departments.length > 0 ? (
+                        {isCommercial ? (
+                          <span className="text-xs text-slate-400 italic">Regional</span>
+                        ) : u.departments && u.departments.length > 0 ? (
                           u.departments.map((dept) => (
                             <Badge
                               key={dept}

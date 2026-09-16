@@ -31,6 +31,18 @@ export function isGestorComercial(user: UserRecord | null): boolean {
   return user.role === 'Gestor Comercial'
 }
 
+/**
+ * Identifica se um usuário pertence ao time comercial:
+ * - Cargo "Gestor Comercial" ou "Executivo de Contas"
+ * - Ou possui vínculo com regionais (bases) configurado
+ */
+export function isCommercialUser(user: UserRecord | null | undefined): boolean {
+  if (!user) return false
+  if (user.role === 'Gestor Comercial' || user.role === 'Executivo de Contas') return true
+  if (Array.isArray(user.bases) && user.bases.length > 0 && user.role !== 'Master') return true
+  return false
+}
+
 export function getUserServiceGroups(user: UserRecord | null): ServiceGroup[] {
   if (!user || !Array.isArray(user.service_groups)) return []
   return user.service_groups
