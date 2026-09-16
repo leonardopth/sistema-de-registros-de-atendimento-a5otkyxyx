@@ -50,7 +50,7 @@ import { EditUserDialog } from '@/components/EditUserDialog'
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog'
 import { MasterAccessHistoryDialog } from '@/components/MasterAccessHistoryDialog'
 import { TableColumnFilter } from '@/components/TableColumnFilter'
-import { isCommercialUser } from '@/lib/service-group-access'
+import { isCommercialUser, isMasterUser } from '@/lib/service-group-access'
 import type { UserRecord, ApprovalStatus, TravelType } from '@/types/service_record'
 
 function StatusBadge({ status }: { status?: ApprovalStatus }) {
@@ -157,9 +157,10 @@ export default function GestaoUsuarios() {
     colGroups.length > 0 ||
     filterMissingDeptOnly
 
-  // Usuários do comercial são organizados por regional e não possuem departamento;
-  // o alerta e o preenchimento em lote de departamento devem ignorá-los.
-  const userNeedsDepartment = (u: UserRecord) => !isCommercialUser(u)
+  // Usuários do comercial são organizados por regional e não possuem departamento.
+  // Usuários Master também são isentos do departamento.
+  // O alerta e o preenchimento em lote de departamento devem ignorar ambos.
+  const userNeedsDepartment = (u: UserRecord) => !isCommercialUser(u) && !isMasterUser(u)
   const isMissingDepartment = (u: UserRecord) =>
     userNeedsDepartment(u) && (!u.departments || u.departments.length === 0)
 
@@ -509,6 +510,24 @@ export default function GestaoUsuarios() {
                       <div className="flex flex-wrap gap-1">
                         {isCommercial ? (
                           <span className="text-xs text-slate-400 italic">Regional</span>
+                        ) : isMasterUser(u) ? (
+                          u.departments && u.departments.length > 0 ? (
+                            u.departments.map((dept) => (
+                              <Badge
+                                key={dept}
+                                className={cn(
+                                  'text-xs font-medium',
+                                  dept === 'Nacional'
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-purple-100 text-purple-800 border border-purple-200 hover:bg-purple-100',
+                                )}
+                              >
+                                {dept}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )
                         ) : u.departments && u.departments.length > 0 ? (
                           u.departments.map((dept) => (
                             <Badge
