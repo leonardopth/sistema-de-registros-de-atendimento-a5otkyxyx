@@ -474,14 +474,14 @@ export function NovoAtendimentoModal({ open, onOpenChange, onSuccess }: NovoAten
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Grupo de Atendimento</Label>
+                  <Label className="text-xs">Núcleo de Atendimento</Label>
                   <Select
-                    value={form.manualServiceGroup}
-                    onValueChange={(v) => form.setManualServiceGroup(v as ServiceGroup)}
+                    value={serviceGroup}
+                    onValueChange={(val) => setServiceGroup(val as ServiceGroup)}
                   >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Selecione o grupo" />
-                    </SelectTrigger>
+                    <SelectTrigger className="text-xs h-8">
+                      <SelectValue placeholder="Selecione o núcleo" />
+                    </SelectTrigger>{' '}
                     <SelectContent>
                       {SERVICE_GROUP_OPTIONS.map((g) => (
                         <SelectItem key={g.value} value={g.value}>

@@ -78,7 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
       },
       { label: 'Dashboard Geral', to: '/dashboard-geral', icon: PieChart, visible: () => true },
       {
-        label: 'Relatório por Grupo',
+        label: 'Relatório por Núcleo',
         to: '/relatorios-grupo',
         icon: BarChart3,
         visible: (r) => MANAGER_ROLES.includes(r),

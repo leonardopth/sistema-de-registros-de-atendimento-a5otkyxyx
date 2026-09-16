@@ -186,8 +186,8 @@ export default function CentralRelatorios() {
     },
     {
       id: 'relatorios-grupo',
-      title: 'Relatórios por Grupo',
-      description: 'Indicadores segmentados por grupo de atendimento, motivos evitáveis e taxas.',
+      title: 'Relatórios por Núcleo',
+      description: 'Indicadores segmentados por núcleo de atendimento, motivos evitáveis e taxas.',
       icon: Layers,
       path: '/relatorios-grupo',
       visible: (r) => MANAGER_ROLES.includes(r) || r === 'Master',

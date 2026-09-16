@@ -112,8 +112,8 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
     }
     setExecutiveError('')
     if (!serviceGroup) {
-      setServiceGroupError('Selecione um grupo de atendimento')
-      return
+      setServiceGroupError('Selecione um núcleo de atendimento')
+      isValid = false
     }
     setServiceGroupError('')
     if (!validateAgents()) return

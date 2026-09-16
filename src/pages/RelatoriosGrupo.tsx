@@ -127,10 +127,10 @@ export default function RelatoriosGrupo() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-            Relatórios por Grupo de Atendimento
+            Relatórios por Núcleo de Atendimento
           </h2>
           <p className="text-xs text-slate-500">
-            Indicadores de atendimento segmentados por grupo de atendimento
+            Indicadores de atendimento segmentados por núcleo de atendimento
           </p>
         </div>
         <ExportMenu
@@ -138,7 +138,8 @@ export default function RelatoriosGrupo() {
           onCSV={() =>
             downloadGroupReportCSV(groupStats, {
               period: 'Geral consolidado',
-              filters: colGroups.length > 0 ? `Grupos: ${colGroups.join(', ')}` : 'Todos os Grupos',
+              filters:
+                colGroups.length > 0 ? `Núcleos: ${colGroups.join(', ')}` : 'Todos os Núcleos',
               generatedBy: user?.name,
             })
           }
@@ -175,9 +176,9 @@ export default function RelatoriosGrupo() {
               <TableRow>
                 <TableHead className="text-xs font-bold">
                   <div className="flex items-center justify-between gap-1">
-                    <span>Grupo de Atendimento</span>
+                    <span>Núcleo de Atendimento</span>
                     <TableColumnFilter
-                      title="Grupo"
+                      title="Núcleo"
                       options={groupStats.map((g) => g.label)}
                       selectedValues={colGroups}
                       onChange={setColGroups}
