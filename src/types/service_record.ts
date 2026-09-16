@@ -134,6 +134,9 @@ export interface UserRecord {
   email_notifications?: boolean
   current_status?: CollaboratorStatus
   status_updated_at?: string
+  external_id?: string
+  created?: string
+  updated?: string
 }
 
 export interface ClientRecord {

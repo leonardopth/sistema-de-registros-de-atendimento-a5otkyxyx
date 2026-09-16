@@ -23,6 +23,7 @@ import Ajuda from '@/pages/Ajuda'
 import CentralRelatorios from '@/pages/CentralRelatorios'
 import RelatorioEvitaveis from '@/pages/RelatorioEvitaveis'
 import PublicCsat from '@/pages/PublicCsat'
+import { BancoHorasFerias } from '@/pages/BancoHorasFerias'
 import Ranking from '@/pages/Ranking'
 import PainelExecutivo from '@/pages/PainelExecutivo'
 import RelatoriosGrupo from '@/pages/RelatoriosGrupo'
@@ -84,6 +85,7 @@ const App = () => (
               <Route path="/evolucao-treinamento" element={<EvolucaoPosTreinamento />} />
               <Route path="/relatorio-consultor" element={<RelatorioConsultor />} />
               <Route path="/ranking" element={<Ranking />} />
+              <Route path="/banco-horas-ferias" element={<BancoHorasFerias />} />
               <Route path="/dashboard-geral" element={<DashboardGeral />} />
               <Route
                 path="/analise-motivos"

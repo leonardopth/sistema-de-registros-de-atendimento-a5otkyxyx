@@ -38,6 +38,7 @@ import {
   HelpCircle as HelpIcon,
   Compass,
   Layers,
+  CalendarDays,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -95,6 +96,12 @@ const NAV_GROUPS: NavGroup[] = [
         icon: BarChart3,
         visible: (r, masterAccess) =>
           MANAGER_ROLES.includes(r) || r === 'Master' || masterAccess === true,
+      },
+      {
+        label: 'Banco de Horas & Férias',
+        to: '/banco-horas-ferias',
+        icon: CalendarDays,
+        visible: () => true,
       },
       { label: 'Ranking', to: '/ranking', icon: Trophy, visible: () => true },
       {

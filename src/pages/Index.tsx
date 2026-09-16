@@ -53,6 +53,9 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { ServiceVolumeTrendCard } from '@/components/ServiceVolumeTrendCard'
 import { ActiveBacklogQueue } from '@/components/ActiveBacklogQueue'
 import { CollaboratorStatusPanel } from '@/components/CollaboratorStatusPanel'
+import { TeamAvailabilityToday } from '@/components/TeamAvailabilityToday'
+import { getAbsences } from '@/services/banco-ferias'
+import { AbsenceRecord } from '@/types/banco-ferias'
 import { filterClientsByUserAccess, filterRecordsByUserAccess } from '@/lib/service-group-access'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { getGMT3DateString } from '@/lib/timezone'
@@ -90,6 +93,7 @@ export default function Index() {
   const [users, setUsers] = useState<UserRecord[]>([])
   const [trainings, setTrainings] = useState<TrainingRecord[]>([])
   const [awards, setAwards] = useState<MonthlyAwardRecord[]>([])
+  const [absences, setAbsences] = useState<AbsenceRecord[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [commercialPeriod, setCommercialPeriod] = useState<'all' | 'month' | 'today' | '7days'>(
     'month',
@@ -109,9 +113,10 @@ export default function Index() {
         getUsers(),
         getTrainings(),
         getMonthlyAwards(),
+        getAbsences("status != 'cancelada'", '-start_date'),
       ])
 
-      const [rRes, cRes, eRes, uRes, tRes, aRes] = results
+      const [rRes, cRes, eRes, uRes, tRes, aRes, absRes] = results
 
       if (rRes.status === 'fulfilled') {
         const paginatedData = rRes.value
@@ -157,6 +162,12 @@ export default function Index() {
         setAwards([])
       }
 
+      if (absRes && absRes.status === 'fulfilled') {
+        setAbsences(Array.isArray(absRes.value) ? absRes.value : [])
+      } else {
+        setAbsences([])
+      }
+
       // Se atendimentos ou clientes falharem, exibe aviso não bloqueante com botão "Tentar novamente"
       const hasFailures = results.some((r) => r.status === 'rejected')
       if (hasFailures) {
@@ -180,6 +191,7 @@ export default function Index() {
   useRealtime('monthly_awards', () => loadData(), true)
   useRealtime('gamification', () => loadData(), true)
   useRealtime('badges', () => loadData(), true)
+  useRealtime('absences', () => loadData(), true)
 
   const safeFormatDate = (dateStr?: string) => {
     if (!dateStr) return ''
@@ -700,6 +712,9 @@ export default function Index() {
             subtitle="Evolução diária dos chamados e projeção do ritmo para fechamento do mês corrente"
           />
 
+          {/* Disponibilidade da Equipe Hoje (Ausências, Férias, Dayoff & Atuação) */}
+          <TeamAvailabilityToday users={users} absences={absences} currentUser={user} />
+
           {/* Disponibilidade da Equipe */}
           <CollaboratorStatusPanel />
 
@@ -830,6 +845,9 @@ export default function Index() {
       {/* ========================================================================= */}
       {!isFullView && isSupervisorOrLider && (
         <div className="space-y-6">
+          {/* Disponibilidade da Equipe Hoje (Ausências, Férias, Dayoff & Atuação) */}
+          <TeamAvailabilityToday users={users} absences={absences} currentUser={user} />
+
           {/* Disponibilidade da Equipe */}
           <CollaboratorStatusPanel />
 
@@ -1002,6 +1020,9 @@ export default function Index() {
       {/* ========================================================================= */}
       {!isFullView && isConsultor && (
         <div className="space-y-6">
+          {/* Disponibilidade da Equipe Hoje (Ausências, Férias, Dayoff & Atuação) */}
+          <TeamAvailabilityToday users={users} absences={absences} currentUser={user} />
+
           {/* Disponibilidade da Equipe */}
           <CollaboratorStatusPanel />
 

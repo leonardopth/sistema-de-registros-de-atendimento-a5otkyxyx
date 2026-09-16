@@ -50,8 +50,10 @@ import {
 } from '@/services/telephony-integration'
 import { getClients } from '@/services/clients'
 import { getServiceRecords } from '@/services/service_records'
-import { ClientRecord, ServiceRecord } from '@/types/service_record'
+import { ClientRecord, ServiceRecord, UserRecord } from '@/types/service_record'
 import { formatGMT3DateTime } from '@/lib/timezone'
+import { LgIntegrationCard } from '@/components/LgIntegrationCard'
+import { getUsers } from '@/services/users'
 import {
   Mail,
   PhoneCall,
@@ -77,7 +79,7 @@ export default function Integracoes() {
   const { user } = useAuth()
   const { toast } = useToast()
 
-  const [activeTab, setActiveTab] = useState<'telephony' | 'outlook'>('telephony')
+  const [activeTab, setActiveTab] = useState<'telephony' | 'outlook' | 'lg'>('telephony')
 
   // Outlook States
   const [statusData, setStatusData] = useState<OutlookStatusResponse | null>(null)
@@ -99,6 +101,7 @@ export default function Integracoes() {
   const [callRecords, setCallRecords] = useState<CallAnalysisLogRecord[]>([])
   const [clientsList, setClientsList] = useState<ClientRecord[]>([])
   const [serviceRecordsList, setServiceRecordsList] = useState<ServiceRecord[]>([])
+  const [usersList, setUsersList] = useState<UserRecord[]>([])
   const [loadingTelephony, setLoadingTelephony] = useState(true)
   const [syncingTelephony, setSyncingTelephony] = useState(false)
 
@@ -140,16 +143,18 @@ export default function Integracoes() {
   const loadTelephonyData = async () => {
     setLoadingTelephony(true)
     try {
-      const [telSt, calls, clients, srs] = await Promise.all([
+      const [telSt, calls, clients, srs, usrs] = await Promise.all([
         getTelephonyStatus(),
         getCallAnalysisLogs(),
         getClients().catch(() => []),
         getServiceRecords().catch(() => []),
+        getUsers().catch(() => []),
       ])
       setTelephonyStatus(telSt)
       setCallRecords(calls)
       setClientsList(clients)
       setServiceRecordsList(srs)
+      setUsersList(usrs || [])
     } catch (err) {
       console.error('Erro ao carregar dados de telefonia:', err)
     } finally {
@@ -423,14 +428,18 @@ export default function Integracoes() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)}>
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-xl">
           <TabsTrigger value="telephony" className="text-xs flex items-center gap-1.5">
             <PhoneCall className="h-3.5 w-3.5 text-indigo-600" />
-            Telefonia & Gravações (Twilio / Modular)
+            Telefonia &amp; Gravações
           </TabsTrigger>
           <TabsTrigger value="outlook" className="text-xs flex items-center gap-1.5">
             <Mail className="h-3.5 w-3.5 text-sky-600" />
-            Microsoft Outlook (Graph API)
+            Outlook (Graph API)
+          </TabsTrigger>
+          <TabsTrigger value="lg" className="text-xs flex items-center gap-1.5">
+            <Building2 className="h-3.5 w-3.5 text-purple-600" />
+            RH LG Lugar de Gente
           </TabsTrigger>
         </TabsList>
 
@@ -1294,6 +1303,11 @@ export default function Integracoes() {
               </Table>
             </div>
           </Card>
+        </TabsContent>
+
+        {/* ================= ABA RH LG LUGAR DE GENTE ================= */}
+        <TabsContent value="lg" className="space-y-6 mt-4">
+          <LgIntegrationCard users={usersList} />
         </TabsContent>
       </Tabs>
     </div>

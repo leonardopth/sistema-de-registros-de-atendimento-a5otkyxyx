@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-16T20:52:07.249Z",
+  "generatedAt": "2026-09-16T21:21:06.610Z",
   "collections": [
     {
       "name": "users",
@@ -140,6 +140,12 @@
         {
           "name": "status_updated_at",
           "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "external_id",
+          "type": "text",
           "required": false,
           "system": false
         }
@@ -2340,6 +2346,284 @@
         "CREATE INDEX idx_csat_record ON csat_responses (service_record_id)",
         "CREATE INDEX idx_csat_rating ON csat_responses (rating)"
       ]
+    },
+    {
+      "name": "hour_bank_entries",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "hours",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["credito", "debito"]
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "source",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["manual", "lg_sync", "sistema"]
+        },
+        {
+          "name": "external_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_hbe_user ON hour_bank_entries (user_id)",
+        "CREATE INDEX idx_hbe_date ON hour_bank_entries (date)",
+        "CREATE INDEX idx_hbe_created ON hour_bank_entries (created)"
+      ]
+    },
+    {
+      "name": "absences",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "update": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "delete": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "reason",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Férias", "Banco de horas", "Dayoff", "Atestado"]
+        },
+        {
+          "name": "start_date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "end_date",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["agendada", "ativa", "encerrada", "cancelada"]
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "source",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["manual", "lg_sync"]
+        },
+        {
+          "name": "external_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "coverage_checked",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_abs_user ON absences (user_id)",
+        "CREATE INDEX idx_abs_start ON absences (start_date)",
+        "CREATE INDEX idx_abs_end ON absences (end_date)",
+        "CREATE INDEX idx_abs_reason ON absences (reason)",
+        "CREATE INDEX idx_abs_status ON absences (status)"
+      ]
+    },
+    {
+      "name": "absence_alert_configs",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'Gerente' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Líder' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "hour_bank_limit_hours",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "hour_bank_negative_limit_hours",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "vacation_warning_days_before_expiry",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "vacation_ideal_window_start_months",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "vacation_ideal_window_end_months",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "min_interjornada_hours",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "max_consecutive_work_days",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "max_team_absence_pct",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "lg_integration_enabled",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "lg_api_base_url",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "updated_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
     }
   ]
 }
