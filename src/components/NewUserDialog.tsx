@@ -246,7 +246,7 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
           )}
           {isAtendimento && (
             <div className="space-y-2">
-              <Label className="text-xs font-semibold">Grupos de Atendimento</Label>
+              <Label className="text-xs font-semibold">Núcleos de Atendimento</Label>
               <div className="grid grid-cols-2 gap-2">
                 {SERVICE_GROUP_OPTIONS.map((g) => (
                   <label key={g} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -262,7 +262,7 @@ export function NewUserDialog({ open, onOpenChange, onSuccess }: NewUserDialogPr
           )}
           {isVendas && (
             <div className="space-y-2">
-              <Label className="text-xs font-semibold">Bases</Label>
+              <Label className="text-xs font-semibold">Regionais</Label>
               <div className="grid grid-cols-2 gap-2">
                 {BASE_OPTIONS.map((b) => (
                   <label key={b} className="flex items-center gap-2 text-sm cursor-pointer">

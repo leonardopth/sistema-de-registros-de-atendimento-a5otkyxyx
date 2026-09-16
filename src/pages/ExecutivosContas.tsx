@@ -260,9 +260,9 @@ export default function ExecutivosContas() {
                   </TableHead>
                   <TableHead className="text-xs font-bold text-slate-700">
                     <div className="flex items-center justify-between gap-1">
-                      <span>Bases</span>
+                      <span>Regionais</span>
                       <TableColumnFilter
-                        title="Bases"
+                        title="Regionais"
                         options={executives.map((e) =>
                           e.bases && (e.bases as string[]).length > 0
                             ? (e.bases as string[]).join(', ')
@@ -372,7 +372,7 @@ export default function ExecutivosContas() {
               {fieldErrors.phone && <p className="text-xs text-red-500">{fieldErrors.phone}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Bases</Label>
+              <Label>Regionais</Label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {COMMERCIAL_BASE_OPTIONS.map((opt) => (
                   <div key={opt.value} className="flex items-center space-x-2">

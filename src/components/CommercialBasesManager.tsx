@@ -34,11 +34,11 @@ export function CommercialBasesManager({ users, onSaved }: CommercialBasesManage
     setSaving(true)
     try {
       await updateUserBases(editingId, bases)
-      toast({ title: 'Bases atualizadas' })
+      toast({ title: 'Regionais atualizadas' })
       setEditingId(null)
       onSaved()
     } catch {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar bases' })
+      toast({ variant: 'destructive', title: 'Erro ao atualizar regionais' })
     } finally {
       setSaving(false)
     }
@@ -49,7 +49,7 @@ export function CommercialBasesManager({ users, onSaved }: CommercialBasesManage
       <div className="flex items-center gap-2 mb-4">
         <Building className="h-5 w-5 text-indigo-600" />
         <h3 className="text-sm font-bold text-slate-800">
-          Gestor Comercial e Executivo de Contas — Bases
+          Gestor Comercial e Executivo de Contas — Regionais
         </h3>
       </div>
       <div className="space-y-3">
@@ -93,7 +93,7 @@ export function CommercialBasesManager({ users, onSaved }: CommercialBasesManage
                   className="h-7 text-xs text-indigo-600"
                   onClick={() => handleStartEdit(u)}
                 >
-                  Editar Bases
+                  Editar Regionais
                 </Button>
               )}
             </div>
@@ -127,7 +127,7 @@ export function CommercialBasesManager({ users, onSaved }: CommercialBasesManage
                     </Badge>
                   ))
                 ) : (
-                  <span className="text-xs text-slate-400">Nenhuma base atribuída</span>
+                  <span className="text-xs text-slate-400">Nenhuma regional atribuída</span>
                 )}
               </div>
             )}

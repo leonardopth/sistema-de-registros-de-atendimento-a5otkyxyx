@@ -171,7 +171,7 @@ export default function Clientes() {
       return
     }
     if (!editServiceGroup) {
-      setServiceGroupError('Selecione um grupo de atendimento')
+      setServiceGroupError('Selecione um núcleo de atendimento')
       return
     }
     setServiceGroupError('')
@@ -413,7 +413,7 @@ export default function Clientes() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-600">
-                  Grupo de Atendimento *
+                  Núcleo de Atendimento *
                 </label>
                 <SearchableSelect
                   options={SERVICE_GROUP_OPTIONS.map((o) => ({
@@ -425,8 +425,8 @@ export default function Clientes() {
                     setEditServiceGroup(v)
                     setServiceGroupError('')
                   }}
-                  placeholder="Selecione um grupo de atendimento"
-                  emptyText="Nenhum grupo encontrado."
+                  placeholder="Selecione um núcleo de atendimento"
+                  emptyText="Nenhum núcleo encontrado."
                   className="h-9 text-xs"
                 />
                 {serviceGroupError && <p className="text-xs text-red-500">{serviceGroupError}</p>}
@@ -513,14 +513,14 @@ export default function Clientes() {
                 )}
               </div>
 
-              {/* Grupo de Atendimento */}
+              {/* Núcleo de Atendimento */}
               <div className="sm:col-span-2 md:col-span-2 lg:col-span-3">
                 <SearchableSelect
                   options={SERVICE_GROUP_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
                   value={filterServiceGroup}
                   onValueChange={setFilterServiceGroup}
-                  placeholder="Grupo (Todos)"
-                  emptyText="Nenhum grupo encontrado."
+                  placeholder="Núcleo (Todos)"
+                  emptyText="Nenhum núcleo encontrado."
                   className="h-8 text-xs w-full"
                 />
               </div>
@@ -581,9 +581,9 @@ export default function Clientes() {
                   </TableHead>
                   <TableHead className="text-xs font-bold text-slate-600">
                     <div className="flex items-center justify-between gap-1">
-                      <span>Grupo</span>
+                      <span>Núcleo</span>
                       <TableColumnFilter
-                        title="Grupo"
+                        title="Núcleo"
                         options={SERVICE_GROUP_OPTIONS.map((g) => g.label)}
                         selectedValues={colGroups}
                         onChange={setColGroups}

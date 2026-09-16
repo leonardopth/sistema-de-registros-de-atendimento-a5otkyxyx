@@ -15,7 +15,7 @@ const HEADERS = [
   'E-mail',
   'Perfil',
   'Departamento',
-  'Grupo de Atendimento',
+  'Núcleo de Atendimento',
   'Status de Aprovação',
   'Data de Criação',
 ]

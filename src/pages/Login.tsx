@@ -536,10 +536,10 @@ export default function Login() {
                   {['Gerente', 'Supervisor', 'Líder', 'Consultor'].includes(role) && (
                     <div className="space-y-2">
                       <Label className="text-slate-300 text-xs font-medium">
-                        Grupo de Atendimento
+                        Núcleos de Atendimento
                       </Label>
                       <p className="text-[11px] text-slate-500">
-                        Selecione um ou mais grupos para restringir o acesso do usuário.
+                        Selecione um ou mais núcleos para restringir o acesso do usuário.
                       </p>
                       <div className="grid grid-cols-2 gap-2">
                         {SERVICE_GROUP_OPTIONS.map((option) => (
@@ -572,9 +572,9 @@ export default function Login() {
 
                   {['Gestor Comercial', 'Executivo de Contas'].includes(role as string) && (
                     <div className="space-y-2">
-                      <Label className="text-slate-300 text-xs font-medium">Bases Regionais</Label>
+                      <Label className="text-slate-300 text-xs font-medium">Regionais</Label>
                       <p className="text-[11px] text-slate-500">
-                        Selecione uma ou mais bases para o usuário.
+                        Selecione uma ou mais regionais para o usuário.
                       </p>
                       <div className="grid grid-cols-2 gap-2">
                         {COMMERCIAL_BASE_OPTIONS.map((option) => (

@@ -870,15 +870,15 @@ export default function Atendimentos() {
             </Select>
           </div>
 
-          {/* Grupo */}
+          {/* Núcleo de Atendimento */}
           <div className="col-span-1 sm:col-span-1 md:col-span-2 lg:col-span-2">
             <Select value={serviceGroupFilter} onValueChange={setServiceGroupFilter}>
               <SelectTrigger className="h-8 text-xs w-full">
                 <Filter className="h-3 w-3 text-indigo-500 mr-1 shrink-0" />
-                <SelectValue placeholder="Grupo" />
+                <SelectValue placeholder="Núcleo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os Grupos</SelectItem>
+                <SelectItem value="todos">Todos os Núcleos</SelectItem>
                 {SERVICE_GROUP_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
                     {o.label}

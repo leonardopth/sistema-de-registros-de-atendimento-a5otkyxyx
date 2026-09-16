@@ -172,14 +172,14 @@ export default function Index() {
     loadData()
   }, [])
 
-  // Subscrições realtime com debounce de 1000ms para evitar recargas excessivas em rajadas de eventos
-  useRealtime('service_records', () => loadData(), true, 1000)
-  useRealtime('clients', () => loadData(), true, 1000)
-  useRealtime('trainings', () => loadData(), true, 1000)
-  useRealtime('account_executives', () => loadData(), true, 1000)
-  useRealtime('monthly_awards', () => loadData(), true, 1000)
-  useRealtime('gamification', () => loadData(), true, 1000)
-  useRealtime('badges', () => loadData(), true, 1000)
+  // Subscrições realtime para sincronização contínua
+  useRealtime('service_records', () => loadData(), true)
+  useRealtime('clients', () => loadData(), true)
+  useRealtime('trainings', () => loadData(), true)
+  useRealtime('account_executives', () => loadData(), true)
+  useRealtime('monthly_awards', () => loadData(), true)
+  useRealtime('gamification', () => loadData(), true)
+  useRealtime('badges', () => loadData(), true)
 
   const safeFormatDate = (dateStr?: string) => {
     if (!dateStr) return ''
@@ -622,7 +622,7 @@ export default function Index() {
     if (isConsultor) return 'Meu Desempenho — Acompanhe seus atendimentos, gamificação e clientes'
     if (isExecutivoContas) return 'Gestão de Contas — Carteira de clientes gerenciados e autonomia'
     if (isGestorComercial)
-      return 'Visão de Negócios — Volume de atendimentos, clientes e análise de grupos'
+      return 'Visão de Negócios — Volume de atendimentos, clientes e análise de núcleos'
     return 'Acompanhe seus atendimentos e indicadores'
   }, [isMaster, isGerente, isSupervisorOrLider, isConsultor, isExecutivoContas, isGestorComercial])
 
@@ -1441,13 +1441,13 @@ export default function Index() {
             </Card>
           </div>
 
-          {/* Gráfico Comparativo entre Grupos de Serviço */}
+          {/* Gráfico Comparativo entre Núcleos de Atendimento */}
           <Card className="border-slate-200 shadow-subtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-indigo-600" /> Gráfico Comparativo entre Grupos de
-                  Serviço
+                  <Layers className="h-4 w-4 text-indigo-600" /> Gráfico Comparativo entre Núcleos
+                  de Atendimento
                 </span>
                 <Button
                   variant="ghost"
@@ -1481,12 +1481,12 @@ export default function Index() {
                 </BarChart>
               </ChartContainer>
 
-              {/* Tabela Resumo dos Grupos */}
+              {/* Tabela Resumo dos Núcleos */}
               <div className="overflow-x-auto rounded-lg border border-slate-100">
                 <Table>
                   <TableHeader className="bg-slate-50">
                     <TableRow>
-                      <TableHead className="text-xs font-bold">Grupo de Serviço</TableHead>
+                      <TableHead className="text-xs font-bold">Núcleo de Atendimento</TableHead>
                       <TableHead className="text-xs font-bold text-center">Total</TableHead>
                       <TableHead className="text-xs font-bold text-center">Evitáveis</TableHead>
                       <TableHead className="text-xs font-bold text-center">

@@ -113,7 +113,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
     setExecutiveError('')
     if (!serviceGroup) {
       setServiceGroupError('Selecione um núcleo de atendimento')
-      isValid = false
+      return
     }
     setServiceGroupError('')
     if (!validateAgents()) return
@@ -198,7 +198,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
           </div>
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5">
-              Grupo de Atendimento *
+              Núcleo de Atendimento *
               <span title="Concierge: prioridade máxima (core clients). Exclusivo: alta prioridade. LOT: clientes digital (API). BR1, BR2, SAO, SPI, SUL: mesmo nível de importância.">
                 <Info className="h-3.5 w-3.5 text-slate-400" />
               </span>
@@ -213,8 +213,8 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
                 setServiceGroup(v)
                 setServiceGroupError('')
               }}
-              placeholder="Selecione um grupo de atendimento"
-              emptyText="Nenhum grupo encontrado."
+              placeholder="Selecione um núcleo de atendimento"
+              emptyText="Nenhum núcleo encontrado."
               className="h-9"
             />
             {serviceGroupError && <p className="text-xs text-red-500">{serviceGroupError}</p>}

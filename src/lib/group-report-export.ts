@@ -12,7 +12,7 @@ export interface GroupReportStat {
 
 const AVOIDABLE_REASONS = ['Disponível no RF', 'Fora do Escopo', 'Erro RF', 'Outros']
 const HEADERS = [
-  'Grupo de Atendimento',
+  'Núcleo de Atendimento',
   'Total de Atendimentos',
   'Contatos Evitáveis',
   'Taxa de Evitáveis (%)',
@@ -64,7 +64,7 @@ export function downloadGroupReportCSV(
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = 'relatorio-grupo-atendimento.csv'
+  link.download = 'relatorio-nucleo-atendimento.csv'
   link.click()
   URL.revokeObjectURL(url)
 }
@@ -78,8 +78,8 @@ export function downloadGroupReportExcel(stats: GroupReportStat[]): void {
     ...AVOIDABLE_REASONS.map((r) => s.reasonBreakdown[r] || 0),
   ])
   downloadExcel(
-    generateExcelXML(HEADERS, rows, 'Relatório por Grupo'),
-    'relatorio-grupo-atendimento.xls',
+    generateExcelXML(HEADERS, rows, 'Relatório por Núcleo'),
+    'relatorio-nucleo-atendimento.xls',
   )
 }
 
@@ -96,16 +96,16 @@ export function downloadGroupReportPDF(stats: GroupReportStat[]): void {
     .join('')
 
   const html = `
-    <h1>Relatório por Grupo de Atendimento</h1>
+    <h1>Relatório por Núcleo de Atendimento</h1>
     <div class="stat-grid">
       <div class="stat-item"><div class="stat-label">Total de Atendimentos</div><div class="stat-value">${totalAll}</div></div>
       <div class="stat-item"><div class="stat-label">Contatos Evitáveis</div><div class="stat-value">${avoidableAll}</div></div>
       <div class="stat-item"><div class="stat-label">Taxa de Evitáveis</div><div class="stat-value">${rateAll}%</div></div>
     </div>
     <table>
-      <thead><tr><th>Grupo</th><th>Total</th><th>Evitáveis</th><th>Taxa</th>${AVOIDABLE_REASONS.map((r) => `<th>${r}</th>`).join('')}</tr></thead>
+      <thead><tr><th>Núcleo</th><th>Total</th><th>Evitáveis</th><th>Taxa</th>${AVOIDABLE_REASONS.map((r) => `<th>${r}</th>`).join('')}</tr></thead>
       <tbody>${tableRows}</tbody>
     </table>
   `
-  downloadPDF(html, 'Relatório por Grupo de Atendimento')
+  downloadPDF(html, 'Relatório por Núcleo de Atendimento')
 }

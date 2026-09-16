@@ -315,8 +315,8 @@ export default function NovoAtendimento() {
                 <div className="space-y-1">
                   <Label className="text-xs">Núcleo de Atendimento</Label>
                   <Select
-                    value={serviceGroup}
-                    onValueChange={(val) => setServiceGroup(val as ServiceGroup)}
+                    value={form.manualServiceGroup}
+                    onValueChange={(val) => form.setManualServiceGroup(val as ServiceGroup)}
                   >
                     <SelectTrigger className="text-xs h-8">
                       <SelectValue placeholder="Selecione o núcleo" />

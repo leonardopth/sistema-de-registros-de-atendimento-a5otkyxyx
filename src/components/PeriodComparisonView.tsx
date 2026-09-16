@@ -136,7 +136,7 @@ export function PeriodComparisonView({ records, clients, executives }: Props) {
           )}
           onClick={() => setDimension('group')}
         >
-          <Layers className="h-3.5 w-3.5 mr-1.5" /> Grupos
+          <Layers className="h-3.5 w-3.5 mr-1.5" /> Núcleos
         </Button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -202,7 +202,7 @@ export function PeriodComparisonView({ records, clients, executives }: Props) {
                 <TableHeader className="bg-slate-50">
                   <TableRow>
                     <TableHead className="text-xs font-bold">
-                      {dimension === 'executive' ? 'Executivo' : 'Grupo'}
+                      {dimension === 'executive' ? 'Executivo' : 'Núcleo'}
                     </TableHead>
                     <TableHead className="text-xs font-bold text-center">P1 Total</TableHead>
                     <TableHead className="text-xs font-bold text-center">P1 Evit.</TableHead>

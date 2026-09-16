@@ -223,7 +223,7 @@ export default function DashboardGeral() {
             <BarChart3 className="h-6 w-6 text-indigo-600" /> Dashboard Geral
           </h2>
           <p className="text-xs text-slate-500">
-            Indicadores consolidados de todos os grupos e executivos
+            Indicadores consolidados de todos os núcleos e executivos
           </p>
         </div>
         <ScheduledExportDialog />
@@ -292,12 +292,12 @@ export default function DashboardGeral() {
             <Card className="border-slate-200 shadow-subtle">
               <CardContent className="p-4">
                 <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-indigo-600" /> Por Grupo
+                  <BarChart3 className="h-4 w-4 text-indigo-600" /> Por Núcleo
                 </h3>
                 <Table>
                   <TableHeader className="bg-slate-50">
                     <TableRow>
-                      <TableHead className="text-xs font-bold">Grupo</TableHead>
+                      <TableHead className="text-xs font-bold">Núcleo</TableHead>
                       <TableHead className="text-xs font-bold text-center">Total</TableHead>
                       <TableHead className="text-xs font-bold text-center">Evitáveis</TableHead>
                       <TableHead className="text-xs font-bold text-center">Taxa</TableHead>

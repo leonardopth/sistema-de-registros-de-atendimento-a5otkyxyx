@@ -32,11 +32,11 @@ export function ServiceGroupManager({ users, onSaved }: ServiceGroupManagerProps
     setSaving(true)
     try {
       await updateUserServiceGroups(editingId, groups)
-      toast({ title: 'Grupos de atendimento atualizados' })
+      toast({ title: 'Núcleos de atendimento atualizados' })
       setEditingId(null)
       onSaved()
     } catch {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar grupos' })
+      toast({ variant: 'destructive', title: 'Erro ao atualizar núcleos' })
     } finally {
       setSaving(false)
     }
@@ -46,7 +46,7 @@ export function ServiceGroupManager({ users, onSaved }: ServiceGroupManagerProps
     <Card className="p-4 border-slate-200 shadow-subtle">
       <div className="flex items-center gap-2 mb-4">
         <Users className="h-5 w-5 text-indigo-600" />
-        <h3 className="text-sm font-bold text-slate-800">Gerente e seus Grupos de Atendimento</h3>
+        <h3 className="text-sm font-bold text-slate-800">Gerente e seus Núcleos de Atendimento</h3>
       </div>
       <div className="space-y-3">
         {gerentes.map((u) => (
@@ -87,7 +87,7 @@ export function ServiceGroupManager({ users, onSaved }: ServiceGroupManagerProps
                   className="h-7 text-xs text-indigo-600"
                   onClick={() => handleStartEdit(u)}
                 >
-                  Editar Grupos
+                  Editar Núcleos
                 </Button>
               )}
             </div>
@@ -121,7 +121,7 @@ export function ServiceGroupManager({ users, onSaved }: ServiceGroupManagerProps
                     </Badge>
                   ))
                 ) : (
-                  <span className="text-xs text-slate-400">Nenhum grupo atribuído</span>
+                  <span className="text-xs text-slate-400">Nenhum núcleo atribuído</span>
                 )}
               </div>
             )}

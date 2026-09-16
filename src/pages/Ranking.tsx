@@ -484,14 +484,16 @@ export default function Ranking() {
                 <Globe className="h-3.5 w-3.5" /> Internacional
               </TabsTrigger>
               <TabsTrigger value="base" className="text-xs font-semibold gap-1.5">
-                <Layers className="h-3.5 w-3.5" /> Por Base
+                <Layers className="h-3.5 w-3.5" /> Por Regional
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
           {activeTab === 'base' && (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-slate-600">Selecione o Grupo/Base:</span>
+              <span className="text-xs font-medium text-slate-600">
+                Selecione o Núcleo/Regional:
+              </span>
               <Select value={selectedBase} onValueChange={setSelectedBase}>
                 <SelectTrigger className="w-[180px] h-8 text-xs bg-white">
                   <SelectValue />

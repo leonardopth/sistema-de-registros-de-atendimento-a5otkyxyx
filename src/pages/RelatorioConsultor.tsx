@@ -154,7 +154,7 @@ export default function RelatorioConsultor() {
               {isMaster
                 ? 'Visão irrestrita de todos os consultores cadastrados na base de dados'
                 : isLeadership
-                  ? 'Visão dos consultores dos seus grupos de atendimento'
+                  ? 'Visão dos consultores dos seus núcleos de atendimento'
                   : 'Sua performance individual'}
             </p>
           </div>
@@ -169,7 +169,7 @@ export default function RelatorioConsultor() {
             {isMaster
               ? 'Nenhum consultor cadastrado no sistema.'
               : isLeadership
-                ? 'Nenhum consultor encontrado no seu grupo de atendimento.'
+                ? 'Nenhum consultor encontrado no seu núcleo de atendimento.'
                 : 'Nenhum atendimento registrado ainda.'}
           </p>
         </Card>
@@ -200,7 +200,7 @@ export default function RelatorioConsultor() {
   const subtitle = isMaster
     ? 'Performance global de todos os consultores cadastrados no sistema'
     : isLeadership
-      ? 'Performance dos consultores do seu grupo de atendimento'
+      ? 'Performance dos consultores do seu núcleo de atendimento'
       : 'Sua performance comparada com a equipe'
 
   return (
