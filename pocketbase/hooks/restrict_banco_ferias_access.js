@@ -3,11 +3,14 @@
 // - Usuários com papel 'Master' ou master_access = true visualizam TODOS os registros
 // - Consultores visualizam APENAS seus próprios registros (user_id = auth.id)
 // - Gestores/Supervisores/Líderes/Gestores Comerciais:
-//   * Se tiverem service_groups: visualizam registros de colaboradores que compartilham ao menos um grupo ou do próprio usuário
-//   * Se não tiverem restrição de grupos (ex: Gerente geral): visualizam todos os registros
-//   * Também inclui registros onde user_id = auth.id (eles próprios)
+//   * Se não tiverem restrição de grupos (ex: Gerente geral sem service_groups): visualizam todos os registros
+//   * Se tiverem service_groups: vêem apenas colaboradores que compartilham PELO MENOS UM dos exatos mesmos valores
+//     de grupo/núcleo (service_groups) com ele, ou vínculo direto de supervisão (supervisor_id), além de si mesmo.
+//   * Comparação exata por valor: a interseção dos grupos deve ser exata, sem match parcial ou de prefixo.
 //
-// O PocketBase executa as coleções list/view requests passando pelo filtro do hook.
+// ATENÇÃO (Convenção PocketBase JSVM):
+// Funções utilitárias devem ser declaradas INLINE dentro do corpo de cada callback
+// para evitar erros de escopo entre VM pools.
 
 // -------------------------------------------------------------
 // 1. HOUR_BANK_ENTRIES (List & View)
@@ -37,59 +40,9 @@ onRecordsListRequest((e) => {
   var isManager =
     role === 'Gerente' || role === 'Supervisor' || role === 'Líder' || role === 'Gestor Comercial'
 
-  var securityFilter = ''
   if (!isManager) {
     // Consultor ou outros colaboradores: somente os próprios registros
-    securityFilter = "user_id = '" + authId + "'"
-  } else {
-    var serviceGroups = auth.get('service_groups') || []
-    var groupArr = []
-    if (Array.isArray(serviceGroups)) {
-      groupArr = serviceGroups
-    } else if (typeof serviceGroups === 'string' && serviceGroups.length > 0) {
-      try {
-        groupArr = JSON.parse(serviceGroups)
-      } catch (_) {
-        groupArr = [serviceGroups]
-      }
-    }
-
-    if (groupArr.length === 0 && (role === 'Gerente' || role === 'Gestor Comercial')) {
-      // Gestor irrestrito
-      return e.next()
-    }
-
-    var allowedUserIds = [authId]
-    if (groupArr.length > 0) {
-      try {
-        var groupConditions = []
-        for (var g = 0; g < groupArr.length; g++) {
-          var grp = groupArr[g]
-          if (grp) {
-            groupConditions.push("service_groups ~ '" + grp + "'")
-          }
-        }
-        var filterStr =
-          groupConditions.length > 0 ? groupConditions.join(' || ') : "id = '" + authId + "'"
-        var teamUsers = $app.findRecordsByFilter('users', filterStr, '', 500, 0)
-        if (teamUsers && teamUsers.length > 0) {
-          for (var u = 0; u < teamUsers.length; u++) {
-            var uid = teamUsers[u].id
-            if (uid && allowedUserIds.indexOf(uid) === -1) {
-              allowedUserIds.push(uid)
-            }
-          }
-        }
-      } catch (err) {
-        $app.logger().warn('Erro ao consultar equipe no hook de hour_bank_entries: ' + err)
-      }
-    }
-
-    var parts = []
-    for (var i = 0; i < allowedUserIds.length; i++) {
-      parts.push("user_id = '" + allowedUserIds[i] + "'")
-    }
-    securityFilter = '(' + parts.join(' || ') + ')'
+    return e.next()
   }
 
   return e.next()
@@ -131,49 +84,55 @@ onRecordViewRequest((e) => {
     )
   }
 
-  var serviceGroups = auth.get('service_groups') || []
-  var groupArr = []
-  if (Array.isArray(serviceGroups)) {
-    groupArr = serviceGroups
-  } else if (typeof serviceGroups === 'string' && serviceGroups.length > 0) {
-    try {
-      groupArr = JSON.parse(serviceGroups)
-    } catch (_) {
-      groupArr = [serviceGroups]
+  function extractArray(val) {
+    if (!val) return []
+    if (Array.isArray(val)) return val
+    if (typeof val === 'string' && val.length > 0) {
+      try {
+        var parsed = JSON.parse(val)
+        if (Array.isArray(parsed)) return parsed
+        return [val]
+      } catch (_) {
+        return [val]
+      }
     }
+    return []
   }
 
-  if (groupArr.length === 0 && (role === 'Gerente' || role === 'Gestor Comercial')) {
+  var serviceGroups = extractArray(auth.get('service_groups'))
+  if (serviceGroups.length === 0 && (role === 'Gerente' || role === 'Gestor Comercial')) {
+    // Gestor geral irrestrito
     return e.next()
   }
 
-  var allowedUserIds = [authId]
-  if (groupArr.length > 0) {
-    try {
-      var groupConditions = []
-      for (var g = 0; g < groupArr.length; g++) {
-        var grp = groupArr[g]
-        if (grp) {
-          groupConditions.push("service_groups ~ '" + grp + "'")
-        }
-      }
-      var filterStr =
-        groupConditions.length > 0 ? groupConditions.join(' || ') : "id = '" + authId + "'"
-      var teamUsers = $app.findRecordsByFilter('users', filterStr, '', 500, 0)
-      if (teamUsers && teamUsers.length > 0) {
-        for (var u = 0; u < teamUsers.length; u++) {
-          var uid = teamUsers[u].id
-          if (uid && allowedUserIds.indexOf(uid) === -1) {
-            allowedUserIds.push(uid)
-          }
-        }
-      }
-    } catch (err) {
-      $app.logger().warn('Erro ao consultar equipe no hook de hour_bank_entries view: ' + err)
+  // Verifica se o dono do registro está no escopo permitido
+  var targetUser = null
+  try {
+    targetUser = $app.findRecordById('users', recordUserId)
+  } catch (_) {}
+
+  if (!targetUser) {
+    return e.forbiddenError('Colaborador não encontrado.')
+  }
+
+  // 1. Vínculo direto por supervisor_id
+  var supId = targetUser.getString('supervisor_id')
+  if (supId && supId === authId) {
+    return e.next()
+  }
+
+  // 2. Interseção exata de valores de service_groups
+  var targetGroups = extractArray(targetUser.get('service_groups'))
+  var hasExactMatch = false
+  for (var i = 0; i < serviceGroups.length; i++) {
+    var sg = serviceGroups[i]
+    if (sg && targetGroups.indexOf(sg) !== -1) {
+      hasExactMatch = true
+      break
     }
   }
 
-  if (allowedUserIds.indexOf(recordUserId) !== -1) {
+  if (hasExactMatch) {
     return e.next()
   }
 
@@ -210,58 +169,9 @@ onRecordsListRequest((e) => {
   var isManager =
     role === 'Gerente' || role === 'Supervisor' || role === 'Líder' || role === 'Gestor Comercial'
 
-  var securityFilter = ''
   if (!isManager) {
     // Consultor ou outros colaboradores: apenas suas próprias ausências
-    securityFilter = "user_id = '" + authId + "'"
-  } else {
-    var serviceGroups = auth.get('service_groups') || []
-    var groupArr = []
-    if (Array.isArray(serviceGroups)) {
-      groupArr = serviceGroups
-    } else if (typeof serviceGroups === 'string' && serviceGroups.length > 0) {
-      try {
-        groupArr = JSON.parse(serviceGroups)
-      } catch (_) {
-        groupArr = [serviceGroups]
-      }
-    }
-
-    if (groupArr.length === 0 && (role === 'Gerente' || role === 'Gestor Comercial')) {
-      return e.next()
-    }
-
-    var allowedUserIds = [authId]
-    if (groupArr.length > 0) {
-      try {
-        var groupConditions = []
-        for (var g = 0; g < groupArr.length; g++) {
-          var grp = groupArr[g]
-          if (grp) {
-            groupConditions.push("service_groups ~ '" + grp + "'")
-          }
-        }
-        var filterStr =
-          groupConditions.length > 0 ? groupConditions.join(' || ') : "id = '" + authId + "'"
-        var teamUsers = $app.findRecordsByFilter('users', filterStr, '', 500, 0)
-        if (teamUsers && teamUsers.length > 0) {
-          for (var u = 0; u < teamUsers.length; u++) {
-            var uid = teamUsers[u].id
-            if (uid && allowedUserIds.indexOf(uid) === -1) {
-              allowedUserIds.push(uid)
-            }
-          }
-        }
-      } catch (err) {
-        $app.logger().warn('Erro ao consultar equipe no hook de absences: ' + err)
-      }
-    }
-
-    var parts = []
-    for (var i = 0; i < allowedUserIds.length; i++) {
-      parts.push("user_id = '" + allowedUserIds[i] + "'")
-    }
-    securityFilter = '(' + parts.join(' || ') + ')'
+    return e.next()
   }
 
   return e.next()
@@ -301,49 +211,55 @@ onRecordViewRequest((e) => {
     return e.forbiddenError('Você não tem permissão para visualizar esta ausência.')
   }
 
-  var serviceGroups = auth.get('service_groups') || []
-  var groupArr = []
-  if (Array.isArray(serviceGroups)) {
-    groupArr = serviceGroups
-  } else if (typeof serviceGroups === 'string' && serviceGroups.length > 0) {
-    try {
-      groupArr = JSON.parse(serviceGroups)
-    } catch (_) {
-      groupArr = [serviceGroups]
+  function extractArray(val) {
+    if (!val) return []
+    if (Array.isArray(val)) return val
+    if (typeof val === 'string' && val.length > 0) {
+      try {
+        var parsed = JSON.parse(val)
+        if (Array.isArray(parsed)) return parsed
+        return [val]
+      } catch (_) {
+        return [val]
+      }
     }
+    return []
   }
 
-  if (groupArr.length === 0 && (role === 'Gerente' || role === 'Gestor Comercial')) {
+  var serviceGroups = extractArray(auth.get('service_groups'))
+  if (serviceGroups.length === 0 && (role === 'Gerente' || role === 'Gestor Comercial')) {
+    // Gestor geral irrestrito
     return e.next()
   }
 
-  var allowedUserIds = [authId]
-  if (groupArr.length > 0) {
-    try {
-      var groupConditions = []
-      for (var g = 0; g < groupArr.length; g++) {
-        var grp = groupArr[g]
-        if (grp) {
-          groupConditions.push("service_groups ~ '" + grp + "'")
-        }
-      }
-      var filterStr =
-        groupConditions.length > 0 ? groupConditions.join(' || ') : "id = '" + authId + "'"
-      var teamUsers = $app.findRecordsByFilter('users', filterStr, '', 500, 0)
-      if (teamUsers && teamUsers.length > 0) {
-        for (var u = 0; u < teamUsers.length; u++) {
-          var uid = teamUsers[u].id
-          if (uid && allowedUserIds.indexOf(uid) === -1) {
-            allowedUserIds.push(uid)
-          }
-        }
-      }
-    } catch (err) {
-      $app.logger().warn('Erro ao consultar equipe no hook de absences view: ' + err)
+  // Verifica se o dono do registro está no escopo permitido
+  var targetUser = null
+  try {
+    targetUser = $app.findRecordById('users', recordUserId)
+  } catch (_) {}
+
+  if (!targetUser) {
+    return e.forbiddenError('Colaborador não encontrado.')
+  }
+
+  // 1. Vínculo direto por supervisor_id
+  var supId = targetUser.getString('supervisor_id')
+  if (supId && supId === authId) {
+    return e.next()
+  }
+
+  // 2. Interseção exata de valores de service_groups
+  var targetGroups = extractArray(targetUser.get('service_groups'))
+  var hasExactMatch = false
+  for (var i = 0; i < serviceGroups.length; i++) {
+    var sg = serviceGroups[i]
+    if (sg && targetGroups.indexOf(sg) !== -1) {
+      hasExactMatch = true
+      break
     }
   }
 
-  if (allowedUserIds.indexOf(recordUserId) !== -1) {
+  if (hasExactMatch) {
     return e.next()
   }
 
