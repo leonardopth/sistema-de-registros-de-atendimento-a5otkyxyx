@@ -23,6 +23,24 @@ export const DEFAULT_ABSENCE_ALERT_CONFIG: Omit<
 // ==========================================
 
 export async function getAbsenceAlertConfig(): Promise<AbsenceAlertConfigRecord> {
+  const fallback: AbsenceAlertConfigRecord = {
+    id: 'default',
+    ...DEFAULT_ABSENCE_ALERT_CONFIG,
+    created: new Date().toISOString(),
+    updated: new Date().toISOString(),
+  }
+
+  // Verifica papel do usuário logado: se não for líder ou admin (Master), retorna default diretamente sem chamada de API desnecessária
+  const currentRecord = pb.authStore.record
+  const role = currentRecord?.role
+  const isMaster = role === 'Master' || currentRecord?.master_access === true
+  const isLeaderOrAdmin =
+    isMaster || role === 'Líder' || role === 'Gestor Comercial' || role === 'Gerente'
+
+  if (!isLeaderOrAdmin) {
+    return fallback
+  }
+
   try {
     const list = await pb
       .collection('absence_alert_configs')
@@ -33,18 +51,17 @@ export async function getAbsenceAlertConfig(): Promise<AbsenceAlertConfigRecord>
       return list.items[0]
     }
 
-    // Cria caso não exista
+    // Cria caso não exista (apenas para líder/admin autorizado)
     return await pb.collection('absence_alert_configs').create<AbsenceAlertConfigRecord>({
       ...DEFAULT_ABSENCE_ALERT_CONFIG,
     })
-  } catch (error) {
-    console.warn('Erro ao carregar configurações de alertas de ausência, usando padrão:', error)
-    return {
-      id: 'default',
-      ...DEFAULT_ABSENCE_ALERT_CONFIG,
-      created: new Date().toISOString(),
-      updated: new Date().toISOString(),
-    }
+  } catch (error: any) {
+    // Se erro for 403 (Forbidden) ou 400, degrada graciosamente sem propagar erro ou tentar criar novamente
+    console.warn(
+      'Erro ao carregar configurações de alertas de ausência, usando padrão:',
+      error?.message || error,
+    )
+    return fallback
   }
 }
 

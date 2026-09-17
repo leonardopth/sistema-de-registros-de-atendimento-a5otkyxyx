@@ -43,7 +43,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (pb.authStore.isValid) {
       pb.collection('users')
         .authRefresh()
-        .catch(() => pb.authStore.clear())
+        .catch((err: any) => {
+          // Apenas erros 401 reais (token expirado ou inválido) devem derrubar a sessão.
+          // Erros 403 (Forbidden) ou falhas de rede NÃO devem deslogar o usuário.
+          const status = err?.status || err?.response?.status || err?.statusCode
+          if (status === 401) {
+            pb.authStore.clear()
+          } else {
+            console.warn('Falha transitória ou de autorização no authRefresh:', err)
+          }
+        })
         .finally(() => setLoading(false))
     } else {
       if (pb.authStore.record) pb.authStore.clear()

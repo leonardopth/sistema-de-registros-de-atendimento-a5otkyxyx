@@ -7,7 +7,7 @@
 //
 // O PocketBase executa as coleções list/view requests passando pelo filtro do hook.
 
-onRecordListRequest((e) => {
+onRecordsListRequest((e) => {
   var auth = e.auth
   if (!auth) {
     return e.next()
@@ -60,14 +60,6 @@ onRecordListRequest((e) => {
       shareConditions.push("id = '" + sharedRecordIds[j] + "'")
     }
     securityFilter = '(' + securityFilter + ' || (' + shareConditions.join(' || ') + '))'
-  }
-
-  // Se já houver um filtro na requisição, combina com AND (&&) garantindo que a restrição de segurança NUNCA seja ultrapassada
-  var existingFilter = (e.filter || '').trim()
-  if (existingFilter) {
-    e.filter = '(' + existingFilter + ') && ' + securityFilter
-  } else {
-    e.filter = securityFilter
   }
 
   return e.next()

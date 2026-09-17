@@ -31,6 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleResetSession = () => {
+    // Logout intencional apenas se o usuário clicar no botão "Ir para Login"
     try {
       pb.authStore.clear()
       localStorage.clear()

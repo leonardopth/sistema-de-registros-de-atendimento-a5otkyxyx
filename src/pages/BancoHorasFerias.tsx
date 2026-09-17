@@ -20,7 +20,14 @@ import {
 } from 'lucide-react'
 import { UserRecord, ServiceRecord } from '@/types/service_record'
 import { HourBankEntryRecord, AbsenceRecord, AbsenceAlertConfigRecord } from '@/types/banco-ferias'
-import { getAbsenceAlertConfig, getHourBankEntries, getAbsences } from '@/services/banco-ferias'
+import {
+  DEFAULT_ABSENCE_ALERT_CONFIG,
+  getAbsenceAlertConfig,
+  getHourBankEntries,
+  getHourBankEntriesByUser,
+  getAbsences,
+  getAbsencesByUser,
+} from '@/services/banco-ferias'
 import { getUsers } from '@/services/users'
 import { getServiceRecords } from '@/services/service_records'
 import { AbsenceCalendar } from '@/components/AbsenceCalendar'
@@ -147,30 +154,68 @@ export function BancoHorasFerias() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
-      const [uRes, eRes, aRes, cfgRes, sRes] = await Promise.all([
-        getUsers(),
-        getHourBankEntries(),
-        getAbsences('', '-start_date'),
-        getAbsenceAlertConfig(),
-        getServiceRecords('-created'),
-      ])
+      const isConsultor = user?.role === 'Consultor'
 
-      setUsers(uRes || [])
-      setEntries(eRes || [])
-      setAbsences(aRes || [])
-      setConfig(cfgRes)
-      setServiceRecords(sRes || [])
+      if (isConsultor && user?.id) {
+        // Consultor: carrega apenas os próprios dados, sem chamar getServiceRecords nem tentar criar config de alerta
+        const [eRes, aRes] = await Promise.allSettled([
+          getHourBankEntriesByUser(user.id),
+          getAbsencesByUser(user.id),
+        ])
+
+        setUsers([user as UserRecord])
+        setEntries(eRes.status === 'fulfilled' ? eRes.value : [])
+        setAbsences(aRes.status === 'fulfilled' ? aRes.value : [])
+        setConfig({
+          id: 'default',
+          ...DEFAULT_ABSENCE_ALERT_CONFIG,
+          created: new Date().toISOString(),
+          updated: new Date().toISOString(),
+        })
+        setServiceRecords([])
+      } else {
+        // Master / Gestores / Líderes: busca coleções completas com Promise.allSettled para tolerância a falhas
+        const [uRes, eRes, aRes, cfgRes, sRes] = await Promise.allSettled([
+          getUsers(),
+          getHourBankEntries(),
+          getAbsences('', '-start_date'),
+          getAbsenceAlertConfig(),
+          getServiceRecords('-created'),
+        ])
+
+        if (uRes.status === 'fulfilled') {
+          setUsers(uRes.value || [])
+        } else if (user) {
+          setUsers([user as UserRecord])
+        }
+
+        setEntries(eRes.status === 'fulfilled' ? eRes.value || [] : [])
+        setAbsences(aRes.status === 'fulfilled' ? aRes.value || [] : [])
+
+        if (cfgRes.status === 'fulfilled' && cfgRes.value) {
+          setConfig(cfgRes.value)
+        } else {
+          setConfig({
+            id: 'default',
+            ...DEFAULT_ABSENCE_ALERT_CONFIG,
+            created: new Date().toISOString(),
+            updated: new Date().toISOString(),
+          })
+        }
+
+        setServiceRecords(sRes.status === 'fulfilled' ? sRes.value || [] : [])
+      }
     } catch (err) {
       console.error('Erro ao carregar dados do módulo Banco de Horas & Férias:', err)
       toast({
         variant: 'destructive',
-        title: 'Erro ao carregar dados',
-        description: 'Não foi possível carregar os dados de banco de horas e ausências.',
+        title: 'Aviso ao carregar dados',
+        description: 'Alguns dados podem estar parcialmente indisponíveis.',
       })
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     loadData()
