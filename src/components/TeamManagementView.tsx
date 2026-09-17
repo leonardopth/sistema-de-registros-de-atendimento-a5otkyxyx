@@ -87,6 +87,19 @@ export function TeamManagementView({
     return filteredUsers.filter((u) => !isManagerRole(u.role))
   }, [filteredUsers])
 
+  // Usuários para verificação de CLT restritos à equipe sob visualização
+  const filteredUsersMap = useMemo(() => {
+    return new Set(filteredUsers.map((u) => u.id))
+  }, [filteredUsers])
+
+  const scopedServiceRecords = useMemo(() => {
+    return serviceRecords.filter(
+      (r) =>
+        (r.user_id && filteredUsersMap.has(r.user_id)) ||
+        (r.assigned_user && filteredUsersMap.has(r.assigned_user)),
+    )
+  }, [serviceRecords, filteredUsersMap])
+
   // Resumo de saldos por colaborador
   const hourBankSummaries = useMemo(() => {
     const limit = config.hour_bank_limit_hours || 10
@@ -129,16 +142,20 @@ export function TeamManagementView({
 
   // Violações trabalhistas CLT apuradas
   const interjornadaAlerts = useMemo(() => {
-    return checkInterjornadaViolations(serviceRecords, users, config.min_interjornada_hours || 11)
-  }, [serviceRecords, users, config])
+    return checkInterjornadaViolations(
+      scopedServiceRecords,
+      filteredUsers,
+      config.min_interjornada_hours || 11,
+    )
+  }, [scopedServiceRecords, filteredUsers, config])
 
   const dsrAlerts = useMemo(() => {
     return checkConsecutiveWorkDaysViolations(
-      serviceRecords,
-      users,
+      scopedServiceRecords,
+      filteredUsers,
       config.max_consecutive_work_days || 7,
     )
-  }, [serviceRecords, users, config])
+  }, [scopedServiceRecords, filteredUsers, config])
 
   const handleDeleteEntry = async (id: string) => {
     if (!confirm('Deseja realmente remover este lançamento de banco de horas?')) return

@@ -93,20 +93,9 @@ export function AbsenceCalendar({
   }, [users])
 
   // Filtragem de usuários elegíveis para o calendário
+  // A lista base 'users' já vem escopada por hierarquia de BancoHorasFerias.tsx
   const eligibleUsers = useMemo(() => {
     let list = users
-
-    // Se consultor (não gestor), prioriza mostrar os membros do seu Núcleo
-    if (currentUser && !isManagerRole(currentUser.role) && currentUser.role !== 'Master') {
-      const userGroups = (currentUser.service_groups as string[] | undefined) || []
-      if (userGroups.length > 0) {
-        list = list.filter((u) => {
-          if (u.id === currentUser.id) return true
-          const uGroups = (u.service_groups as string[] | undefined) || []
-          return uGroups.some((g) => userGroups.includes(g))
-        })
-      }
-    }
 
     if (selectedGroup !== 'all') {
       list = list.filter((u) => {
@@ -120,7 +109,7 @@ export function AbsenceCalendar({
     }
 
     return list
-  }, [users, currentUser, selectedGroup, selectedUser])
+  }, [users, selectedGroup, selectedUser])
 
   const eligibleUserIds = useMemo(() => {
     return new Set(eligibleUsers.map((u) => u.id))
@@ -345,7 +334,7 @@ export function AbsenceCalendar({
                     <SelectValue placeholder="Colaborador" />
                   </SelectTrigger>
                   <SelectContent className="max-h-56">
-                    <SelectItem value="all">Toda a equipe</SelectItem>
+                    <SelectItem value="all">Toda a equipe ({users.length})</SelectItem>
                     {users.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         {u.name} {isManagerRole(u.role) ? `(${u.role})` : ''}

@@ -61,19 +61,88 @@ export function BancoHorasFerias() {
   const isManager = isManagerRole(user?.role) || isMaster
   const canManage = isManager // Gestores e líderes podem gerenciar a equipe
 
+  // Líderes (operacional e comercial) e administradores (Master)
+  const isLeaderOrAdmin = useMemo(() => {
+    if (!user) return false
+    if (isMaster) return true
+    const role = user.role
+    return (
+      role === 'Líder' || role === 'Líderes' || role === 'Gestor Comercial' || role === 'Gerente'
+    )
+  }, [user, isMaster])
+
+  // Lista restrita de colaboradores acessíveis conforme a hierarquia do usuário logado:
+  // - Master: todos os usuários
+  // - Gerente sem grupo específico: todos os usuários
+  // - Supervisor / Líder / Gerente com grupo: usuários que compartilham ao menos um service_group com o logado,
+  //   ou cujo supervisor_id seja o ID do logado + o próprio logado
+  // - Consultor / outros: apenas ele mesmo
+  const accessibleUsers = useMemo(() => {
+    if (!user) return []
+    if (isMaster) return users
+
+    const role = user.role
+    const userGroups = (user.service_groups as string[] | undefined) || []
+
+    if (role === 'Gerente' && userGroups.length === 0) {
+      return users
+    }
+
+    if (
+      role === 'Supervisor' ||
+      role === 'Líder' ||
+      role === 'Gerente' ||
+      role === 'Gestor Comercial'
+    ) {
+      const map = new Map<string, UserRecord>()
+      map.set(user.id, user)
+
+      users.forEach((u) => {
+        if (u.id === user.id) return
+
+        // Vínculo direto por supervisor_id
+        const supId = (u as any).supervisor_id
+        if (supId && supId === user.id) {
+          map.set(u.id, u)
+          return
+        }
+
+        // Vínculo por grupo de atendimento compartilhado
+        if (userGroups.length > 0) {
+          const uGroups = (u.service_groups as string[] | undefined) || []
+          if (uGroups.some((g) => userGroups.includes(g))) {
+            map.set(u.id, u)
+          }
+        }
+      })
+
+      return Array.from(map.values())
+    }
+
+    // Consultor / Executivo de Contas: apenas ele mesmo
+    return users.filter((u) => u.id === user.id)
+  }, [users, user, isMaster])
+
+  const accessibleUserIds = useMemo(() => {
+    return new Set(accessibleUsers.map((u) => u.id))
+  }, [accessibleUsers])
+
+  // Filtra ausências e lançamentos em memória para garantir rigor mesmo antes do hook ou em cache local
+  const scopedAbsences = useMemo(() => {
+    if (isMaster) return absences
+    return absences.filter((a) => accessibleUserIds.has(a.user_id))
+  }, [absences, accessibleUserIds, isMaster])
+
+  const scopedEntries = useMemo(() => {
+    if (isMaster) return entries
+    return entries.filter((e) => accessibleUserIds.has(e.user_id))
+  }, [entries, accessibleUserIds, isMaster])
+
   // Contagem de solicitações pendentes no escopo para badge visual
   const pendingApprovalsCount = useMemo(() => {
     if (!canManage) return 0
-    const userGroups = (user?.service_groups as string[] | undefined) || []
-    return absences.filter((a) => {
-      if (a.status !== 'Pendente') return false
-      if (isMaster || (user?.role === 'Gerente' && userGroups.length === 0)) return true
-      const targetU = users.find((u) => u.id === a.user_id)
-      if (!targetU) return false
-      const targetGroups = (targetU.service_groups as string[] | undefined) || []
-      return targetGroups.some((g) => userGroups.includes(g))
-    }).length
-  }, [absences, users, user, canManage, isMaster])
+    return scopedAbsences.filter((a) => a.status === 'Pendente').length
+  }, [scopedAbsences, canManage])
 
   const loadData = useCallback(async () => {
     try {
@@ -112,7 +181,30 @@ export function BancoHorasFerias() {
   useRealtime('absences', () => loadData(), true)
   useRealtime('absence_alert_configs', () => loadData(), true)
 
+  // Redireciona para 'calendario' se o usuário tentar acessar abas restritas sem permissão
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab')
+    if (
+      (requestedTab === 'configuracoes' || requestedTab === 'integracao-lg') &&
+      !isLeaderOrAdmin
+    ) {
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.set('tab', 'calendario')
+      setSearchParams(nextParams, { replace: true })
+      setActiveTab('calendario')
+    }
+  }, [searchParams, isLeaderOrAdmin, setSearchParams])
+
   const handleTabChange = (newTab: string) => {
+    if ((newTab === 'configuracoes' || newTab === 'integracao-lg') && !isLeaderOrAdmin) {
+      toast({
+        variant: 'destructive',
+        title: 'Acesso restrito',
+        description:
+          'Esta área é exclusiva para líderes (operacional e comercial) e administradores.',
+      })
+      return
+    }
     setActiveTab(newTab)
     const currentParams = new URLSearchParams(searchParams)
     currentParams.set('tab', newTab)
@@ -218,21 +310,25 @@ export function BancoHorasFerias() {
             </TabsTrigger>
           )}
 
-          <TabsTrigger
-            value="configuracoes"
-            className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 shrink-0"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            Parâmetros & Alertas
-          </TabsTrigger>
+          {isLeaderOrAdmin && (
+            <TabsTrigger
+              value="configuracoes"
+              className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 shrink-0"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Parâmetros & Alertas
+            </TabsTrigger>
+          )}
 
-          <TabsTrigger
-            value="integracao-lg"
-            className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 shrink-0"
-          >
-            <Building2 className="h-3.5 w-3.5" />
-            RH LG Lugar de Gente
-          </TabsTrigger>
+          {isLeaderOrAdmin && (
+            <TabsTrigger
+              value="integracao-lg"
+              className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 shrink-0"
+            >
+              <Building2 className="h-3.5 w-3.5" />
+              RH LG Lugar de Gente
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* 1. Calendário de Ausências */}
@@ -242,8 +338,8 @@ export function BancoHorasFerias() {
         >
           <ErrorBoundary>
             <AbsenceCalendar
-              users={users}
-              absences={absences}
+              users={accessibleUsers}
+              absences={scopedAbsences}
               currentUser={user}
               onNewAbsence={(date) => handleOpenNewAbsence(date)}
               canManage={canManage}
@@ -260,8 +356,8 @@ export function BancoHorasFerias() {
             {user && config ? (
               <MySituationView
                 currentUser={user}
-                entries={entries}
-                absences={absences}
+                entries={scopedEntries}
+                absences={scopedAbsences}
                 config={config}
                 onNewAbsence={() => handleOpenNewAbsence(undefined, user.id)}
                 onRefresh={loadData}
@@ -282,8 +378,8 @@ export function BancoHorasFerias() {
               {user && config ? (
                 <AbsenceApprovalsView
                   currentUser={user}
-                  users={users}
-                  absences={absences}
+                  users={accessibleUsers}
+                  absences={scopedAbsences}
                   config={config}
                   onRefresh={loadData}
                 />
@@ -303,9 +399,9 @@ export function BancoHorasFerias() {
             <ErrorBoundary>
               {config ? (
                 <TeamManagementView
-                  users={users}
-                  entries={entries}
-                  absences={absences}
+                  users={accessibleUsers}
+                  entries={scopedEntries}
+                  absences={scopedAbsences}
                   serviceRecords={serviceRecords}
                   config={config}
                   canManage={canManage}
@@ -320,39 +416,47 @@ export function BancoHorasFerias() {
           </TabsContent>
         )}
 
-        {/* 5. Parâmetros de Alertas (Editável por Gestores) */}
-        <TabsContent
-          value="configuracoes"
-          className="space-y-4 m-0 min-w-0 w-full focus-visible:outline-none focus-visible:ring-0"
-        >
-          <ErrorBoundary>
-            {config ? (
-              <AbsenceAlertSettings config={config} canEdit={canManage} onSaved={loadData} />
-            ) : (
-              <div className="py-12 text-center text-xs text-slate-400">
-                Carregando configurações...
-              </div>
-            )}
-          </ErrorBoundary>
-        </TabsContent>
+        {/* 5. Parâmetros de Alertas (Exclusivo para Líderes e Master) */}
+        {isLeaderOrAdmin && (
+          <TabsContent
+            value="configuracoes"
+            className="space-y-4 m-0 min-w-0 w-full focus-visible:outline-none focus-visible:ring-0"
+          >
+            <ErrorBoundary>
+              {config ? (
+                <AbsenceAlertSettings
+                  config={config}
+                  canEdit={isLeaderOrAdmin}
+                  onSaved={loadData}
+                />
+              ) : (
+                <div className="py-12 text-center text-xs text-slate-400">
+                  Carregando configurações...
+                </div>
+              )}
+            </ErrorBoundary>
+          </TabsContent>
+        )}
 
-        {/* 6. Integração com RH LG Lugar de Gente */}
-        <TabsContent
-          value="integracao-lg"
-          className="space-y-4 m-0 min-w-0 w-full focus-visible:outline-none focus-visible:ring-0"
-        >
-          <ErrorBoundary>
-            <LgIntegrationCard users={users} />
-          </ErrorBoundary>
-        </TabsContent>
+        {/* 6. Integração com RH LG Lugar de Gente (Exclusivo para Líderes e Master) */}
+        {isLeaderOrAdmin && (
+          <TabsContent
+            value="integracao-lg"
+            className="space-y-4 m-0 min-w-0 w-full focus-visible:outline-none focus-visible:ring-0"
+          >
+            <ErrorBoundary>
+              <LgIntegrationCard users={accessibleUsers} />
+            </ErrorBoundary>
+          </TabsContent>
+        )}
       </Tabs>
       {/* Modal de Agendamento de Ausência */}
       {config && (
         <NewAbsenceModal
           open={isNewAbsenceOpen}
           onOpenChange={setIsNewAbsenceOpen}
-          users={users}
-          allAbsences={absences}
+          users={accessibleUsers}
+          allAbsences={scopedAbsences}
           config={config}
           prefilledDate={prefilledAbsenceDate}
           prefilledUserId={prefilledAbsenceUser}
@@ -364,7 +468,7 @@ export function BancoHorasFerias() {
       <NewHourBankModal
         open={isNewHourBankOpen}
         onOpenChange={setIsNewHourBankOpen}
-        users={users}
+        users={accessibleUsers}
         prefilledUserId={prefilledHourBankUser}
         onSaved={loadData}
       />
