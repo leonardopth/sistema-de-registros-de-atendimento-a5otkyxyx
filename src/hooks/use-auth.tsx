@@ -45,17 +45,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .authRefresh()
         .catch((err: any) => {
           // Apenas erros 401 reais (token expirado ou inválido) devem derrubar a sessão.
-          // Erros 403 (Forbidden) ou falhas de rede NÃO devem deslogar o usuário.
-          const status = err?.status || err?.response?.status || err?.statusCode
+          // Erros 403 (Forbidden), 404, erros 500 ou falhas de rede/conexão NUNCA devem deslogar o usuário.
+          const status = Number(err?.status || err?.response?.status || err?.statusCode || 0)
           if (status === 401) {
+            console.warn('Sessão expirada (401), deslogando usuário:', err)
             pb.authStore.clear()
           } else {
-            console.warn('Falha transitória ou de autorização no authRefresh:', err)
+            console.warn(
+              `Falha na atualização do token (${status || 'rede'}), mantendo sessão válida no authStore:`,
+              err,
+            )
           }
         })
         .finally(() => setLoading(false))
     } else {
-      if (pb.authStore.record) pb.authStore.clear()
+      // Se não for válido, assegura que o estado está sincronizado sem chamar clear indevido se já estiver vazio
+      if (pb.authStore.record && !pb.authStore.isValid) {
+        pb.authStore.clear()
+      }
       setLoading(false)
     }
     return () => {

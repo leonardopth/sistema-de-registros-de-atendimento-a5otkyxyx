@@ -48,6 +48,7 @@ import { AbsenceRecord, AbsenceReason, AbsenceAlertConfigRecord } from '@/types/
 import { approveAbsence, rejectAbsence } from '@/services/banco-ferias'
 import { checkTeamCoverage } from '@/services/clt-validation'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
+import { canAccessUserInBancoHoras } from '@/lib/service-group-access'
 import { toast } from '@/hooks/use-toast'
 
 interface AbsenceApprovalsViewProps {
@@ -90,27 +91,14 @@ export function AbsenceApprovalsView({
     return map
   }, [users])
 
-  // Filtragem por escopo RBAC
-  // Master / Gerente global vê tudo. Supervisor / Líder vê seu Núcleo. Consultor vê só a si próprio.
+  // Filtragem por escopo RBAC com correspondência EXATA de equipe/núcleo (segunda camada de defesa)
   const scopedAbsences = useMemo(() => {
     return absences.filter((abs) => {
       const u = usersMap.get(abs.user_id)
       if (!u) return false
-
-      if (isMaster) return true
-      if (isGerente && userGroups.length === 0) return true
-
-      if (currentUser.role === 'Supervisor' || currentUser.role === 'Líder' || isGerente) {
-        // Se pertencer ao mesmo Núcleo ou for o próprio usuário
-        if (u.id === currentUser.id) return true
-        const uGroups = (u.service_groups as string[] | undefined) || []
-        return uGroups.some((g) => userGroups.includes(g))
-      }
-
-      // Demais colaboradores vêem apenas as suas
-      return u.id === currentUser.id
+      return canAccessUserInBancoHoras(u, currentUser)
     })
-  }, [absences, usersMap, isMaster, isGerente, userGroups, currentUser])
+  }, [absences, usersMap, currentUser])
 
   // Filtragem por filtros rápidos de busca, grupo, motivo e status
   const filteredList = useMemo(() => {

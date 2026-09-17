@@ -39,6 +39,7 @@ import { LgIntegrationCard } from '@/components/LgIntegrationCard'
 import { NewAbsenceModal } from '@/components/NewAbsenceModal'
 import { NewHourBankModal } from '@/components/NewHourBankModal'
 import { isManagerRole } from '@/services/clt-validation'
+import { getAccessibleUsersInBancoHoras } from '@/lib/service-group-access'
 import { useRealtime } from '@/hooks/use-realtime'
 import { toast } from '@/hooks/use-toast'
 
@@ -81,53 +82,13 @@ export function BancoHorasFerias() {
   // Lista restrita de colaboradores acessíveis conforme a hierarquia do usuário logado:
   // - Master: todos os usuários
   // - Gerente sem grupo específico: todos os usuários
-  // - Supervisor / Líder / Gerente com grupo: usuários que compartilham ao menos um service_group com o logado,
+  // - Supervisor / Líder / Gerente com grupo: usuários que compartilham ao menos um service_group com o logado (match EXATO),
   //   ou cujo supervisor_id seja o ID do logado + o próprio logado
   // - Consultor / outros: apenas ele mesmo
   const accessibleUsers = useMemo(() => {
     if (!user) return []
     if (isMaster) return users
-
-    const role = user.role
-    const userGroups = (user.service_groups as string[] | undefined) || []
-
-    if (role === 'Gerente' && userGroups.length === 0) {
-      return users
-    }
-
-    if (
-      role === 'Supervisor' ||
-      role === 'Líder' ||
-      role === 'Gerente' ||
-      role === 'Gestor Comercial'
-    ) {
-      const map = new Map<string, UserRecord>()
-      map.set(user.id, user)
-
-      users.forEach((u) => {
-        if (u.id === user.id) return
-
-        // Vínculo direto por supervisor_id
-        const supId = (u as any).supervisor_id
-        if (supId && supId === user.id) {
-          map.set(u.id, u)
-          return
-        }
-
-        // Vínculo por grupo de atendimento compartilhado
-        if (userGroups.length > 0) {
-          const uGroups = (u.service_groups as string[] | undefined) || []
-          if (uGroups.some((g) => userGroups.includes(g))) {
-            map.set(u.id, u)
-          }
-        }
-      })
-
-      return Array.from(map.values())
-    }
-
-    // Consultor / Executivo de Contas: apenas ele mesmo
-    return users.filter((u) => u.id === user.id)
+    return getAccessibleUsersInBancoHoras(users, user)
   }, [users, user, isMaster])
 
   const accessibleUserIds = useMemo(() => {
@@ -298,7 +259,11 @@ export function BancoHorasFerias() {
             Atualizar
           </Button>
 
-          {canManage && (
+          {/* Botão de Ausência / Férias:
+              - Para Gestores/Líderes/Master: "Agendar Ausência" (pode agendar para a equipe ou auto-aprovar)
+              - Para Consultores/Colaboradores: "Solicitar Ausência / Férias" (abre modal para enviar solicitação ao gestor)
+          */}
+          {canManage ? (
             <Button
               size="sm"
               onClick={() => handleOpenNewAbsence()}
@@ -306,6 +271,15 @@ export function BancoHorasFerias() {
             >
               <PlusCircle className="h-3.5 w-3.5" />
               Agendar Ausência
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => handleOpenNewAbsence(undefined, user?.id)}
+              className="text-xs h-8 bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5"
+            >
+              <PlusCircle className="h-3.5 w-3.5" />
+              Solicitar Ausência / Férias
             </Button>
           )}
         </div>
@@ -495,12 +469,12 @@ export function BancoHorasFerias() {
           </TabsContent>
         )}
       </Tabs>
-      {/* Modal de Agendamento de Ausência */}
+      {/* Modal de Agendamento / Solicitação de Ausência */}
       {config && (
         <NewAbsenceModal
           open={isNewAbsenceOpen}
           onOpenChange={setIsNewAbsenceOpen}
-          users={accessibleUsers}
+          users={accessibleUsers.length > 0 ? accessibleUsers : user ? [user as UserRecord] : []}
           allAbsences={scopedAbsences}
           config={config}
           prefilledDate={prefilledAbsenceDate}
@@ -508,7 +482,6 @@ export function BancoHorasFerias() {
           onSaved={loadData}
         />
       )}
-
       {/* Modal de Lançamento de Banco de Horas */}
       <NewHourBankModal
         open={isNewHourBankOpen}

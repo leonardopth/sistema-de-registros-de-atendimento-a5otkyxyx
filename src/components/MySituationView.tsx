@@ -350,12 +350,11 @@ export function MySituationView({
               {onNewAbsence && (
                 <Button
                   size="sm"
-                  variant="outline"
                   onClick={onNewAbsence}
-                  className="h-7 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50 gap-1"
+                  className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1 shadow-sm"
                 >
-                  <PlusCircle className="h-3 w-3" />
-                  Solicitar Ausência
+                  <PlusCircle className="h-3.5 w-3.5" />
+                  Solicitar Ausência / Férias
                 </Button>
               )}
             </div>

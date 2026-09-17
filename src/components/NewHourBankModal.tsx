@@ -37,7 +37,7 @@ export function NewHourBankModal({
   prefilledUserId,
   onSaved,
 }: NewHourBankModalProps) {
-  // Apenas não-gestores podem receber banco de horas
+  // Apenas não-gestores podem receber banco de horas (respeitando a lista escopada de users)
   const eligibleUsers = users.filter((u) => !isManagerRole(u.role))
 
   const [userId, setUserId] = useState<string>('')

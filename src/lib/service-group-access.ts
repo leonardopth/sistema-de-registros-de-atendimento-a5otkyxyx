@@ -153,3 +153,90 @@ export function filterClientsByUserAccess(
 
   return clients.filter((c) => c && canAccessClient(c, user))
 }
+
+/**
+ * Normaliza array de strings/grupos para evitar discrepâncias (ex.: undefined, null, formato string JSON)
+ */
+function normalizeStringArray(val: unknown): string[] {
+  if (!val) return []
+  if (Array.isArray(val)) return val.map((v) => String(v).trim()).filter(Boolean)
+  if (typeof val === 'string' && val.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(val)
+      if (Array.isArray(parsed)) return parsed.map((v) => String(v).trim()).filter(Boolean)
+      return [val.trim()]
+    } catch {
+      return [val.trim()]
+    }
+  }
+  return []
+}
+
+/**
+ * Regra de acesso estrita e de correspondência EXATA para o módulo Banco de Horas & Férias:
+ * - Master ou master_access = true: acesso a todos os colaboradores.
+ * - O próprio usuário sempre acessa seus próprios dados.
+ * - Gerente ou Gestor Comercial sem nenhum service_groups: gestor geral irrestrito (acesso a todos).
+ * - Supervisor, Líder, Gerente, Gestor Comercial com service_groups configurados:
+ *     * Vínculo direto via supervisor_id (target.supervisor_id === user.id)
+ *     * OU interseção EXATA entre os service_groups do logado e os service_groups do alvo.
+ *       Ex.: Se logado tem ["SAO"], só acessa quem tem exatamente o valor "SAO".
+ *       Se equipe tem "INTER" e outro "NAC", um usuário vinculado apenas a "INTER" NÃO acessa quem tem "NAC".
+ *       Não há correspondência parcial nem por prefixo.
+ * - Consultores ou demais colaboradores: acessam APENAS a si mesmos.
+ */
+export function canAccessUserInBancoHoras(
+  targetUser: UserRecord | null | undefined,
+  currentUser: UserRecord | null | undefined,
+): boolean {
+  if (!targetUser || !currentUser) return false
+  if (isMasterUser(currentUser)) return true
+  if (targetUser.id === currentUser.id) return true
+
+  const role = currentUser.role
+  const isManager =
+    role === 'Gerente' || role === 'Supervisor' || role === 'Líder' || role === 'Gestor Comercial'
+
+  if (!isManager) {
+    // Consultor ou outros colaboradores: apenas si próprio
+    return false
+  }
+
+  const userGroups = normalizeStringArray(currentUser.service_groups)
+
+  // Gerente ou Gestor Comercial geral sem grupos específicos tem visão irrestrita
+  if (userGroups.length === 0 && (role === 'Gerente' || role === 'Gestor Comercial')) {
+    return true
+  }
+
+  // 1. Vínculo direto de supervisão
+  const targetSupervisorId = (targetUser as any).supervisor_id
+  if (targetSupervisorId && targetSupervisorId === currentUser.id) {
+    return true
+  }
+
+  // 2. Interseção EXATA entre os grupos de atendimento (service_groups)
+  if (userGroups.length > 0) {
+    const targetGroups = normalizeStringArray(targetUser.service_groups)
+    const hasExactIntersection = userGroups.some((g) => targetGroups.includes(g))
+    if (hasExactIntersection) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * Filtra a lista de usuários para o escopo permitido no Banco de Horas & Férias
+ */
+export function getAccessibleUsersInBancoHoras(
+  allUsers: UserRecord[] | undefined | null,
+  currentUser: UserRecord | null | undefined,
+): UserRecord[] {
+  if (!Array.isArray(allUsers)) return []
+  if (!currentUser) return []
+  if (isMasterUser(currentUser)) return allUsers
+
+  return allUsers.filter((u) => canAccessUserInBancoHoras(u, currentUser))
+}

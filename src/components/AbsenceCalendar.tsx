@@ -26,6 +26,7 @@ import { UserRecord } from '@/types/service_record'
 import { AbsenceRecord, AbsenceReason } from '@/types/banco-ferias'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { isManagerRole } from '@/services/clt-validation'
+import { canAccessUserInBancoHoras } from '@/lib/service-group-access'
 
 interface AbsenceCalendarProps {
   users: UserRecord[]
@@ -93,9 +94,15 @@ export function AbsenceCalendar({
   }, [users])
 
   // Filtragem de usuários elegíveis para o calendário
-  // A lista base 'users' já vem escopada por hierarquia de BancoHorasFerias.tsx
+  // Dupla camada de defesa: garante que mesmo que 'users' venha mais amplo,
+  // apenas usuários acessíveis conforme canAccessUserInBancoHoras sejam considerados.
+  const scopedBaseUsers = useMemo(() => {
+    if (!currentUser) return users
+    return users.filter((u) => canAccessUserInBancoHoras(u, currentUser))
+  }, [users, currentUser])
+
   const eligibleUsers = useMemo(() => {
-    let list = users
+    let list = scopedBaseUsers
 
     if (selectedGroup !== 'all') {
       list = list.filter((u) => {
@@ -109,7 +116,7 @@ export function AbsenceCalendar({
     }
 
     return list
-  }, [users, selectedGroup, selectedUser])
+  }, [scopedBaseUsers, selectedGroup, selectedUser])
 
   const eligibleUserIds = useMemo(() => {
     return new Set(eligibleUsers.map((u) => u.id))
@@ -334,8 +341,8 @@ export function AbsenceCalendar({
                     <SelectValue placeholder="Colaborador" />
                   </SelectTrigger>
                   <SelectContent className="max-h-56">
-                    <SelectItem value="all">Toda a equipe ({users.length})</SelectItem>
-                    {users.map((u) => (
+                    <SelectItem value="all">Toda a equipe ({scopedBaseUsers.length})</SelectItem>
+                    {scopedBaseUsers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         {u.name} {isManagerRole(u.role) ? `(${u.role})` : ''}
                       </SelectItem>
@@ -344,14 +351,14 @@ export function AbsenceCalendar({
                 </Select>
               </div>
 
-              {canManage && onNewAbsence && (
+              {onNewAbsence && (
                 <Button
                   onClick={() => onNewAbsence()}
                   size="sm"
                   className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shrink-0 ml-auto sm:ml-0"
                 >
                   <PlusCircle className="h-3.5 w-3.5" />
-                  Agendar Ausência
+                  {canManage ? 'Agendar Ausência' : 'Solicitar Ausência'}
                 </Button>
               )}
             </div>
@@ -585,7 +592,7 @@ export function AbsenceCalendar({
                 </div>
               </div>
 
-              {canManage && onNewAbsence && (
+              {onNewAbsence && (
                 <div className="pt-2 border-t border-slate-200 flex justify-end">
                   <Button
                     onClick={() => {
@@ -597,7 +604,7 @@ export function AbsenceCalendar({
                     className="text-xs bg-indigo-600 hover:bg-indigo-700"
                   >
                     <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
-                    Agendar Ausência nesta Data
+                    {canManage ? 'Agendar Ausência nesta Data' : 'Solicitar Ausência nesta Data'}
                   </Button>
                 </div>
               )}

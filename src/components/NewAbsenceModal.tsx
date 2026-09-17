@@ -78,12 +78,13 @@ export function NewAbsenceModal({
 
   const selectedUser = users.find((u) => u.id === userId)
 
-  // Membros do mesmo Núcleo do usuário selecionado para verificação de cobertura
+  // Membros do mesmo Núcleo do usuário selecionado para verificação de cobertura (match EXATO)
   const sameTeamUsers = selectedUser
     ? users.filter((u) => {
         const selGroups = (selectedUser.service_groups as string[] | undefined) || []
         if (selGroups.length === 0) return true
         const uGroups = (u.service_groups as string[] | undefined) || []
+        // Interseção exata entre os grupos de atendimento
         return uGroups.some((g) => selGroups.includes(g))
       })
     : []
@@ -168,15 +169,19 @@ export function NewAbsenceModal({
         <DialogHeader>
           <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
             <Palmtree className="h-5 w-5 text-indigo-600" />
-            Agendar Nova Ausência
+            {isCurrentUserLeader ? 'Agendar Nova Ausência' : 'Solicitar Ausência / Férias'}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          {/* Seleção do Colaborador */}
+          {/* Seleção do Colaborador (Se for colaborador comum com apenas ele mesmo na lista, pode ficar desabilitado ou pré-selecionado) */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">Colaborador *</Label>
-            <Select value={userId} onValueChange={setUserId}>
+            <Select
+              value={userId}
+              onValueChange={setUserId}
+              disabled={!isCurrentUserLeader && users.length <= 1}
+            >
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="Selecione o colaborador" />
               </SelectTrigger>
@@ -329,7 +334,11 @@ export function NewAbsenceModal({
               disabled={isSubmitting}
               className="text-xs bg-indigo-600 hover:bg-indigo-700"
             >
-              {isSubmitting ? 'Salvando...' : 'Confirmar Agendamento'}
+              {isSubmitting
+                ? 'Salvando...'
+                : isCurrentUserLeader
+                  ? 'Confirmar Agendamento'
+                  : 'Enviar Solicitação'}
             </Button>
           </DialogFooter>
         </form>
