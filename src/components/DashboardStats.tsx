@@ -100,18 +100,33 @@ export function DashboardStats({
     ? `Filtro ativo: ${activeStatusFilter}`
     : `Inclui ${safeCancelled} cancelado(s)`
 
-  const statCards = [
+  const hasCsatData =
+    csatAvg !== null || (csatTotalResponses !== undefined && csatTotalResponses > 0)
+
+  interface StatCardItem {
+    id: string
+    title: string
+    value: number | string
+    unit?: string
+    subtext: string
+    icon: any
+    color: string
+    bgColor: string
+    isTodayCard?: boolean
+  }
+
+  const statCards: StatCardItem[] = [
     {
+      id: 'total',
       title: 'Total de Atendimentos',
       value: safeTotalCount,
       subtext: totalSubtext,
       icon: ListChecks,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
-      isTodayCard: false,
-      isTotalCard: true,
     },
     {
+      id: 'today',
       title: 'Atendimentos Hoje',
       value: safeTodayCount,
       subtext: todaySubtext,
@@ -119,31 +134,31 @@ export function DashboardStats({
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
       isTodayCard: true,
-      isTotalCard: false,
     },
     {
+      id: 'in-progress',
       title: 'Em Andamento',
       value: safeInProgress,
       subtext: 'Aguardando finalização',
       icon: Activity,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
-      isTodayCard: false,
-      isTotalCard: false,
     },
     {
+      id: 'tma',
       title: 'Tempo Médio (TMA)',
-      value: `${safeAvgDuration} min`,
+      value: safeAvgDuration,
+      unit: 'min',
       subtext: 'Duração média total',
       icon: Clock,
       color: 'text-cyan-600',
       bgColor: 'bg-cyan-50',
-      isTodayCard: false,
-      isTotalCard: false,
     },
     {
+      id: 'tfr',
       title: 'TFR Médio (SLA)',
-      value: `${safeAvgTfr} min`,
+      value: safeAvgTfr,
+      unit: 'min',
       subtext:
         safeAvgTfr > tfrTarget
           ? `Acima da meta (≤ ${tfrTarget} min)`
@@ -151,30 +166,31 @@ export function DashboardStats({
       icon: Timer,
       color: safeAvgTfr > tfrTarget ? 'text-rose-600' : 'text-emerald-600',
       bgColor: safeAvgTfr > tfrTarget ? 'bg-rose-50' : 'bg-emerald-50',
-      isTodayCard: false,
-      isTotalCard: false,
     },
     {
+      id: 'avoidable',
       title: 'Contatos Evitáveis',
       value: safeWrongDept,
       subtext: 'Registros com flag evitável',
       icon: AlertOctagon,
       color: 'text-rose-600',
       bgColor: 'bg-rose-50',
-      isTodayCard: false,
-      isTotalCard: false,
     },
     {
+      id: 'reopen',
       title: 'Taxa de Reabertura',
-      value: `${safeReopenRate}%`,
+      value: safeReopenRate,
+      unit: '%',
       subtext: `${safeReopened} atendimento(s) reaberto(s)`,
       icon: RotateCcw,
       color: safeReopenRate > 10 ? 'text-amber-600' : 'text-indigo-600',
       bgColor: safeReopenRate > 10 ? 'bg-amber-50' : 'bg-indigo-50',
-      isTodayCard: false,
-      isTotalCard: false,
     },
-    {
+  ]
+
+  if (hasCsatData) {
+    statCards.push({
+      id: 'csat',
       title: 'CSAT (Satisfação)',
       value: csatAvg !== null && !isNaN(csatAvg) ? `${csatAvg.toFixed(1)} / 5` : '—',
       subtext:
@@ -194,62 +210,108 @@ export function DashboardStats({
           : csatAvg !== null && csatAvg < 3
             ? 'bg-rose-50'
             : 'bg-indigo-50',
-      isTodayCard: false,
-      isTotalCard: false,
-    },
-  ]
+    })
+  }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4">
-      {statCards.map((stat, idx) => {
+    <div
+      className={cn(
+        'grid gap-3 sm:gap-4',
+        // Grid responsivo e fluido:
+        // Mobile: 1 col (< 480px) ou 2 cols (sm / min 480px)
+        // Tablet: 3 cols (md: 768px)
+        // Laptop / desktop padrão: 4 cols (lg: 1024px)
+        // Telas ultrawide (2xl: 1536px+): 7 cols para 7 cards ou 8 cols para 8 cards
+        hasCsatData
+          ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-8'
+          : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7',
+      )}
+    >
+      {statCards.map((stat) => {
         const Icon = stat.icon
         return (
           <Card
-            key={idx}
-            className={cn(
-              'border-slate-200 shadow-subtle hover:border-slate-300 transition-colors',
-              stat.isTotalCard && 'col-span-2 lg:col-span-1',
-            )}
+            key={stat.id}
+            className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors flex flex-col justify-between"
           >
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1">
-                  <p className="text-xs font-medium text-slate-500">{stat.title}</p>
-                  {stat.isTodayCard && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="shrink-0">
-                          <Info className="h-3 w-3 text-slate-400 hover:text-slate-600 transition-colors" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-[240px]">
-                        <p className="text-xs">{todayLabel}</p>
-                        <p className="text-[10px] text-slate-400 mt-1">
-                          Contagem baseada no fuso horário local.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
+            <CardContent className="p-3.5 sm:p-4 flex flex-col justify-between h-full space-y-2">
+              {/* Header do card: título com quebra natural + ícone estilizado */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs font-semibold text-slate-600 leading-snug line-clamp-2">
+                      {stat.title}
+                    </p>
+                    {stat.isTodayCard && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="shrink-0 p-0.5"
+                            aria-label="Informações sobre atendimentos de hoje"
+                          >
+                            <Info className="h-3 w-3 text-slate-400 hover:text-slate-600 transition-colors" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-[240px]">
+                          <p className="text-xs">{todayLabel}</p>
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            Contagem baseada no fuso horário local.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <p className="text-xl sm:text-2xl font-extrabold text-slate-900">{stat.value}</p>
+
+                <div
+                  className={cn(
+                    'p-2 rounded-xl shrink-0 transition-transform group-hover:scale-105',
+                    stat.bgColor,
+                    stat.color,
+                  )}
+                >
+                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                </div>
+              </div>
+
+              {/* Valor principal + unidade (nunca clipados) */}
+              <div className="min-w-0">
+                <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
+                  <span className="text-xl sm:text-2xl xl:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums break-words">
+                    {stat.value}
+                  </span>
+                  {stat.unit && (
+                    <span className="text-xs sm:text-sm font-semibold text-slate-500 whitespace-nowrap">
+                      {stat.unit}
+                    </span>
+                  )}
                   {stat.isTodayCard && isStatusFiltered && (
                     <Badge
                       variant="outline"
-                      className="text-[9px] px-1 py-0 bg-amber-50 text-amber-700 border-amber-200"
+                      className="text-[9px] px-1 py-0 bg-amber-50 text-amber-700 border-amber-200 shrink-0"
                     >
                       Filtrado
                     </Badge>
                   )}
                 </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">{stat.subtext}</p>
+
+                {/* Subtexto explicativo com tooltip se longo */}
+                <p
+                  className="text-[11px] text-slate-400 mt-1 leading-normal line-clamp-1"
+                  title={stat.subtext}
+                >
+                  {stat.subtext}
+                </p>
+
+                {/* Popover de detalhes para Atendimentos de Hoje */}
                 {stat.isTodayCard && statusBreakdown && (
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-5 text-[10px] px-1 mt-1 text-slate-400 hover:text-slate-600"
+                        className="h-5 text-[10px] px-1 mt-1 text-slate-400 hover:text-slate-600 -ml-1"
                       >
                         Ver detalhes
                       </Button>
@@ -275,9 +337,6 @@ export function DashboardStats({
                     </PopoverContent>
                   </Popover>
                 )}
-              </div>
-              <div className={`p-2.5 rounded-xl ${stat.bgColor} ${stat.color} shrink-0`}>
-                <Icon className="h-5 w-5" />
               </div>
             </CardContent>
           </Card>
