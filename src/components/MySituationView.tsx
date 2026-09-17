@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableHeader,
@@ -17,20 +18,35 @@ import {
   CheckCircle2,
   TrendingUp,
   History,
+  XCircle,
+  PlusCircle,
+  AlertCircle,
 } from 'lucide-react'
 import { UserRecord } from '@/types/service_record'
 import { HourBankEntryRecord, AbsenceRecord, AbsenceAlertConfigRecord } from '@/types/banco-ferias'
 import { isManagerRole, evaluateVacationStatus } from '@/services/clt-validation'
+import { cancelAbsence } from '@/services/banco-ferias'
+import { toast } from '@/hooks/use-toast'
 
 interface MySituationViewProps {
   currentUser: UserRecord
   entries: HourBankEntryRecord[]
   absences: AbsenceRecord[]
   config: AbsenceAlertConfigRecord
+  onNewAbsence?: () => void
+  onRefresh?: () => void
 }
 
-export function MySituationView({ currentUser, entries, absences, config }: MySituationViewProps) {
+export function MySituationView({
+  currentUser,
+  entries,
+  absences,
+  config,
+  onNewAbsence,
+  onRefresh,
+}: MySituationViewProps) {
   const isManager = isManagerRole(currentUser.role)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
 
   // Meus lançamentos de banco de horas (apenas não-gestores)
   const myEntries = useMemo(() => {
@@ -63,6 +79,28 @@ export function MySituationView({ currentUser, entries, absences, config }: MySi
   const myAbsences = useMemo(() => {
     return absences.filter((a) => a.user_id === currentUser.id && a.status !== 'cancelada')
   }, [absences, currentUser.id])
+
+  const handleCancelPending = async (absenceId: string) => {
+    if (!confirm('Deseja realmente cancelar esta solicitação de ausência?')) return
+    setCancellingId(absenceId)
+    try {
+      await cancelAbsence(absenceId)
+      toast({
+        title: 'Solicitação cancelada',
+        description: 'Sua solicitação de ausência foi cancelada com sucesso.',
+      })
+      if (onRefresh) onRefresh()
+    } catch (err: any) {
+      console.error('Erro ao cancelar ausência:', err)
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao cancelar',
+        description: err?.message || 'Falha ao comunicar com o servidor.',
+      })
+    } finally {
+      setCancellingId(null)
+    }
+  }
 
   // Avaliação de férias do colaborador
   const vacationStatus = useMemo(() => {
@@ -297,58 +335,116 @@ export function MySituationView({ currentUser, entries, absences, config }: MySi
 
           {/* Lista de Minhas Ausências */}
           <div className="pt-2">
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <CalendarCheck2 className="h-3.5 w-3.5 text-slate-500" /> Minhas Ausências Agendadas /
-              Histórico ({myAbsences.length})
-            </h4>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <CalendarCheck2 className="h-3.5 w-3.5 text-slate-500" /> Minhas Solicitações e
+                Histórico ({myAbsences.length})
+              </h4>
+              {onNewAbsence && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onNewAbsence}
+                  className="h-7 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50 gap-1"
+                >
+                  <PlusCircle className="h-3 w-3" />
+                  Solicitar Ausência
+                </Button>
+              )}
+            </div>
             <div className="overflow-x-auto rounded border border-slate-200">
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50">
                     <TableHead>Motivo</TableHead>
                     <TableHead>Período (Início a Fim)</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Observações</TableHead>
+                    <TableHead>Status da Solicitação</TableHead>
+                    <TableHead>Observações / Resposta</TableHead>
+                    <TableHead className="text-right">Ação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {myAbsences.map((abs) => (
-                    <TableRow key={abs.id} className="text-xs">
-                      <TableCell className="font-bold text-slate-900">
-                        {abs.reason === 'Férias' && '🌴 Férias'}
-                        {abs.reason === 'Banco de horas' && '⏱️ Banco de horas'}
-                        {abs.reason === 'Dayoff' && '☕ Dayoff'}
-                        {abs.reason === 'Atestado' && '🩺 Atestado'}
-                      </TableCell>
-                      <TableCell className="text-slate-700">
-                        {new Date(
-                          abs.start_date.substring(0, 10) + 'T12:00:00Z',
-                        ).toLocaleDateString('pt-BR')}{' '}
-                        até{' '}
-                        {new Date(abs.end_date.substring(0, 10) + 'T12:00:00Z').toLocaleDateString(
-                          'pt-BR',
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={`text-[10px] ${
-                            abs.status === 'ativa'
-                              ? 'bg-amber-100 text-amber-800'
-                              : abs.status === 'agendada'
-                                ? 'bg-indigo-100 text-indigo-800'
-                                : 'bg-slate-100 text-slate-700'
-                          }`}
-                        >
-                          {abs.status || 'agendada'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-slate-500">{abs.notes || '—'}</TableCell>
-                    </TableRow>
-                  ))}
+                  {myAbsences.map((abs) => {
+                    const isPending = abs.status === 'Pendente'
+                    const isApproved =
+                      abs.status === 'Aprovada' ||
+                      abs.status === 'agendada' ||
+                      abs.status === 'ativa'
+                    const isRejected = abs.status === 'Rejeitada'
+                    const isCancelled = abs.status === 'Cancelada'
+
+                    return (
+                      <TableRow key={abs.id} className="text-xs">
+                        <TableCell className="font-bold text-slate-900">
+                          {abs.reason === 'Férias' && '🌴 Férias'}
+                          {abs.reason === 'Banco de horas' && '⏱️ Banco de horas'}
+                          {abs.reason === 'Dayoff' && '☕ Dayoff'}
+                          {abs.reason === 'Atestado' && '🩺 Atestado'}
+                        </TableCell>
+                        <TableCell className="text-slate-700 whitespace-nowrap">
+                          {new Date(
+                            abs.start_date.substring(0, 10) + 'T12:00:00Z',
+                          ).toLocaleDateString('pt-BR')}{' '}
+                          até{' '}
+                          {new Date(
+                            abs.end_date.substring(0, 10) + 'T12:00:00Z',
+                          ).toLocaleDateString('pt-BR')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={`text-[10px] font-semibold ${
+                              isPending
+                                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                : isApproved
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                  : isRejected
+                                    ? 'bg-rose-100 text-rose-800 border-rose-200'
+                                    : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {isPending && '⏳ Pendente de aprovação'}
+                            {isApproved && '✅ Aprovada'}
+                            {isRejected && '❌ Rejeitada'}
+                            {isCancelled && '🚫 Cancelada'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-slate-600 max-w-xs">
+                          {abs.notes && <div>"{abs.notes}"</div>}
+                          {abs.rejection_reason && (
+                            <div className="text-[11px] text-rose-600 font-medium mt-0.5">
+                              Motivo da rejeição: {abs.rejection_reason}
+                            </div>
+                          )}
+                          {abs.approval_notes && (
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              Nota do gestor: {abs.approval_notes}
+                            </div>
+                          )}
+                          {!abs.notes && !abs.rejection_reason && !abs.approval_notes && (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {isPending && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={cancellingId === abs.id}
+                              onClick={() => handleCancelPending(abs.id)}
+                              className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                            >
+                              <XCircle className="h-3.5 w-3.5 mr-1" />
+                              Cancelar
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
 
                   {myAbsences.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-xs text-slate-400 py-6">
+                      <TableCell colSpan={5} className="text-center text-xs text-slate-400 py-6">
                         Você não possui ausências registradas.
                       </TableCell>
                     </TableRow>

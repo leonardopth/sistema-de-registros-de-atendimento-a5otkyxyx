@@ -13,6 +13,7 @@ export const DEFAULT_ABSENCE_ALERT_CONFIG: Omit<
   min_interjornada_hours: 11,
   max_consecutive_work_days: 7,
   max_team_absence_pct: 30,
+  require_absence_approval: true,
   lg_integration_enabled: false,
   lg_api_base_url: 'https://api.lugar-de-gente.com.br/v1',
 }
@@ -124,7 +125,7 @@ export async function getAbsences(filter = '', sort = '-start_date'): Promise<Ab
     return await pb.collection('absences').getFullList<AbsenceRecord>({
       filter,
       sort,
-      expand: 'user_id,created_by',
+      expand: 'user_id,created_by,approved_by',
     })
   } catch (error) {
     console.error('Erro ao buscar ausências:', error)
@@ -137,8 +138,8 @@ export async function getAbsencesByUser(userId: string): Promise<AbsenceRecord[]
 }
 
 export async function getActiveAbsencesForDate(dateStr: string): Promise<AbsenceRecord[]> {
-  // ISO date compare: start_date <= date 23:59:59 && end_date >= date 00:00:00 && status != 'cancelada'
-  const filter = `start_date <= "${dateStr} 23:59:59.999Z" && end_date >= "${dateStr} 00:00:00.000Z" && status != "cancelada"`
+  // Apenas ausências Aprovadas (ou agendada/ativa de legado) contam para dias ativos
+  const filter = `start_date <= "${dateStr} 23:59:59.999Z" && end_date >= "${dateStr} 00:00:00.000Z" && (status = "Aprovada" || status = "agendada" || status = "ativa")`
   return getAbsences(filter, 'start_date')
 }
 
@@ -147,15 +148,18 @@ export async function createAbsence(data: {
   reason: 'Férias' | 'Banco de horas' | 'Dayoff' | 'Atestado'
   start_date: string
   end_date: string
-  status?: 'agendada' | 'ativa' | 'encerrada' | 'cancelada'
+  status?: AbsenceRecord['status']
   notes?: string
   source?: 'manual' | 'lg_sync'
   external_id?: string
   coverage_checked?: boolean
+  approved_by?: string
+  approved_at?: string
+  approval_notes?: string
 }): Promise<AbsenceRecord> {
   return await pb.collection('absences').create<AbsenceRecord>({
     ...data,
-    status: data.status || 'agendada',
+    status: data.status || 'Pendente',
     source: data.source || 'manual',
     created_by: pb.authStore.record?.id,
   })
@@ -166,6 +170,37 @@ export async function updateAbsence(
   data: Partial<AbsenceRecord>,
 ): Promise<AbsenceRecord> {
   return await pb.collection('absences').update<AbsenceRecord>(id, data)
+}
+
+export async function approveAbsence(id: string, approvalNotes?: string): Promise<AbsenceRecord> {
+  const currentUserId = pb.authStore.record?.id
+  return await pb.collection('absences').update<AbsenceRecord>(id, {
+    status: 'Aprovada',
+    approved_by: currentUserId,
+    approved_at: new Date().toISOString(),
+    approval_notes: approvalNotes || undefined,
+  })
+}
+
+export async function rejectAbsence(
+  id: string,
+  rejectionReason: string,
+  approvalNotes?: string,
+): Promise<AbsenceRecord> {
+  const currentUserId = pb.authStore.record?.id
+  return await pb.collection('absences').update<AbsenceRecord>(id, {
+    status: 'Rejeitada',
+    approved_by: currentUserId,
+    approved_at: new Date().toISOString(),
+    rejection_reason: rejectionReason,
+    approval_notes: approvalNotes || undefined,
+  })
+}
+
+export async function cancelAbsence(id: string): Promise<AbsenceRecord> {
+  return await pb.collection('absences').update<AbsenceRecord>(id, {
+    status: 'Cancelada',
+  })
 }
 
 export async function deleteAbsence(id: string): Promise<boolean> {

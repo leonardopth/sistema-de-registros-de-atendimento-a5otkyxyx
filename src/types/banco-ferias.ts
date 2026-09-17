@@ -22,7 +22,15 @@ export interface HourBankEntryRecord {
 }
 
 export type AbsenceReason = 'Férias' | 'Banco de horas' | 'Dayoff' | 'Atestado'
-export type AbsenceStatus = 'agendada' | 'ativa' | 'encerrada' | 'cancelada'
+export type AbsenceStatus =
+  | 'Pendente'
+  | 'Aprovada'
+  | 'Rejeitada'
+  | 'Cancelada'
+  | 'agendada'
+  | 'ativa'
+  | 'encerrada'
+  | 'cancelada'
 export type AbsenceSource = 'manual' | 'lg_sync'
 
 export interface AbsenceRecord {
@@ -37,11 +45,16 @@ export interface AbsenceRecord {
   external_id?: string
   coverage_checked?: boolean
   created_by?: string
+  approved_by?: string
+  approved_at?: string
+  rejection_reason?: string
+  approval_notes?: string
   created: string
   updated: string
   expand?: {
     user_id?: UserRecord
     created_by?: UserRecord
+    approved_by?: UserRecord
   }
 }
 
@@ -55,6 +68,7 @@ export interface AbsenceAlertConfigRecord {
   min_interjornada_hours: number
   max_consecutive_work_days: number
   max_team_absence_pct: number
+  require_absence_approval?: boolean
   lg_integration_enabled?: boolean
   lg_api_base_url?: string
   updated_by?: string

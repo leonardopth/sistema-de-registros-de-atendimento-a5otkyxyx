@@ -39,10 +39,17 @@ export function TeamAvailabilityToday({
     return getGMT3DateString(new Date().toISOString())
   }, [])
 
-  // Mapeia ausências ativas hoje
+  // Mapeia ausências ativas hoje (apenas confirmadas/aprovadas contam para remover o colaborador da disponibilidade)
   const activeAbsencesToday = useMemo(() => {
     return absences.filter((a) => {
-      if (a.status === 'cancelada') return false
+      if (
+        a.status === 'Cancelada' ||
+        a.status === 'cancelada' ||
+        a.status === 'Rejeitada' ||
+        a.status === 'Pendente'
+      ) {
+        return false
+      }
       const start = a.start_date.substring(0, 10)
       const end = a.end_date.substring(0, 10)
       return todayStr >= start && todayStr <= end

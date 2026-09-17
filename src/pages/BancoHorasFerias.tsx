@@ -26,6 +26,7 @@ import { AbsenceCalendar } from '@/components/AbsenceCalendar'
 import { TeamManagementView } from '@/components/TeamManagementView'
 import { MySituationView } from '@/components/MySituationView'
 import { AbsenceAlertSettings } from '@/components/AbsenceAlertSettings'
+import { AbsenceApprovalsView } from '@/components/AbsenceApprovalsView'
 import { LgIntegrationCard } from '@/components/LgIntegrationCard'
 import { NewAbsenceModal } from '@/components/NewAbsenceModal'
 import { NewHourBankModal } from '@/components/NewHourBankModal'
@@ -58,6 +59,20 @@ export function BancoHorasFerias() {
   const isMaster = user?.role === 'Master' || user?.master_access === true
   const isManager = isManagerRole(user?.role) || isMaster
   const canManage = isManager // Gestores e líderes podem gerenciar a equipe
+
+  // Contagem de solicitações pendentes no escopo para badge visual
+  const pendingApprovalsCount = useMemo(() => {
+    if (!canManage) return 0
+    const userGroups = (user?.service_groups as string[] | undefined) || []
+    return absences.filter((a) => {
+      if (a.status !== 'Pendente') return false
+      if (isMaster || (user?.role === 'Gerente' && userGroups.length === 0)) return true
+      const targetU = users.find((u) => u.id === a.user_id)
+      if (!targetU) return false
+      const targetGroups = (targetU.service_groups as string[] | undefined) || []
+      return targetGroups.some((g) => userGroups.includes(g))
+    }).length
+  }, [absences, users, user, canManage, isMaster])
 
   const loadData = useCallback(async () => {
     try {
@@ -179,6 +194,21 @@ export function BancoHorasFerias() {
 
           {canManage && (
             <TabsTrigger
+              value="aprovacoes"
+              className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 relative"
+            >
+              <CalendarCheck2 className="h-3.5 w-3.5" />
+              Aprovações
+              {pendingApprovalsCount > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center px-1.5 py-0.2 text-[10px] font-bold leading-none text-white bg-amber-600 rounded-full">
+                  {pendingApprovalsCount}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
+
+          {canManage && (
+            <TabsTrigger
               value="equipe"
               className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5"
             >
@@ -223,13 +253,32 @@ export function BancoHorasFerias() {
               entries={entries}
               absences={absences}
               config={config}
+              onNewAbsence={() => handleOpenNewAbsence(undefined, user.id)}
+              onRefresh={loadData}
             />
           ) : (
             <div className="py-12 text-center text-xs text-slate-400">Carregando dados...</div>
           )}
         </TabsContent>
 
-        {/* 3. Gestão da Equipe & Validações Trabalhistas */}
+        {/* 3. Central de Aprovações (Visível para Gestores / Líderes / Master) */}
+        {canManage && (
+          <TabsContent value="aprovacoes" className="space-y-4 m-0">
+            {user && config ? (
+              <AbsenceApprovalsView
+                currentUser={user}
+                users={users}
+                absences={absences}
+                config={config}
+                onRefresh={loadData}
+              />
+            ) : (
+              <div className="py-12 text-center text-xs text-slate-400">Carregando...</div>
+            )}
+          </TabsContent>
+        )}
+
+        {/* 4. Gestão da Equipe & Validações Trabalhistas */}
         {canManage && (
           <TabsContent value="equipe" className="space-y-4 m-0">
             {config ? (
@@ -250,7 +299,7 @@ export function BancoHorasFerias() {
           </TabsContent>
         )}
 
-        {/* 4. Parâmetros de Alertas (Editável por Gestores) */}
+        {/* 5. Parâmetros de Alertas (Editável por Gestores) */}
         <TabsContent value="configuracoes" className="space-y-4 m-0">
           {config ? (
             <AbsenceAlertSettings config={config} canEdit={canManage} onSaved={loadData} />
@@ -261,7 +310,7 @@ export function BancoHorasFerias() {
           )}
         </TabsContent>
 
-        {/* 5. Integração com RH LG Lugar de Gente */}
+        {/* 6. Integração com RH LG Lugar de Gente */}
         <TabsContent value="integracao-lg" className="space-y-4 m-0">
           <LgIntegrationCard users={users} />
         </TabsContent>

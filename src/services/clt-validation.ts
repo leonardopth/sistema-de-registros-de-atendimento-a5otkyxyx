@@ -232,7 +232,13 @@ export function evaluateVacationStatus(
     monthsSinceHire <= 12 + idealWindowEndMonths
 
   const nowIso = now.toISOString()
-  const vacations = userAbsences.filter((a) => a.reason === 'Férias' && a.status !== 'cancelada')
+  const vacations = userAbsences.filter(
+    (a) =>
+      a.reason === 'Férias' &&
+      a.status !== 'Cancelada' &&
+      a.status !== 'cancelada' &&
+      a.status !== 'Rejeitada',
+  )
 
   const upcomingVacation = vacations.find((v) => v.start_date > nowIso)
   const hasUpcomingVacation = Boolean(upcomingVacation)
@@ -270,9 +276,12 @@ export function checkTeamCoverage(
 
   const targetDatePrefix = targetDate.substring(0, 10)
 
-  // Encontra ausências que intersectam a data alvo
+  // Encontra ausências que intersectam a data alvo (apenas aprovadas/confirmadas impactam cobertura)
   const activeAbsencesOnDate = allAbsences.filter((abs) => {
-    if (abs.status === 'cancelada') return false
+    if (abs.status === 'Cancelada' || abs.status === 'cancelada' || abs.status === 'Rejeitada')
+      return false
+    // Apenas ausências confirmadas/aprovadas (ou em análise de simulação)
+    if (abs.status === 'Pendente') return false
     if (!teamUserIds.has(abs.user_id)) return false
     const start = abs.start_date.substring(0, 10)
     const end = abs.end_date.substring(0, 10)

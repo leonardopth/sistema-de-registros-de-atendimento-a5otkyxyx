@@ -22,7 +22,8 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Palmtree, Users } from 'lucid
 import { UserRecord } from '@/types/service_record'
 import { AbsenceRecord, AbsenceReason, AbsenceAlertConfigRecord } from '@/types/banco-ferias'
 import { createAbsence } from '@/services/banco-ferias'
-import { checkTeamCoverage } from '@/services/clt-validation'
+import { checkTeamCoverage, isManagerRole } from '@/services/clt-validation'
+import { useAuth } from '@/hooks/use-auth'
 import { toast } from '@/hooks/use-toast'
 
 interface NewAbsenceModalProps {
@@ -46,12 +47,19 @@ export function NewAbsenceModal({
   prefilledUserId,
   onSaved,
 }: NewAbsenceModalProps) {
+  const { user: currentUser } = useAuth()
   const [userId, setUserId] = useState<string>('')
   const [reason, setReason] = useState<AbsenceReason>('Férias')
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
   const [notes, setNotes] = useState<string>('')
+  const [autoApprove, setAutoApprove] = useState<boolean>(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const isCurrentUserLeader =
+    isManagerRole(currentUser?.role) ||
+    currentUser?.role === 'Master' ||
+    currentUser?.master_access === true
 
   // Ao abrir ou receber novos preenchimentos
   useEffect(() => {
@@ -59,11 +67,14 @@ export function NewAbsenceModal({
       const defaultDate = prefilledDate || new Date().toISOString().substring(0, 10)
       setStartDate(defaultDate)
       setEndDate(defaultDate)
-      setUserId(prefilledUserId || (users[0]?.id ?? ''))
+      const initialUser = prefilledUserId || currentUser?.id || (users[0]?.id ?? '')
+      setUserId(initialUser)
       setReason('Férias')
       setNotes('')
+      // Gestor pode auto-aprovar diretamente na criação se a configuração permitir ou se for o gestor agendando
+      setAutoApprove(isCurrentUserLeader)
     }
-  }, [open, prefilledDate, prefilledUserId, users])
+  }, [open, prefilledDate, prefilledUserId, users, currentUser, isCurrentUserLeader])
 
   const selectedUser = users.find((u) => u.id === userId)
 
@@ -104,21 +115,39 @@ export function NewAbsenceModal({
 
     setIsSubmitting(true)
     try {
+      // Regra 2 do requisito:
+      // Ausências criadas por colaboradores entram como "Pendente";
+      // Gestores/liderança podem aprovar diretamente na criação (auto-aprovada quando o próprio gestor agenda ou toggle).
+      const shouldApproveNow = isCurrentUserLeader && autoApprove
+      const initialStatus = shouldApproveNow ? 'Aprovada' : 'Pendente'
+
       await createAbsence({
         user_id: userId,
         reason,
         start_date: `${startDate} 00:00:00.000Z`,
         end_date: `${endDate} 23:59:59.000Z`,
-        status: 'agendada',
+        status: initialStatus,
         notes: notes || undefined,
         source: 'manual',
         coverage_checked: true,
+        approved_by: shouldApproveNow ? currentUser?.id : undefined,
+        approved_at: shouldApproveNow ? new Date().toISOString() : undefined,
+        approval_notes: shouldApproveNow
+          ? 'Aprovado diretamente na criação pelo gestor'
+          : undefined,
       })
 
-      toast({
-        title: 'Ausência agendada com sucesso!',
-        description: `${reason} registrada para ${selectedUser?.name || 'colaborador'}.`,
-      })
+      if (shouldApproveNow) {
+        toast({
+          title: 'Ausência agendada e aprovada!',
+          description: `${reason} confirmada no calendário para ${selectedUser?.name || 'colaborador'}.`,
+        })
+      } else {
+        toast({
+          title: 'Solicitação enviada com sucesso!',
+          description: `Sua solicitação de ${reason} foi enviada para aprovação da liderança.`,
+        })
+      }
       onSaved()
       onOpenChange(false)
     } catch (err: any) {
@@ -250,6 +279,39 @@ export function NewAbsenceModal({
               className="text-xs min-h-20"
             />
           </div>
+
+          {/* Opção para Gestores: Aprovar diretamente */}
+          {isCurrentUserLeader && (
+            <div className="p-3 rounded-lg border border-indigo-100 bg-indigo-50/50 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-indigo-950">Aprovação Direta</p>
+                <p className="text-[11px] text-indigo-700">
+                  {autoApprove
+                    ? 'A ausência será confirmada no calendário como Aprovada imediatamente.'
+                    : 'A ausência entrará como Pendente para avaliação posterior.'}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant={autoApprove ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setAutoApprove(!autoApprove)}
+                className={`text-xs h-7 ${autoApprove ? 'bg-indigo-600 hover:bg-indigo-700' : ''}`}
+              >
+                {autoApprove ? 'Auto-aprovar: Sim' : 'Auto-aprovar: Não'}
+              </Button>
+            </div>
+          )}
+
+          {!isCurrentUserLeader && (
+            <div className="p-2.5 rounded-lg border border-amber-200 bg-amber-50 text-[11px] text-amber-800 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+              <span>
+                Sua solicitação entrará com status <strong>Pendente</strong> e será avaliada pelo
+                seu gestor antes de constar como confirmada no calendário.
+              </span>
+            </div>
+          )}
 
           <DialogFooter className="pt-2 border-t border-slate-100">
             <Button

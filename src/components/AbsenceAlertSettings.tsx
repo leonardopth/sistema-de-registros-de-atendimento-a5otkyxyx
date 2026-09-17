@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import {
   SlidersHorizontal,
   Clock,
   Palmtree,
   Scale,
   ShieldCheck,
+  CheckCircle2,
   Save,
   RotateCcw,
 } from 'lucide-react'
@@ -45,6 +47,9 @@ export function AbsenceAlertSettings({ config, canEdit, onSaved }: AbsenceAlertS
     config.max_consecutive_work_days || 7,
   )
   const [teamAbsencePct, setTeamAbsencePct] = useState<number>(config.max_team_absence_pct || 30)
+  const [requireApproval, setRequireApproval] = useState<boolean>(
+    config.require_absence_approval !== false,
+  )
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
@@ -56,6 +61,7 @@ export function AbsenceAlertSettings({ config, canEdit, onSaved }: AbsenceAlertS
     setInterjornadaHours(config.min_interjornada_hours || 11)
     setConsecutiveDays(config.max_consecutive_work_days || 7)
     setTeamAbsencePct(config.max_team_absence_pct || 30)
+    setRequireApproval(config.require_absence_approval !== false)
   }, [config])
 
   const handleSave = async (e: React.FormEvent) => {
@@ -73,6 +79,7 @@ export function AbsenceAlertSettings({ config, canEdit, onSaved }: AbsenceAlertS
         min_interjornada_hours: interjornadaHours,
         max_consecutive_work_days: consecutiveDays,
         max_team_absence_pct: teamAbsencePct,
+        require_absence_approval: requireApproval,
       })
 
       toast({
@@ -101,6 +108,7 @@ export function AbsenceAlertSettings({ config, canEdit, onSaved }: AbsenceAlertS
     setInterjornadaHours(DEFAULT_ABSENCE_ALERT_CONFIG.min_interjornada_hours)
     setConsecutiveDays(DEFAULT_ABSENCE_ALERT_CONFIG.max_consecutive_work_days)
     setTeamAbsencePct(DEFAULT_ABSENCE_ALERT_CONFIG.max_team_absence_pct)
+    setRequireApproval(DEFAULT_ABSENCE_ALERT_CONFIG.require_absence_approval !== false)
   }
 
   return (
@@ -287,6 +295,26 @@ export function AbsenceAlertSettings({ config, canEdit, onSaved }: AbsenceAlertS
               já estiverem ausentes na mesma data, o sistema emite alerta preventivo de falta de
               cobertura.
             </p>
+          </div>
+
+          {/* Toggle de Aprovação Obrigatória */}
+          <div className="p-3 rounded-lg border border-indigo-100 bg-indigo-50/40 flex items-center justify-between pt-3">
+            <div className="space-y-0.5">
+              <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                Aprovação obrigatória para ausências da equipe
+              </Label>
+              <p className="text-[11px] text-slate-600">
+                Quando ativado, qualquer solicitação feita por colaboradores entrará como{' '}
+                <strong>Pendente</strong> e exigirá homologação de um gestor na Central de
+                Aprovações antes de constar como confirmada no calendário.
+              </p>
+            </div>
+            <Switch
+              checked={requireApproval}
+              onCheckedChange={setRequireApproval}
+              disabled={!canEdit}
+            />
           </div>
         </CardContent>
       </Card>

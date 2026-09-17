@@ -126,10 +126,11 @@ export function AbsenceCalendar({
     return new Set(eligibleUsers.map((u) => u.id))
   }, [eligibleUsers])
 
-  // Ausências válidas e filtradas
+  // Ausências válidas e filtradas (apenas Aprovadas contam como ausência confirmada; Pendentes aparecem com estilo tracejado)
   const filteredAbsences = useMemo(() => {
     return absences.filter((a) => {
-      if (a.status === 'cancelada') return false
+      if (a.status === 'Cancelada' || a.status === 'cancelada' || a.status === 'Rejeitada')
+        return false
       if (!eligibleUserIds.has(a.user_id)) return false
       if (selectedReason !== 'all' && a.reason !== selectedReason) return false
       return true
@@ -241,8 +242,11 @@ export function AbsenceCalendar({
   }
 
   const openDayDetails = (dayItem: (typeof calendarGrid)[0]) => {
-    const absentIds = new Set(dayItem.absencesOnDay.map((a) => a.user.id))
-    const available = eligibleUsers.filter((u) => !absentIds.has(u.id))
+    // Apenas ausências confirmadas (não pendentes) removem o usuário da lista de atuando
+    const confirmedAbsentIds = new Set(
+      dayItem.absencesOnDay.filter((a) => a.absence.status !== 'Pendente').map((a) => a.user.id),
+    )
+    const available = eligibleUsers.filter((u) => !confirmedAbsentIds.has(u.id))
     const parts = dayItem.dateStr.split('-')
     const dayDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
     const label = dayDate.toLocaleDateString('pt-BR', {
@@ -431,18 +435,32 @@ export function AbsenceCalendar({
                   {dayItem.absencesOnDay.slice(0, 3).map((item) => {
                     const firstName = item.user.name.split(' ')[0]
                     const isMgr = isManagerRole(item.user.role)
+                    const isPending = item.absence.status === 'Pendente'
                     return (
                       <div
                         key={item.absence.id}
-                        className={`text-[10px] px-1.5 py-0.5 rounded border truncate flex items-center gap-1 font-medium ${getReasonColor(
-                          item.absence.reason,
-                        )}`}
-                        title={`${item.user.name} (${item.user.role}) - ${item.absence.reason}`}
+                        className={`text-[10px] px-1.5 py-0.5 rounded truncate flex items-center justify-between gap-1 font-medium transition-opacity ${
+                          isPending
+                            ? 'border-2 border-dashed border-amber-400 bg-amber-50/60 text-amber-900 opacity-80'
+                            : `border ${getReasonColor(item.absence.reason)}`
+                        }`}
+                        title={`${item.user.name} (${item.user.role}) - ${item.absence.reason}${
+                          isPending ? ' (Pendente de Aprovação)' : ' (Aprovada)'
+                        }`}
                       >
-                        {getReasonIcon(item.absence.reason)}
-                        <span className="truncate">{firstName}</span>
-                        {isMgr && (
-                          <span className="text-[9px] opacity-75 font-bold shrink-0">(Gestão)</span>
+                        <div className="flex items-center gap-1 truncate">
+                          {getReasonIcon(item.absence.reason)}
+                          <span className="truncate">{firstName}</span>
+                          {isMgr && (
+                            <span className="text-[9px] opacity-75 font-bold shrink-0">
+                              (Gestão)
+                            </span>
+                          )}
+                        </div>
+                        {isPending && (
+                          <span className="text-[8px] uppercase tracking-wider font-extrabold px-1 rounded bg-amber-200 text-amber-900 shrink-0">
+                            Pendente
+                          </span>
                         )}
                       </div>
                     )
@@ -517,11 +535,18 @@ export function AbsenceCalendar({
                           )}
                         </div>
                         <div className="shrink-0 text-right">
-                          <Badge
-                            className={`${getReasonColor(absence.reason)} font-bold text-[11px]`}
-                          >
-                            {absence.reason}
-                          </Badge>
+                          <div className="flex items-center gap-1 justify-end">
+                            <Badge
+                              className={`${getReasonColor(absence.reason)} font-bold text-[11px]`}
+                            >
+                              {absence.reason}
+                            </Badge>
+                            {absence.status === 'Pendente' && (
+                              <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-[10px] font-bold">
+                                Pendente
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-[10px] text-slate-400 mt-1">
                             {new Date(
                               absence.start_date.substring(0, 10) + 'T12:00:00Z',

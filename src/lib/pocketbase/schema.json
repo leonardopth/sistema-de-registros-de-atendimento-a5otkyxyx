@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-16T21:21:06.610Z",
+  "generatedAt": "2026-09-17T02:48:25.179Z",
   "collections": [
     {
       "name": "users",
@@ -2473,7 +2473,16 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["agendada", "ativa", "encerrada", "cancelada"]
+          "selectValues": [
+            "Pendente",
+            "Aprovada",
+            "Rejeitada",
+            "Cancelada",
+            "agendada",
+            "ativa",
+            "encerrada",
+            "cancelada"
+          ]
         },
         {
           "name": "notes",
@@ -2520,6 +2529,31 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "approved_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "approved_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rejection_reason",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "approval_notes",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -2621,6 +2655,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "require_absence_approval",
+          "type": "bool",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
