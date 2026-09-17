@@ -265,35 +265,40 @@ export function AbsenceCalendar({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0 w-full">
       {/* Controles de navegação e filtros */}
       <Card className="border-slate-200 shadow-sm">
         <CardContent className="pt-4 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             {/* Navegação de Mês */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={handlePrevMonth}
-                className="h-8 w-8"
+                className="h-8 w-8 shrink-0"
                 title="Mês anterior"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <h3 className="text-base font-bold text-slate-900 min-w-44 text-center">
+              <h3 className="text-base font-bold text-slate-900 min-w-36 sm:min-w-44 text-center">
                 {MONTH_NAMES[currentMonth]} de {currentYear}
               </h3>
               <Button
                 variant="outline"
                 size="icon"
                 onClick={handleNextMonth}
-                className="h-8 w-8"
+                className="h-8 w-8 shrink-0"
                 title="Próximo mês"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleToday} className="text-xs h-8">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToday}
+                className="text-xs h-8 shrink-0"
+              >
                 Hoje
               </Button>
             </div>
@@ -301,7 +306,7 @@ export function AbsenceCalendar({
             {/* Ações e Filtros */}
             <div className="flex flex-wrap items-center gap-2">
               {/* Filtro Núcleo */}
-              <div className="w-40">
+              <div className="w-full sm:w-40 min-w-[130px]">
                 <Select value={selectedGroup} onValueChange={setSelectedGroup}>
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Núcleo" />
@@ -318,7 +323,7 @@ export function AbsenceCalendar({
               </div>
 
               {/* Filtro Motivo */}
-              <div className="w-40">
+              <div className="w-full sm:w-40 min-w-[130px]">
                 <Select value={selectedReason} onValueChange={setSelectedReason}>
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Motivo" />
@@ -334,7 +339,7 @@ export function AbsenceCalendar({
               </div>
 
               {/* Filtro Colaborador */}
-              <div className="w-48">
+              <div className="w-full sm:w-48 min-w-[150px]">
                 <Select value={selectedUser} onValueChange={setSelectedUser}>
                   <SelectTrigger className="h-8 text-xs truncate">
                     <SelectValue placeholder="Colaborador" />
@@ -354,7 +359,7 @@ export function AbsenceCalendar({
                 <Button
                   onClick={() => onNewAbsence()}
                   size="sm"
-                  className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5"
+                  className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shrink-0 ml-auto sm:ml-0"
                 >
                   <PlusCircle className="h-3.5 w-3.5" />
                   Agendar Ausência
@@ -365,7 +370,7 @@ export function AbsenceCalendar({
 
           {/* Legenda de Motivos */}
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
-            <span className="text-slate-500 font-medium mr-1 flex items-center gap-1">
+            <span className="text-slate-500 font-medium mr-1 flex items-center gap-1 shrink-0">
               <Filter className="h-3 w-3" /> Legenda:
             </span>
             <Badge className="bg-amber-100 text-amber-900 border-amber-200 text-[11px] gap-1 font-medium">
@@ -380,101 +385,105 @@ export function AbsenceCalendar({
             <Badge className="bg-rose-100 text-rose-900 border-rose-200 text-[11px] gap-1 font-medium">
               <FileHeart className="h-3 w-3 text-rose-600" /> Atestado
             </Badge>
-            <span className="text-[11px] text-slate-400 ml-auto">
+            <span className="text-[11px] text-slate-400 sm:ml-auto">
               *Gestores e líderes estão inclusos no calendário
             </span>
           </div>
         </CardContent>
       </Card>
 
-      {/* Grade Mensal do Calendário */}
+      {/* Grade Mensal do Calendário com Scroll Horizontal no Mobile */}
       <Card className="border-slate-200 shadow-sm overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80 text-center text-xs font-semibold text-slate-700 py-2">
-          {WEEKDAY_NAMES.map((w, idx) => (
-            <div key={w} className={idx === 0 || idx === 6 ? 'text-slate-400' : ''}>
-              {w}
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-slate-200">
-          {calendarGrid.map((dayItem, index) => {
-            const hasAbsences = dayItem.absencesOnDay.length > 0
-            return (
-              <div
-                key={`${dayItem.dateStr}-${index}`}
-                onClick={() => dayItem.isCurrentMonth && openDayDetails(dayItem)}
-                className={`min-h-24 p-1.5 transition-colors flex flex-col justify-between ${
-                  !dayItem.isCurrentMonth
-                    ? 'bg-slate-50/40 opacity-40 cursor-default'
-                    : 'bg-white hover:bg-slate-50/70 cursor-pointer'
-                } ${dayItem.isToday ? 'ring-2 ring-indigo-500 ring-inset bg-indigo-50/20' : ''}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span
-                    className={`text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center ${
-                      dayItem.isToday
-                        ? 'bg-indigo-600 text-white'
-                        : dayItem.isCurrentMonth
-                          ? 'text-slate-900'
-                          : 'text-slate-400'
-                    }`}
-                  >
-                    {dayItem.dayNumber}
-                  </span>
-
-                  {dayItem.isCurrentMonth && hasAbsences && (
-                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1 rounded">
-                      {dayItem.absencesOnDay.length} ausente(s)
-                    </span>
-                  )}
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80 text-center text-xs font-semibold text-slate-700 py-2">
+              {WEEKDAY_NAMES.map((w, idx) => (
+                <div key={w} className={idx === 0 || idx === 6 ? 'text-slate-400' : ''}>
+                  {w}
                 </div>
+              ))}
+            </div>
 
-                {/* Lista de pílulas de ausência no dia */}
-                <div className="space-y-1 flex-1 overflow-hidden">
-                  {dayItem.absencesOnDay.slice(0, 3).map((item) => {
-                    const firstName = item.user.name.split(' ')[0]
-                    const isMgr = isManagerRole(item.user.role)
-                    const isPending = item.absence.status === 'Pendente'
-                    return (
-                      <div
-                        key={item.absence.id}
-                        className={`text-[10px] px-1.5 py-0.5 rounded truncate flex items-center justify-between gap-1 font-medium transition-opacity ${
-                          isPending
-                            ? 'border-2 border-dashed border-amber-400 bg-amber-50/60 text-amber-900 opacity-80'
-                            : `border ${getReasonColor(item.absence.reason)}`
-                        }`}
-                        title={`${item.user.name} (${item.user.role}) - ${item.absence.reason}${
-                          isPending ? ' (Pendente de Aprovação)' : ' (Aprovada)'
+            <div className="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-slate-200">
+              {calendarGrid.map((dayItem, index) => {
+                const hasAbsences = dayItem.absencesOnDay.length > 0
+                return (
+                  <div
+                    key={`${dayItem.dateStr}-${index}`}
+                    onClick={() => dayItem.isCurrentMonth && openDayDetails(dayItem)}
+                    className={`min-h-24 p-1.5 transition-colors flex flex-col justify-between ${
+                      !dayItem.isCurrentMonth
+                        ? 'bg-slate-50/40 opacity-40 cursor-default'
+                        : 'bg-white hover:bg-slate-50/70 cursor-pointer'
+                    } ${dayItem.isToday ? 'ring-2 ring-indigo-500 ring-inset bg-indigo-50/20' : ''}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span
+                        className={`text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center ${
+                          dayItem.isToday
+                            ? 'bg-indigo-600 text-white'
+                            : dayItem.isCurrentMonth
+                              ? 'text-slate-900'
+                              : 'text-slate-400'
                         }`}
                       >
-                        <div className="flex items-center gap-1 truncate">
-                          {getReasonIcon(item.absence.reason)}
-                          <span className="truncate">{firstName}</span>
-                          {isMgr && (
-                            <span className="text-[9px] opacity-75 font-bold shrink-0">
-                              (Gestão)
-                            </span>
-                          )}
-                        </div>
-                        {isPending && (
-                          <span className="text-[8px] uppercase tracking-wider font-extrabold px-1 rounded bg-amber-200 text-amber-900 shrink-0">
-                            Pendente
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })}
+                        {dayItem.dayNumber}
+                      </span>
 
-                  {dayItem.absencesOnDay.length > 3 && (
-                    <div className="text-[9px] text-slate-500 font-semibold px-1">
-                      +{dayItem.absencesOnDay.length - 3} outro(s)...
+                      {dayItem.isCurrentMonth && hasAbsences && (
+                        <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1 rounded">
+                          {dayItem.absencesOnDay.length} ausente(s)
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+
+                    {/* Lista de pílulas de ausência no dia */}
+                    <div className="space-y-1 flex-1 overflow-hidden">
+                      {dayItem.absencesOnDay.slice(0, 3).map((item) => {
+                        const firstName = item.user.name.split(' ')[0]
+                        const isMgr = isManagerRole(item.user.role)
+                        const isPending = item.absence.status === 'Pendente'
+                        return (
+                          <div
+                            key={item.absence.id}
+                            className={`text-[10px] px-1.5 py-0.5 rounded truncate flex items-center justify-between gap-1 font-medium transition-opacity ${
+                              isPending
+                                ? 'border-2 border-dashed border-amber-400 bg-amber-50/60 text-amber-900 opacity-80'
+                                : `border ${getReasonColor(item.absence.reason)}`
+                            }`}
+                            title={`${item.user.name} (${item.user.role}) - ${item.absence.reason}${
+                              isPending ? ' (Pendente de Aprovação)' : ' (Aprovada)'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1 truncate">
+                              {getReasonIcon(item.absence.reason)}
+                              <span className="truncate">{firstName}</span>
+                              {isMgr && (
+                                <span className="text-[9px] opacity-75 font-bold shrink-0">
+                                  (Gestão)
+                                </span>
+                              )}
+                            </div>
+                            {isPending && (
+                              <span className="text-[8px] uppercase tracking-wider font-extrabold px-1 rounded bg-amber-200 text-amber-900 shrink-0">
+                                Pendente
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+
+                      {dayItem.absencesOnDay.length > 3 && (
+                        <div className="text-[9px] text-slate-500 font-semibold px-1">
+                          +{dayItem.absencesOnDay.length - 3} outro(s)...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </Card>
 

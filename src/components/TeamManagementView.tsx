@@ -163,7 +163,7 @@ export function TeamManagementView({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0 w-full">
       {/* Filtros da Equipe */}
       <Card className="border-slate-200 shadow-sm">
         <CardContent className="pt-4">

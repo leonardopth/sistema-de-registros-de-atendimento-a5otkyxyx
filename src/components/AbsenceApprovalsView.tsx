@@ -246,9 +246,10 @@ export function AbsenceApprovalsView({
   }, [actionItem, usersMap, users, absences, config])
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 min-w-0 w-full">
       {/* Cards de Métricas de Aprovação */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {' '}
         <div
           onClick={() => setStatusFilter('pending')}
           className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
@@ -266,7 +267,6 @@ export function AbsenceApprovalsView({
             <span className="text-xs text-amber-700">solicitação(ões)</span>
           </div>
         </div>
-
         <div
           onClick={() => setStatusFilter('resolved')}
           className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
@@ -284,7 +284,6 @@ export function AbsenceApprovalsView({
             <span className="text-xs text-emerald-700">confirmadas</span>
           </div>
         </div>
-
         <div
           onClick={() => setStatusFilter('all')}
           className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
@@ -319,7 +318,7 @@ export function AbsenceApprovalsView({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="w-40">
+              <div className="w-full sm:w-40 min-w-[130px]">
                 <Select value={selectedGroup} onValueChange={setSelectedGroup}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Núcleo" />
@@ -335,7 +334,7 @@ export function AbsenceApprovalsView({
                 </Select>
               </div>
 
-              <div className="w-40">
+              <div className="w-full sm:w-40 min-w-[130px]">
                 <Select value={selectedReason} onValueChange={setSelectedReason}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Motivo" />
@@ -350,7 +349,7 @@ export function AbsenceApprovalsView({
                 </Select>
               </div>
 
-              <div className="w-36">
+              <div className="w-full sm:w-36 min-w-[120px]">
                 <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Status" />
@@ -405,10 +404,16 @@ export function AbsenceApprovalsView({
               <TableBody>
                 {filteredList.map((abs) => {
                   const u = usersMap.get(abs.user_id)
-                  const startD = new Date(abs.start_date.substring(0, 10) + 'T12:00:00Z')
-                  const endD = new Date(abs.end_date.substring(0, 10) + 'T12:00:00Z')
+                  const startD = abs?.start_date
+                    ? new Date(abs.start_date.substring(0, 10) + 'T12:00:00Z')
+                    : null
+                  const endD = abs?.end_date
+                    ? new Date(abs.end_date.substring(0, 10) + 'T12:00:00Z')
+                    : null
                   const diffDays =
-                    Math.round((endD.getTime() - startD.getTime()) / (24 * 3600 * 1000)) + 1
+                    startD && endD && !isNaN(startD.getTime()) && !isNaN(endD.getTime())
+                      ? Math.round((endD.getTime() - startD.getTime()) / (24 * 3600 * 1000)) + 1
+                      : 0
                   const isPending = abs.status === 'Pendente'
 
                   const approver = abs.approved_by ? usersMap.get(abs.approved_by) : null
@@ -420,13 +425,13 @@ export function AbsenceApprovalsView({
                         isPending ? 'bg-amber-50/20 hover:bg-amber-50/40' : 'hover:bg-slate-50'
                       }`}
                     >
-                      <TableCell className="font-semibold text-slate-900">
+                      <TableCell className="font-semibold text-slate-900 whitespace-nowrap">
                         {u?.name || 'Desconhecido'}
                       </TableCell>
 
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-slate-600 whitespace-nowrap">
                         <div>
-                          <span className="font-medium text-slate-700">{u?.role}</span>
+                          <span className="font-medium text-slate-700">{u?.role || '—'}</span>
                           {Array.isArray(u?.service_groups) && u.service_groups.length > 0 && (
                             <p className="text-[10px] text-slate-500">
                               {u.service_groups.join(', ')}
@@ -435,19 +440,25 @@ export function AbsenceApprovalsView({
                         </div>
                       </TableCell>
 
-                      <TableCell>{getReasonBadge(abs.reason)}</TableCell>
-
-                      <TableCell className="text-slate-700 font-medium whitespace-nowrap">
-                        {startD.toLocaleDateString('pt-BR')} até {endD.toLocaleDateString('pt-BR')}
+                      <TableCell className="whitespace-nowrap">
+                        {getReasonBadge(abs.reason)}
                       </TableCell>
 
-                      <TableCell>
+                      <TableCell className="text-slate-700 font-medium whitespace-nowrap">
+                        {startD && !isNaN(startD.getTime())
+                          ? startD.toLocaleDateString('pt-BR')
+                          : '—'}{' '}
+                        até{' '}
+                        {endD && !isNaN(endD.getTime()) ? endD.toLocaleDateString('pt-BR') : '—'}
+                      </TableCell>
+
+                      <TableCell className="whitespace-nowrap">
                         <Badge variant="outline" className="text-[11px] font-semibold">
                           {diffDays} {diffDays === 1 ? 'dia' : 'dias'}
                         </Badge>
                       </TableCell>
 
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <Badge
                           className={`text-[10px] font-semibold ${
                             abs.status === 'Pendente'

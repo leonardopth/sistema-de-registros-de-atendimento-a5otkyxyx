@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import {
   CalendarDays,
   Clock,
@@ -130,7 +131,7 @@ export function BancoHorasFerias() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 max-w-full">
       {/* Cabeçalho da Página */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -174,11 +175,11 @@ export function BancoHorasFerias() {
       </div>
 
       {/* Navegação por Abas Principais */}
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-        <TabsList className="bg-slate-100 p-1 border border-slate-200 flex flex-wrap h-auto gap-1">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 w-full min-w-0">
+        <TabsList className="bg-slate-100 p-1 border border-slate-200 flex flex-wrap h-auto gap-1 w-full justify-start max-w-full overflow-x-auto">
           <TabsTrigger
             value="calendario"
-            className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5"
+            className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 shrink-0"
           >
             <CalendarDays className="h-3.5 w-3.5" />
             Calendário de Ausências
@@ -186,7 +187,7 @@ export function BancoHorasFerias() {
 
           <TabsTrigger
             value="minha-situacao"
-            className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5"
+            className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 shrink-0"
           >
             <Clock className="h-3.5 w-3.5" />
             Minha Situação
@@ -195,12 +196,12 @@ export function BancoHorasFerias() {
           {canManage && (
             <TabsTrigger
               value="aprovacoes"
-              className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 relative"
+              className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 shrink-0 relative"
             >
               <CalendarCheck2 className="h-3.5 w-3.5" />
               Aprovações
               {pendingApprovalsCount > 0 && (
-                <span className="ml-1 inline-flex items-center justify-center px-1.5 py-0.2 text-[10px] font-bold leading-none text-white bg-amber-600 rounded-full">
+                <span className="ml-1 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-amber-600 rounded-full">
                   {pendingApprovalsCount}
                 </span>
               )}
@@ -210,24 +211,24 @@ export function BancoHorasFerias() {
           {canManage && (
             <TabsTrigger
               value="equipe"
-              className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5"
+              className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 shrink-0"
             >
               <Users2 className="h-3.5 w-3.5" />
-              Gestão da Equipe &amp; CLT
+              Gestão da Equipe & CLT
             </TabsTrigger>
           )}
 
           <TabsTrigger
             value="configuracoes"
-            className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5"
+            className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 shrink-0"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
-            Parâmetros &amp; Alertas
+            Parâmetros & Alertas
           </TabsTrigger>
 
           <TabsTrigger
             value="integracao-lg"
-            className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5"
+            className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 shrink-0"
           >
             <Building2 className="h-3.5 w-3.5" />
             RH LG Lugar de Gente
@@ -235,87 +236,116 @@ export function BancoHorasFerias() {
         </TabsList>
 
         {/* 1. Calendário de Ausências */}
-        <TabsContent value="calendario" className="space-y-4 m-0">
-          <AbsenceCalendar
-            users={users}
-            absences={absences}
-            currentUser={user}
-            onNewAbsence={(date) => handleOpenNewAbsence(date)}
-            canManage={canManage}
-          />
+        <TabsContent
+          value="calendario"
+          className="space-y-4 m-0 min-w-0 w-full focus-visible:outline-none focus-visible:ring-0"
+        >
+          <ErrorBoundary>
+            <AbsenceCalendar
+              users={users}
+              absences={absences}
+              currentUser={user}
+              onNewAbsence={(date) => handleOpenNewAbsence(date)}
+              canManage={canManage}
+            />
+          </ErrorBoundary>
         </TabsContent>
 
         {/* 2. Minha Situação */}
-        <TabsContent value="minha-situacao" className="space-y-4 m-0">
-          {user && config ? (
-            <MySituationView
-              currentUser={user}
-              entries={entries}
-              absences={absences}
-              config={config}
-              onNewAbsence={() => handleOpenNewAbsence(undefined, user.id)}
-              onRefresh={loadData}
-            />
-          ) : (
-            <div className="py-12 text-center text-xs text-slate-400">Carregando dados...</div>
-          )}
+        <TabsContent
+          value="minha-situacao"
+          className="space-y-4 m-0 min-w-0 w-full focus-visible:outline-none focus-visible:ring-0"
+        >
+          <ErrorBoundary>
+            {user && config ? (
+              <MySituationView
+                currentUser={user}
+                entries={entries}
+                absences={absences}
+                config={config}
+                onNewAbsence={() => handleOpenNewAbsence(undefined, user.id)}
+                onRefresh={loadData}
+              />
+            ) : (
+              <div className="py-12 text-center text-xs text-slate-400">Carregando dados...</div>
+            )}
+          </ErrorBoundary>
         </TabsContent>
 
         {/* 3. Central de Aprovações (Visível para Gestores / Líderes / Master) */}
         {canManage && (
-          <TabsContent value="aprovacoes" className="space-y-4 m-0">
-            {user && config ? (
-              <AbsenceApprovalsView
-                currentUser={user}
-                users={users}
-                absences={absences}
-                config={config}
-                onRefresh={loadData}
-              />
-            ) : (
-              <div className="py-12 text-center text-xs text-slate-400">Carregando...</div>
-            )}
+          <TabsContent
+            value="aprovacoes"
+            className="space-y-4 m-0 min-w-0 w-full focus-visible:outline-none focus-visible:ring-0"
+          >
+            <ErrorBoundary>
+              {user && config ? (
+                <AbsenceApprovalsView
+                  currentUser={user}
+                  users={users}
+                  absences={absences}
+                  config={config}
+                  onRefresh={loadData}
+                />
+              ) : (
+                <div className="py-12 text-center text-xs text-slate-400">Carregando...</div>
+              )}
+            </ErrorBoundary>
           </TabsContent>
         )}
 
         {/* 4. Gestão da Equipe & Validações Trabalhistas */}
         {canManage && (
-          <TabsContent value="equipe" className="space-y-4 m-0">
-            {config ? (
-              <TeamManagementView
-                users={users}
-                entries={entries}
-                absences={absences}
-                serviceRecords={serviceRecords}
-                config={config}
-                canManage={canManage}
-                onNewHourBank={(userId) => handleOpenNewHourBank(userId)}
-                onNewAbsence={(userId) => handleOpenNewAbsence(undefined, userId)}
-                onRefresh={loadData}
-              />
-            ) : (
-              <div className="py-12 text-center text-xs text-slate-400">Carregando...</div>
-            )}
+          <TabsContent
+            value="equipe"
+            className="space-y-4 m-0 min-w-0 w-full focus-visible:outline-none focus-visible:ring-0"
+          >
+            <ErrorBoundary>
+              {config ? (
+                <TeamManagementView
+                  users={users}
+                  entries={entries}
+                  absences={absences}
+                  serviceRecords={serviceRecords}
+                  config={config}
+                  canManage={canManage}
+                  onNewHourBank={(userId) => handleOpenNewHourBank(userId)}
+                  onNewAbsence={(userId) => handleOpenNewAbsence(undefined, userId)}
+                  onRefresh={loadData}
+                />
+              ) : (
+                <div className="py-12 text-center text-xs text-slate-400">Carregando...</div>
+              )}
+            </ErrorBoundary>
           </TabsContent>
         )}
 
         {/* 5. Parâmetros de Alertas (Editável por Gestores) */}
-        <TabsContent value="configuracoes" className="space-y-4 m-0">
-          {config ? (
-            <AbsenceAlertSettings config={config} canEdit={canManage} onSaved={loadData} />
-          ) : (
-            <div className="py-12 text-center text-xs text-slate-400">
-              Carregando configurações...
-            </div>
-          )}
+        <TabsContent
+          value="configuracoes"
+          className="space-y-4 m-0 min-w-0 w-full focus-visible:outline-none focus-visible:ring-0"
+        >
+          <ErrorBoundary>
+            {config ? (
+              <AbsenceAlertSettings config={config} canEdit={canManage} onSaved={loadData} />
+            ) : (
+              <div className="py-12 text-center text-xs text-slate-400">
+                Carregando configurações...
+              </div>
+            )}
+          </ErrorBoundary>
         </TabsContent>
 
         {/* 6. Integração com RH LG Lugar de Gente */}
-        <TabsContent value="integracao-lg" className="space-y-4 m-0">
-          <LgIntegrationCard users={users} />
+        <TabsContent
+          value="integracao-lg"
+          className="space-y-4 m-0 min-w-0 w-full focus-visible:outline-none focus-visible:ring-0"
+        >
+          <ErrorBoundary>
+            <LgIntegrationCard users={users} />
+          </ErrorBoundary>
         </TabsContent>
       </Tabs>
-
       {/* Modal de Agendamento de Ausência */}
       {config && (
         <NewAbsenceModal

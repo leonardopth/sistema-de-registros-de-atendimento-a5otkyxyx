@@ -112,7 +112,7 @@ export function AbsenceAlertSettings({ config, canEdit, onSaved }: AbsenceAlertS
   }
 
   return (
-    <form onSubmit={handleSave} className="space-y-6">
+    <form onSubmit={handleSave} className="space-y-6 min-w-0 w-full">
       {/* 1. Banco de Horas (Requisito Explícito do Usuário: Limite de Acúmulo Editável) */}
       <Card className="border-slate-200 shadow-sm">
         <CardHeader className="pb-3 border-b border-slate-100">
@@ -298,7 +298,7 @@ export function AbsenceAlertSettings({ config, canEdit, onSaved }: AbsenceAlertS
           </div>
 
           {/* Toggle de Aprovação Obrigatória */}
-          <div className="p-3 rounded-lg border border-indigo-100 bg-indigo-50/40 flex items-center justify-between pt-3">
+          <div className="p-3 rounded-lg border border-indigo-100 bg-indigo-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3">
             <div className="space-y-0.5">
               <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                 <ShieldCheck className="h-4 w-4 text-indigo-600" />
@@ -314,6 +314,7 @@ export function AbsenceAlertSettings({ config, canEdit, onSaved }: AbsenceAlertS
               checked={requireApproval}
               onCheckedChange={setRequireApproval}
               disabled={!canEdit}
+              className="shrink-0"
             />
           </div>
         </CardContent>

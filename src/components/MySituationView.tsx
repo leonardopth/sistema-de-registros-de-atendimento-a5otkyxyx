@@ -112,7 +112,7 @@ export function MySituationView({
   }, [currentUser, myAbsences, config])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full">
       {/* 1. Banco de Horas (Se não for gestor) */}
       {!isManager ? (
         <Card className="border-slate-200 shadow-sm">
@@ -199,35 +199,42 @@ export function MySituationView({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {myEntries.map((entry) => (
-                      <TableRow key={entry.id} className="text-xs">
-                        <TableCell className="font-medium text-slate-900">
-                          {new Date(entry.date.substring(0, 10) + 'T12:00:00Z').toLocaleDateString(
-                            'pt-BR',
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {entry.type === 'credito' ? (
-                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
-                              Crédito
+                    {myEntries.map((entry) => {
+                      const entryDate = entry?.date
+                        ? new Date(entry.date.substring(0, 10) + 'T12:00:00Z')
+                        : null
+                      return (
+                        <TableRow key={entry.id} className="text-xs">
+                          <TableCell className="font-medium text-slate-900 whitespace-nowrap">
+                            {entryDate && !isNaN(entryDate.getTime())
+                              ? entryDate.toLocaleDateString('pt-BR')
+                              : '—'}
+                          </TableCell>
+                          <TableCell>
+                            {entry.type === 'credito' ? (
+                              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
+                                Crédito
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-rose-100 text-rose-800 border-rose-200 text-[10px]">
+                                Débito
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-bold whitespace-nowrap">
+                            {entry.type === 'credito' ? `+${entry.hours}` : `-${entry.hours}`}h
+                          </TableCell>
+                          <TableCell className="text-slate-600 max-w-xs truncate">
+                            {entry.description || '—'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px] text-slate-500">
+                              {entry.source === 'lg_sync' ? 'Sincronizado LG' : 'Manual'}
                             </Badge>
-                          ) : (
-                            <Badge className="bg-rose-100 text-rose-800 border-rose-200 text-[10px]">
-                              Débito
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-bold">
-                          {entry.type === 'credito' ? `+${entry.hours}` : `-${entry.hours}`}h
-                        </TableCell>
-                        <TableCell className="text-slate-600">{entry.description}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-[10px] text-slate-500">
-                            {entry.source === 'lg_sync' ? 'Sincronizado LG' : 'Manual'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
 
                     {myEntries.length === 0 && (
                       <TableRow>
@@ -372,27 +379,37 @@ export function MySituationView({
                       abs.status === 'ativa'
                     const isRejected = abs.status === 'Rejeitada'
                     const isCancelled = abs.status === 'Cancelada'
+                    const startDate = abs?.start_date
+                      ? new Date(abs.start_date.substring(0, 10) + 'T12:00:00Z')
+                      : null
+                    const endDate = abs?.end_date
+                      ? new Date(abs.end_date.substring(0, 10) + 'T12:00:00Z')
+                      : null
 
                     return (
                       <TableRow key={abs.id} className="text-xs">
-                        <TableCell className="font-bold text-slate-900">
+                        <TableCell className="font-bold text-slate-900 whitespace-nowrap">
                           {abs.reason === 'Férias' && '🌴 Férias'}
                           {abs.reason === 'Banco de horas' && '⏱️ Banco de horas'}
                           {abs.reason === 'Dayoff' && '☕ Dayoff'}
                           {abs.reason === 'Atestado' && '🩺 Atestado'}
+                          {!['Férias', 'Banco de horas', 'Dayoff', 'Atestado'].includes(
+                            abs.reason || '',
+                          ) &&
+                            (abs.reason || 'Ausência')}
                         </TableCell>
                         <TableCell className="text-slate-700 whitespace-nowrap">
-                          {new Date(
-                            abs.start_date.substring(0, 10) + 'T12:00:00Z',
-                          ).toLocaleDateString('pt-BR')}{' '}
+                          {startDate && !isNaN(startDate.getTime())
+                            ? startDate.toLocaleDateString('pt-BR')
+                            : '—'}{' '}
                           até{' '}
-                          {new Date(
-                            abs.end_date.substring(0, 10) + 'T12:00:00Z',
-                          ).toLocaleDateString('pt-BR')}
+                          {endDate && !isNaN(endDate.getTime())
+                            ? endDate.toLocaleDateString('pt-BR')
+                            : '—'}
                         </TableCell>
                         <TableCell>
                           <Badge
-                            className={`text-[10px] font-semibold ${
+                            className={`text-[10px] font-semibold whitespace-nowrap ${
                               isPending
                                 ? 'bg-amber-100 text-amber-900 border-amber-300'
                                 : isApproved
@@ -406,6 +423,14 @@ export function MySituationView({
                             {isApproved && '✅ Aprovada'}
                             {isRejected && '❌ Rejeitada'}
                             {isCancelled && '🚫 Cancelada'}
+                            {![
+                              'Pendente',
+                              'Aprovada',
+                              'agendada',
+                              'ativa',
+                              'Rejeitada',
+                              'Cancelada',
+                            ].includes(abs.status || '') && abs.status}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-slate-600 max-w-xs">
@@ -424,13 +449,13 @@ export function MySituationView({
                             <span className="text-slate-400">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right whitespace-nowrap">
                           {isPending && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              disabled={cancellingId === abs.id}
                               onClick={() => handleCancelPending(abs.id)}
+                              disabled={cancellingId === abs.id}
                               className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                             >
                               <XCircle className="h-3.5 w-3.5 mr-1" />
@@ -441,7 +466,6 @@ export function MySituationView({
                       </TableRow>
                     )
                   })}
-
                   {myAbsences.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-xs text-slate-400 py-6">

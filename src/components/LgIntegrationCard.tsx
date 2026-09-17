@@ -22,34 +22,39 @@ export function LgIntegrationCard({ users }: LgIntegrationCardProps) {
   const usersWithExternalId = users.filter((u) => Boolean((u as any).external_id)).length
 
   return (
-    <div className="space-y-6">
-      <Card className="border-slate-200 shadow-sm">
+    <div className="space-y-6 min-w-0 w-full">
+      <Card className="border-slate-200 shadow-sm min-w-0 w-full">
         <CardHeader className="pb-3 border-b border-slate-100">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-sm">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-sm shrink-0">
                 <Building2 className="h-6 w-6" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="text-base font-bold text-slate-900">
                     Integração com RH LG Lugar de Gente
                   </CardTitle>
                   <Badge
                     variant="outline"
-                    className="border-amber-400 text-amber-700 bg-amber-50 text-[10px] gap-1 font-semibold"
+                    className="border-amber-400 text-amber-700 bg-amber-50 text-[10px] gap-1 font-semibold shrink-0"
                   >
                     <Clock className="h-3 w-3" /> Em Breve / Estrutura Pronta
                   </Badge>
                 </div>
                 <CardDescription className="text-xs mt-0.5">
                   Conector preparado para sincronização bidirecional de ponto, saldo de banco de
-                  horas, solicitações de férias e atestados médicos via API LG.
+                  horas, solicitações de férias e atestados médicos via API LG (Lugar de Gente).
                 </CardDescription>
               </div>
             </div>
 
-            <Button variant="outline" size="sm" disabled className="text-xs h-8 gap-1.5 opacity-60">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              className="text-xs h-8 gap-1.5 opacity-60 shrink-0"
+            >
               <RefreshCw className="h-3.5 w-3.5" />
               Sincronizar Manualmente
             </Button>
