@@ -24,6 +24,9 @@ import { ACTION_ALERT_THRESHOLDS, type ActionAlertItem } from '@/constants/actio
 
 interface PerformanceAlertsProps {
   records: ServiceRecord[]
+  targetUserId?: string
+  title?: string
+  subtitle?: string
 }
 
 /**
@@ -59,7 +62,12 @@ const ROLE_DISPLAY_ORDER = [
  *    - Meta em risco (projeção fim de mês < 70%)
  * 2. Alertas de Desempenho Gerais (menos de 50% meta ou resolução < 20 p.p. do mínimo)
  */
-export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
+export function PerformanceAlerts({
+  records,
+  targetUserId,
+  title,
+  subtitle,
+}: PerformanceAlertsProps) {
   const [users, setUsers] = useState<UserRecord[]>([])
   const [targets, setTargets] = useState<UserTargetRecord[]>([])
   const [globalTarget, setGlobalTarget] = useState<GlobalTargetRecord | null>(null)
@@ -96,8 +104,12 @@ export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
   // 1. Alertas de Desempenho existentes
   const perfAlerts = useMemo<PerformanceAlert[]>(() => {
     if (!globalTarget) return []
-    return computePerformanceAlerts(users, targets, globalTarget, records)
-  }, [users, targets, globalTarget, records])
+    const computed = computePerformanceAlerts(users, targets, globalTarget, records)
+    if (targetUserId) {
+      return computed.filter((a) => a.userId === targetUserId)
+    }
+    return computed
+  }, [users, targets, globalTarget, records, targetUserId])
 
   // 2. Alertas de Ação Automáticos (Frente C1)
   const actionAlerts = useMemo<ActionAlertItem[]>(() => {
@@ -266,8 +278,16 @@ export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
       return 0
     })
 
+    if (targetUserId) {
+      return items.filter(
+        (a) =>
+          a.responsibleId === targetUserId ||
+          ((a.meta as any) && (a.meta as any).targetUserId === targetUserId),
+      )
+    }
+
     return items
-  }, [records, targets, globalTarget, users])
+  }, [records, targets, globalTarget, users, targetUserId])
 
   // Agrupamento dos alertas de desempenho por cargo do colaborador
   const groupedPerfAlerts = useMemo(() => {
@@ -308,7 +328,10 @@ export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-sm font-bold text-slate-900">
-                  Central de Alertas Operacionais
+                  {title ||
+                    (targetUserId
+                      ? 'Meus Alertas de Ação & Desempenho'
+                      : 'Central de Alertas Operacionais')}
                 </h3>
                 {totalAlertsCount > 0 && (
                   <Badge
@@ -328,8 +351,10 @@ export function PerformanceAlerts({ records }: PerformanceAlertsProps) {
                 )}
               </div>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Alertas automáticos de ação (fila &gt; 2h/24h, TFR estourado, meta &lt; 70%) e
-                desvios de desempenho
+                {subtitle ||
+                  (targetUserId
+                    ? 'Avisos da sua fila, prazos de TFR e projeção da sua meta pessoal'
+                    : 'Alertas automáticos de ação (fila > 2h/24h, TFR estourado, meta < 70%) e desvios de desempenho')}
               </p>
             </div>
           </div>

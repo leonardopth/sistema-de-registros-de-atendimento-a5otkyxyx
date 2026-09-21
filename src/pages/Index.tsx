@@ -24,24 +24,27 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
-import { getPaginatedServiceRecords } from '@/services/service_records'
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { getServiceRecords } from '@/services/service_records'
 import { getClients } from '@/services/clients'
 import { getAccountExecutives } from '@/services/account_executives'
 import { getUsers } from '@/services/users'
 import { getTrainings } from '@/services/trainings'
 import { getMonthlyAwards } from '@/services/gamification'
+import { getUserTargets, UserTargetRecord } from '@/services/user-targets'
+import { getGlobalTarget } from '@/services/global-targets'
+import { getCsatStats, CsatStatItem } from '@/services/csat'
 import { MonthlyAwardRecord } from '@/types/gamification'
 import {
   ServiceRecord,
   ClientRecord,
   AccountExecutiveRecord,
   UserRecord,
+  GlobalTargetRecord,
 } from '@/types/service_record'
 import type { TrainingRecord } from '@/types/training'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
-import { normalizeContactReason } from '@/constants/contactReasons'
 import { DashboardStats } from '@/components/DashboardStats'
 import { ConsultantGamification } from '@/components/ConsultantGamification'
 import { AchievementFeed } from '@/components/AchievementFeed'
@@ -49,11 +52,17 @@ import { SocialRecognitionBanner } from '@/components/SocialRecognitionBanner'
 import { AutonomyScorecard } from '@/components/AutonomyScorecard'
 import { TrainingPanel } from '@/components/TrainingPanel'
 import { PerformanceAlerts } from '@/components/PerformanceAlerts'
-import { StatusBadge } from '@/components/StatusBadge'
 import { ServiceVolumeTrendCard } from '@/components/ServiceVolumeTrendCard'
 import { ActiveBacklogQueue } from '@/components/ActiveBacklogQueue'
 import { CollaboratorStatusPanel } from '@/components/CollaboratorStatusPanel'
 import { TeamAvailabilityToday } from '@/components/TeamAvailabilityToday'
+import { CompactRecentRecords } from '@/components/CompactRecentRecords'
+import { ConsultantTargetsWidget } from '@/components/ConsultantTargetsWidget'
+import {
+  DashboardCollapsibleProvider,
+  DashboardSection,
+  DashboardExpandCollapseToggle,
+} from '@/components/DashboardCollapsible'
 import { getAbsences } from '@/services/banco-ferias'
 import { AbsenceRecord } from '@/types/banco-ferias'
 import { filterClientsByUserAccess, filterRecordsByUserAccess } from '@/lib/service-group-access'
@@ -71,17 +80,15 @@ import {
   Users2,
   GraduationCap,
   Award,
-  TrendingUp,
   BarChart3,
   CheckCircle2,
   XCircle,
-  Clock,
   Layers,
   ArrowRight,
-  ShieldAlert,
+  TrendingUp,
+  Target,
+  Sparkles,
 } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 
 export default function Index() {
   const { user } = useAuth()
@@ -94,35 +101,34 @@ export default function Index() {
   const [trainings, setTrainings] = useState<TrainingRecord[]>([])
   const [awards, setAwards] = useState<MonthlyAwardRecord[]>([])
   const [absences, setAbsences] = useState<AbsenceRecord[]>([])
+  const [userTargets, setUserTargets] = useState<UserTargetRecord[]>([])
+  const [globalTarget, setGlobalTarget] = useState<GlobalTargetRecord | null>(null)
+  const [csatResponses, setCsatResponses] = useState<CsatStatItem[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [commercialPeriod, setCommercialPeriod] = useState<'all' | 'month' | 'today' | '7days'>(
     'month',
   )
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(30)
-  const [totalRecordsCount, setTotalRecordsCount] = useState(0)
-  const [totalPagesCount, setTotalPagesCount] = useState(1)
 
-  const loadData = async (page = currentPage, perPage = pageSize) => {
+  const loadData = async () => {
     try {
       setLoadError(null)
       const results = await Promise.allSettled([
-        getPaginatedServiceRecords(page, perPage, '-created'),
+        getServiceRecords('-created'),
         getClients(),
         getAccountExecutives(),
         getUsers(),
         getTrainings(),
         getMonthlyAwards(),
         getAbsences("status != 'cancelada'", '-start_date'),
+        getUserTargets(),
+        getGlobalTarget(),
+        getCsatStats(),
       ])
 
-      const [rRes, cRes, eRes, uRes, tRes, aRes, absRes] = results
+      const [rRes, cRes, eRes, uRes, tRes, aRes, absRes, utRes, gtRes, csatRes] = results
 
       if (rRes.status === 'fulfilled') {
-        const paginatedData = rRes.value
-        setRecords(Array.isArray(paginatedData.items) ? paginatedData.items : [])
-        setTotalRecordsCount(paginatedData.totalItems)
-        setTotalPagesCount(paginatedData.totalPages || 1)
+        setRecords(Array.isArray(rRes.value) ? rRes.value : [])
       } else {
         console.warn('Falha ao carregar atendimentos no Index:', rRes.reason)
         setRecords([])
@@ -168,8 +174,25 @@ export default function Index() {
         setAbsences([])
       }
 
-      // Se atendimentos ou clientes falharem, exibe aviso não bloqueante com botão "Tentar novamente"
-      const hasFailures = results.some((r) => r.status === 'rejected')
+      if (utRes && utRes.status === 'fulfilled') {
+        setUserTargets(Array.isArray(utRes.value) ? utRes.value : [])
+      } else {
+        setUserTargets([])
+      }
+
+      if (gtRes && gtRes.status === 'fulfilled') {
+        setGlobalTarget(gtRes.value)
+      } else {
+        setGlobalTarget(null)
+      }
+
+      if (csatRes && csatRes.status === 'fulfilled') {
+        setCsatResponses(Array.isArray(csatRes.value) ? csatRes.value : [])
+      } else {
+        setCsatResponses([])
+      }
+
+      const hasFailures = results.slice(0, 4).some((r) => r.status === 'rejected')
       if (hasFailures) {
         setLoadError('Não foi possível sincronizar todos os dados do painel.')
       }
@@ -193,17 +216,6 @@ export default function Index() {
   useRealtime('badges', () => loadData(), true)
   useRealtime('absences', () => loadData(), true)
 
-  const safeFormatDate = (dateStr?: string) => {
-    if (!dateStr) return ''
-    try {
-      const d = new Date(dateStr)
-      if (isNaN(d.getTime())) return ''
-      return format(d, 'dd/MM HH:mm', { locale: ptBR })
-    } catch {
-      return ''
-    }
-  }
-
   const safeRecords = Array.isArray(records) ? records : []
   const safeClients = Array.isArray(clients) ? clients : []
 
@@ -216,7 +228,7 @@ export default function Index() {
   const isExecutivoContas = userRole === 'Executivo de Contas'
   const isGestorComercial = userRole === 'Gestor Comercial'
 
-  // Perfil mestre/gerente: visão completa
+  // Perfil mestre/gerente: visão completa e reorganizada
   const isFullView = isMaster || isGerente
 
   // Registros acessíveis com base nas permissões
@@ -229,8 +241,7 @@ export default function Index() {
     [safeClients, user],
   )
 
-  const todayStr = new Date().toISOString().substring(0, 10)
-
+  const todayStr = useMemo(() => new Date().toISOString().substring(0, 10), [])
   const firstName = user?.name ? user.name.split(' ')[0] : 'Usuário'
 
   // ==========================================
@@ -249,9 +260,20 @@ export default function Index() {
     })
   }, [consultantRecords, todayStr])
 
-  const consultantRecentRecords = useMemo(() => {
-    return consultantRecords.slice(0, 5)
-  }, [consultantRecords])
+  // CSAT do consultor
+  const consultantCsatStats = useMemo(() => {
+    const myRecordIds = new Set(consultantRecords.map((r) => r.id))
+    const myCsats = csatResponses.filter((c) => myRecordIds.has(c.service_record_id))
+    const total = myCsats.length
+    if (total === 0) return { avg: null, positiveRate: null, total: 0 }
+    const sum = myCsats.reduce((acc, c) => acc + (c.rating || 0), 0)
+    const pos = myCsats.filter((c) => c.rating >= 4).length
+    return {
+      avg: sum / total,
+      positiveRate: Math.round((pos / total) * 100),
+      total,
+    }
+  }, [consultantRecords, csatResponses])
 
   const consultantStats = useMemo(() => {
     const inProgress = consultantRecords.filter((r) => r.status === 'Em Andamento').length
@@ -285,10 +307,12 @@ export default function Index() {
       wrongDeptCount: avoidableCount,
       reopenedCount: reopenData.reopenedCount,
       reopenRate: reopenData.rate,
+      csatAvg: consultantCsatStats.avg,
+      csatPositiveRate: consultantCsatStats.positiveRate,
+      csatTotalResponses: consultantCsatStats.total,
     }
-  }, [consultantRecords, consultantTodayRecords])
+  }, [consultantRecords, consultantTodayRecords, consultantCsatStats])
 
-  // Clientes atendidos pelo consultor
   const consultantClientCompanyNames = useMemo(() => {
     const names = new Set<string>()
     consultantRecords.forEach((r) => {
@@ -314,14 +338,12 @@ export default function Index() {
     users.forEach((u) => {
       if (u.id === user.id) return
 
-      // Vínculo direto por supervisor_id
       const supId = (u as any).supervisor_id
       if (supId && supId === user.id) {
         teamMap.set(u.id, u)
         return
       }
 
-      // Mesmo grupo de serviço
       if (userGroups.length > 0) {
         const uGroups = (u.service_groups as string[] | undefined) || []
         if (uGroups.some((g) => userGroups.includes(g))) {
@@ -347,6 +369,20 @@ export default function Index() {
       return recDate === todayStr || (r.created && r.created.startsWith(todayStr))
     })
   }, [teamRecords, todayStr])
+
+  const teamCsatStats = useMemo(() => {
+    const teamRecordIds = new Set(teamRecords.map((r) => r.id))
+    const relevantCsats = csatResponses.filter((c) => teamRecordIds.has(c.service_record_id))
+    const total = relevantCsats.length
+    if (total === 0) return { avg: null, positiveRate: null, total: 0 }
+    const sum = relevantCsats.reduce((acc, c) => acc + (c.rating || 0), 0)
+    const pos = relevantCsats.filter((c) => c.rating >= 4).length
+    return {
+      avg: sum / total,
+      positiveRate: Math.round((pos / total) * 100),
+      total,
+    }
+  }, [teamRecords, csatResponses])
 
   const teamStats = useMemo(() => {
     const inProgress = teamRecords.filter((r) => r.status === 'Em Andamento').length
@@ -379,12 +415,11 @@ export default function Index() {
       wrongDeptCount: avoidable,
       reopenedCount: reopenData.reopenedCount,
       reopenRate: reopenData.rate,
+      csatAvg: teamCsatStats.avg,
+      csatPositiveRate: teamCsatStats.positiveRate,
+      csatTotalResponses: teamCsatStats.total,
     }
-  }, [teamRecords, teamTodayRecords])
-
-  const teamRecentRecords = useMemo(() => {
-    return teamRecords.slice(0, 5)
-  }, [teamRecords])
+  }, [teamRecords, teamTodayRecords, teamCsatStats])
 
   // --- 3. EXECUTIVO DE CONTAS ---
   const currentExecutive = useMemo(() => {
@@ -401,7 +436,6 @@ export default function Index() {
           c.account_executive === currentExecutive.name,
       )
     }
-    // Fallback por bases do usuário
     const userBases = (user?.bases as string[] | undefined) || []
     if (userBases.length > 0) {
       return safeClients.filter((c) => {
@@ -446,12 +480,6 @@ export default function Index() {
     return executiveClients.filter((c) => Boolean(c.blocked))
   }, [executiveClients])
 
-  const executiveRecentRecords = useMemo(() => {
-    return executiveRecords.slice(0, 5)
-  }, [executiveRecords])
-
-  // Treinamentos pendentes dos clientes do executivo
-  // Considera clientes que precisam de treinamento (com chamados evitáveis ou cadastrados em trainings)
   const executivePendingTrainings = useMemo(() => {
     const list: { clientName: string; avoidableCount: number; lastDate?: string }[] = []
     executiveClients.forEach((client) => {
@@ -542,7 +570,6 @@ export default function Index() {
     return 100 - avoidableRate
   }, [commercialFilteredRecords])
 
-  // Comparativo entre grupos de serviço para o Gestor Comercial
   const commercialGroupComparison = useMemo(() => {
     const coMap = new Map<string, string>()
     for (const c of safeClients) {
@@ -589,6 +616,20 @@ export default function Index() {
     })
   }, [accessibleRecords, todayStr])
 
+  const generalCsatStats = useMemo(() => {
+    const recordIds = new Set(accessibleRecords.map((r) => r.id))
+    const relevant = csatResponses.filter((c) => recordIds.has(c.service_record_id))
+    const total = relevant.length
+    if (total === 0) return { avg: null, positiveRate: null, total: 0 }
+    const sum = relevant.reduce((acc, c) => acc + (c.rating || 0), 0)
+    const pos = relevant.filter((c) => c.rating >= 4).length
+    return {
+      avg: sum / total,
+      positiveRate: Math.round((pos / total) * 100),
+      total,
+    }
+  }, [accessibleRecords, csatResponses])
+
   const generalStats = useMemo(() => {
     const withTfr = accessibleRecords.filter((r) => Number(r?.first_response_time) > 0)
     const avgTfr =
@@ -602,7 +643,7 @@ export default function Index() {
 
     return {
       todayCount: generalTodayRecords.length,
-      totalCount: totalRecordsCount > 0 ? totalRecordsCount : accessibleRecords.length,
+      totalCount: accessibleRecords.length,
       inProgressCount: accessibleRecords.filter((r) => r?.status === 'Em Andamento').length,
       completedTodayCount: generalTodayRecords.filter((r) => r?.status === 'Concluído').length,
       avgDuration:
@@ -617,12 +658,11 @@ export default function Index() {
       wrongDeptCount: accessibleRecords.filter((r) => Boolean(r?.avoidable_contact)).length,
       reopenedCount: reopenData.reopenedCount,
       reopenRate: reopenData.rate,
+      csatAvg: generalCsatStats.avg,
+      csatPositiveRate: generalCsatStats.positiveRate,
+      csatTotalResponses: generalCsatStats.total,
     }
-  }, [accessibleRecords, generalTodayRecords, totalRecordsCount])
-
-  const generalRecentRecords = useMemo(() => {
-    return accessibleRecords.slice(0, 5)
-  }, [accessibleRecords])
+  }, [accessibleRecords, generalTodayRecords, generalCsatStats])
 
   // Subtítulo do cabeçalho de acordo com o papel
   const roleSubtitle = useMemo(() => {
@@ -631,7 +671,7 @@ export default function Index() {
     if (isGerente) return 'Visão Gerencial — Controle completo da operação de atendimento e suporte'
     if (isSupervisorOrLider)
       return 'Visão de Equipe — Gestão de desempenho e atendimentos dos liderados'
-    if (isConsultor) return 'Meu Desempenho — Acompanhe seus atendimentos, gamificação e clientes'
+    if (isConsultor) return 'Meu Desempenho — Meus números, metas e atendimentos de hoje'
     if (isExecutivoContas) return 'Gestão de Contas — Carteira de clientes gerenciados e autonomia'
     if (isGestorComercial)
       return 'Visão de Negócios — Volume de atendimentos, clientes e análise de núcleos'
@@ -639,912 +679,886 @@ export default function Index() {
   }, [isMaster, isGerente, isSupervisorOrLider, isConsultor, isExecutivoContas, isGestorComercial])
 
   return (
-    <div className="space-y-6">
-      {/* CABEÇALHO DO DASHBOARD */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-              Olá, {firstName}! 👋
-            </h2>
-            <Badge
-              variant="outline"
-              className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200"
-            >
-              {userRole}
-            </Badge>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">{roleSubtitle}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={() => window.dispatchEvent(new CustomEvent('open-quick-log'))}
-            className="bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-700 hover:to-indigo-700 font-bold"
-          >
-            <Zap className="h-4 w-4 mr-1.5" /> Registro Expresso
-          </Button>
-          <Button variant="outline" onClick={() => navigate('/novo-atendimento')}>
-            <PlusCircle className="h-4 w-4 mr-1.5" /> Novo Atendimento
-          </Button>
-        </div>
-      </div>
-
-      {loadError && (
-        <div className="flex items-center justify-between p-3 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-            <span>{loadError}</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => loadData(currentPage, pageSize)}
-            className="h-7 text-xs text-amber-800 hover:bg-amber-100"
-          >
-            <RefreshCw className="h-3 w-3 mr-1" /> Tentar novamente
-          </Button>
-        </div>
-      )}
-
-      <div className="flex items-center gap-2 text-xs text-slate-400">
-        <Keyboard className="h-3.5 w-3.5" />
-        <span>
-          Dica: pressione{' '}
-          <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-300 font-mono text-[10px]">
-            Alt+E
-          </kbd>{' '}
-          para registro expresso
-        </span>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 1. GERENTE / MASTER: VISÃO COMPLETA                                      */}
-      {/* ========================================================================= */}
-      {isFullView && (
-        <div className="space-y-6">
-          {/* Cards de estatísticas */}
-          <DashboardStats {...generalStats} />
-
-          {/* Volume de Atendimentos com Linha de Tendência e Projeção de Meta */}
-          <ServiceVolumeTrendCard
-            records={accessibleRecords}
-            title="Volume de Atendimentos & Linha de Tendência (Visão Geral)"
-            subtitle="Evolução diária dos chamados e projeção do ritmo para fechamento do mês corrente"
-          />
-
-          {/* Disponibilidade da Equipe Hoje (Ausências, Férias, Dayoff & Atuação) */}
-          <TeamAvailabilityToday users={users} absences={absences} currentUser={user} />
-
-          {/* Disponibilidade da Equipe */}
-          <CollaboratorStatusPanel />
-
-          {/* Reconhecimento Social */}
-          <SocialRecognitionBanner awards={awards} />
-
-          {/* Alertas de Desempenho */}
-          <PerformanceAlerts records={accessibleRecords} />
-
-          {/* Fila / Backlog ativo (aging) para Gestor / Master */}
-          <ActiveBacklogQueue
-            records={accessibleRecords}
-            isWidget={true}
-            maxWidgetItems={5}
-            onUpdateRecord={() => loadData(currentPage, pageSize)}
-          />
-
-          {/* Grid com Gamificação e Atendimentos Recentes */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <ConsultantGamification
-              records={records}
-              userName={user?.name}
-              userId={user?.id}
-              userRole={user?.role}
-            />{' '}
-            <Card className="lg:col-span-2 border-slate-200 shadow-subtle">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Headset className="h-4 w-4 text-indigo-600" /> Atendimentos Recentes
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/atendimentos')}
-                    className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
-                  >
-                    Ver todos <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {generalRecentRecords.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-4">
-                    Nenhum atendimento recente.
-                  </p>
-                )}
-                {generalRecentRecords.map((r, idx) => (
-                  <div
-                    key={r?.id || `recent-${idx}`}
-                    className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100/80 transition-colors"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-900 truncate">
-                        {r.client_company || r.client_name || 'Cliente'}
-                      </p>
-                      <p className="text-[10px] text-slate-500 truncate">
-                        {normalizeContactReason(r.contact_reason) ||
-                          r.contact_reason ||
-                          'Atendimento'}{' '}
-                        — {(r.description || '').substring(0, 60)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <StatusBadge status={r.status || 'Aberto'} />
-                      <span className="text-[10px] text-slate-400">
-                        {safeFormatDate(r.created)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Controles de paginação server-side */}
-                {totalPagesCount > 1 && (
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <div>
-                      Página <span className="font-bold text-slate-800">{currentPage}</span> de{' '}
-                      <span className="font-bold text-slate-800">{totalPagesCount}</span> (
-                      {totalRecordsCount} registros)
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage <= 1}
-                        onClick={() => {
-                          const newP = currentPage - 1
-                          setCurrentPage(newP)
-                          loadData(newP, pageSize)
-                        }}
-                        className="h-7 text-xs px-2"
-                      >
-                        Anterior
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage >= totalPagesCount}
-                        onClick={() => {
-                          const newP = currentPage + 1
-                          setCurrentPage(newP)
-                          loadData(newP, pageSize)
-                        }}
-                        className="h-7 text-xs px-2"
-                      >
-                        Próxima
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Scorecard de autonomia e Painel de Treinamentos */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <AutonomyScorecard records={accessibleRecords} clients={accessibleClients} />
-            <TrainingPanel records={accessibleRecords} clients={accessibleClients} />
-          </div>
-
-          {/* Feed de Conquistas da Equipe */}
-          <AchievementFeed />
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 2. SUPERVISOR / LÍDER: FOCO EM DESEMPENHO DA EQUIPE                      */}
-      {/* ========================================================================= */}
-      {!isFullView && isSupervisorOrLider && (
-        <div className="space-y-6">
-          {/* Disponibilidade da Equipe Hoje (Ausências, Férias, Dayoff & Atuação) */}
-          <TeamAvailabilityToday users={users} absences={absences} currentUser={user} />
-
-          {/* Disponibilidade da Equipe */}
-          <CollaboratorStatusPanel />
-
-          {/* Reconhecimento Social */}
-          <SocialRecognitionBanner awards={awards} />
-
-          {/* Header descritivo do foco da equipe */}
-          <div className="bg-gradient-to-r from-indigo-50 via-white to-indigo-50 border border-indigo-100 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                <Users2 className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Painel de Liderança da Equipe</h3>
-                <p className="text-xs text-slate-500">
-                  Monitorando{' '}
-                  {teamUsers.length > 0
-                    ? `${teamUsers.length} consultores`
-                    : 'sua equipe de atendimento'}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/relatorio-consultor')}
-              className="text-xs text-indigo-700 border-indigo-200 hover:bg-indigo-50"
-            >
-              Relatório Individual <ArrowRight className="h-3 w-3 ml-1" />
-            </Button>
-          </div>
-
-          {/* Cards de estatísticas da equipe */}
-          <DashboardStats {...teamStats} />
-
-          {/* Volume de Atendimentos com Linha de Tendência e Projeção de Meta */}
-          <ServiceVolumeTrendCard
-            records={teamRecords}
-            title="Volume de Atendimentos & Linha de Tendência da Equipe"
-            subtitle="Evolução diária da equipe liderada e estimativa de meta para o fim do mês"
-          />
-
-          {/* Alertas de Desempenho dos Liderados */}
-          <PerformanceAlerts records={teamRecords} />
-
-          {/* Fila / Backlog ativo (aging) para Líder / Supervisor */}
-          <ActiveBacklogQueue
-            records={teamRecords}
-            isWidget={true}
-            maxWidgetItems={5}
-            onUpdateRecord={() => loadData(currentPage, pageSize)}
-          />
-
-          {/* Grid com Gamificação e Conquistas da Equipe */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <ConsultantGamification
-              records={consultantRecords}
-              userName={user?.name || ''}
-              userId={user?.id}
-            />
-            <div className="lg:col-span-2">
-              <AchievementFeed />
-            </div>
-          </div>
-
-          {/* Scorecard de Autonomia e Atendimentos Recentes da Equipe */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <AutonomyScorecard records={teamRecords} clients={accessibleClients} />
-
-            <Card className="border-slate-200 shadow-subtle">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Headset className="h-4 w-4 text-indigo-600" /> Atendimentos Recentes da Equipe
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/atendimentos')}
-                    className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
-                  >
-                    Ver todos <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {teamRecentRecords.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-6">
-                    Nenhum atendimento registrado pela equipe até o momento.
-                  </p>
-                )}
-                {teamRecentRecords.map((r, idx) => (
-                  <div
-                    key={r?.id || `team-${idx}`}
-                    className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100/80 transition-colors"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-xs font-bold text-slate-900 truncate">
-                          {r.client_company || r.client_name || 'Cliente'}
-                        </p>
-                        {r.expand?.assigned_user?.name && (
-                          <span className="text-[10px] text-slate-400 truncate">
-                            • {r.expand.assigned_user.name}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-slate-500 truncate">
-                        {normalizeContactReason(r.contact_reason) ||
-                          r.contact_reason ||
-                          'Atendimento'}{' '}
-                        — {(r.description || '').substring(0, 60)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <StatusBadge status={r.status || 'Aberto'} />
-                      <span className="text-[10px] text-slate-400">
-                        {safeFormatDate(r.created)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Controles de paginação server-side */}
-                {totalPagesCount > 1 && (
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <div>
-                      Página <span className="font-bold text-slate-800">{currentPage}</span> de{' '}
-                      <span className="font-bold text-slate-800">{totalPagesCount}</span> (
-                      {totalRecordsCount} registros)
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage <= 1}
-                        onClick={() => {
-                          const newP = currentPage - 1
-                          setCurrentPage(newP)
-                          loadData(newP, pageSize)
-                        }}
-                        className="h-7 text-xs px-2"
-                      >
-                        Anterior
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage >= totalPagesCount}
-                        onClick={() => {
-                          const newP = currentPage + 1
-                          setCurrentPage(newP)
-                          loadData(newP, pageSize)
-                        }}
-                        className="h-7 text-xs px-2"
-                      >
-                        Próxima
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 3. CONSULTOR: FOCO NO PRÓPRIO DESEMPENHO                                 */}
-      {/* ========================================================================= */}
-      {!isFullView && isConsultor && (
-        <div className="space-y-6">
-          {/* Disponibilidade da Equipe Hoje (Ausências, Férias, Dayoff & Atuação) */}
-          <TeamAvailabilityToday users={users} absences={absences} currentUser={user} />
-
-          {/* Disponibilidade da Equipe */}
-          <CollaboratorStatusPanel />
-
-          {/* Reconhecimento Social */}
-          <SocialRecognitionBanner awards={awards} />
-
-          {/* Cards com suas próprias estatísticas */}
-          <DashboardStats {...consultantStats} />
-
-          {/* Volume de Atendimentos com Linha de Tendência e Projeção de Meta */}
-          <ServiceVolumeTrendCard
-            records={consultantRecords}
-            title="Meu Volume de Atendimentos & Tendência"
-            subtitle="Ritmo pessoal diário e estimativa de fechamento para sua meta individual"
-          />
-
-          {/* Grid com Gamificação e Seus Atendimentos Recentes */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <ConsultantGamification
-              records={consultantRecords}
-              userName={user?.name || ''}
-              userId={user?.id}
-            />
-
-            <Card className="lg:col-span-2 border-slate-200 shadow-subtle">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Headset className="h-4 w-4 text-indigo-600" /> Meus Atendimentos Recentes
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/atendimentos')}
-                    className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
-                  >
-                    Ver todos <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {consultantRecentRecords.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-6">
-                    Você ainda não possui atendimentos registrados hoje.
-                  </p>
-                )}
-                {consultantRecentRecords.map((r, idx) => (
-                  <div
-                    key={r?.id || `mine-${idx}`}
-                    className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100/80 transition-colors"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-900 truncate">
-                        {r.client_company || r.client_name || 'Cliente'}
-                      </p>
-                      <p className="text-[10px] text-slate-500 truncate">
-                        {normalizeContactReason(r.contact_reason) ||
-                          r.contact_reason ||
-                          'Atendimento'}{' '}
-                        — {(r.description || '').substring(0, 60)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <StatusBadge status={r.status || 'Aberto'} />
-                      <span className="text-[10px] text-slate-400">
-                        {safeFormatDate(r.created)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Controles de paginação server-side */}
-                {totalPagesCount > 1 && (
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <div>
-                      Página <span className="font-bold text-slate-800">{currentPage}</span> de{' '}
-                      <span className="font-bold text-slate-800">{totalPagesCount}</span> (
-                      {totalRecordsCount} registros)
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage <= 1}
-                        onClick={() => {
-                          const newP = currentPage - 1
-                          setCurrentPage(newP)
-                          loadData(newP, pageSize)
-                        }}
-                        className="h-7 text-xs px-2"
-                      >
-                        Anterior
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage >= totalPagesCount}
-                        onClick={() => {
-                          const newP = currentPage + 1
-                          setCurrentPage(newP)
-                          loadData(newP, pageSize)
-                        }}
-                        className="h-7 text-xs px-2"
-                      >
-                        Próxima
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Scorecard de autonomia dos clientes que o consultor atende */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <AutonomyScorecard records={consultantRecords} clients={consultantClients} />
-            <TrainingPanel records={consultantRecords} clients={consultantClients} />
-          </div>
-
-          {/* Feed de Conquistas */}
-          <AchievementFeed />
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 4. EXECUTIVO DE CONTAS: FOCO NOS CLIENTES QUE GERENCIA                   */}
-      {/* ========================================================================= */}
-      {!isFullView && isExecutivoContas && (
-        <div className="space-y-6">
-          {/* Disponibilidade da Equipe */}
-          <CollaboratorStatusPanel />
-
-          {/* Reconhecimento Social */}
-          <SocialRecognitionBanner awards={awards} />
-
-          {/* Banner de Identificação */}
-          <div className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  Carteira de Clientes do Executivo
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {currentExecutive
-                    ? `Visão dedicada das contas gerenciadas por ${currentExecutive.name}`
-                    : 'Visão dedicada da sua carteira de clientes'}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/painel-executivo')}
-              className="text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-            >
-              Abrir Painel Executivo <ArrowRight className="h-3 w-3 ml-1" />
-            </Button>
-          </div>
-
-          {/* Cards de Total de Clientes, Ativos e Inativos */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500">Total de Clientes</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">
-                    {executiveClients.length}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Sob sua gestão comercial</p>
-                </div>
-                <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
-                  <Building2 className="h-6 w-6" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500">Clientes Ativos</p>
-                  <p className="text-2xl font-extrabold text-emerald-600 mt-1">
-                    {executiveActiveClients.length}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Operando normalmente</p>
-                </div>
-                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
-                  <CheckCircle2 className="h-6 w-6" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500">
-                    Clientes Inativos / Bloqueados
-                  </p>
-                  <p className="text-2xl font-extrabold text-rose-600 mt-1">
-                    {executiveInactiveClients.length}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Com pendência ou bloqueio</p>
-                </div>
-                <div className="p-3 rounded-xl bg-rose-50 text-rose-600 shrink-0">
-                  <XCircle className="h-6 w-6" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Scorecard de autonomia completo (Top 3 e Bottom 3) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <AutonomyScorecard records={executiveRecords} clients={executiveClients} />
-
-            {/* Treinamentos pendentes dos seus clientes */}
-            <Card className="border-slate-200 shadow-subtle">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4 text-indigo-600" /> Treinamentos Pendentes dos
-                    Seus Clientes
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/painel-treinamento')}
-                    className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
-                  >
-                    Ver detalhes <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {executivePendingTrainings.length === 0 ? (
-                  <div className="p-4 bg-slate-50 rounded-lg text-center">
-                    <CheckCircle2 className="h-6 w-6 text-emerald-500 mx-auto mb-1.5" />
-                    <p className="text-xs text-slate-600 font-medium">
-                      Nenhuma agência com demanda crítica de treinamento
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Seus clientes estão com baixo volume de dúvidas evitáveis.
-                    </p>
-                  </div>
-                ) : (
-                  executivePendingTrainings.slice(0, 5).map((item, idx) => (
-                    <div
-                      key={`exec-train-${idx}`}
-                      className="flex items-center justify-between p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-900 truncate">
-                          {item.clientName}
-                        </p>
-                        <p className="text-[10px] text-slate-500">
-                          {item.avoidableCount} chamados evitáveis registrados
-                          {item.lastDate ? ` • Último: ${safeFormatDate(item.lastDate)}` : ''}
-                        </p>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] bg-white text-indigo-700 border-indigo-200 shrink-0 ml-2"
-                      >
-                        Sugerir Treinamento
-                      </Badge>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Últimos atendimentos dos seus clientes */}
-          <Card className="border-slate-200 shadow-subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Headset className="h-4 w-4 text-indigo-600" /> Últimos Atendimentos dos Seus
-                  Clientes
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/atendimentos')}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
-                >
-                  Ver todos <ArrowRight className="h-3 w-3 ml-1" />
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {executiveRecentRecords.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">
-                  Nenhum atendimento registrado para os clientes da sua carteira.
-                </p>
-              ) : (
-                executiveRecentRecords.map((r, idx) => (
-                  <div
-                    key={r?.id || `exec-rec-${idx}`}
-                    className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100/80 transition-colors"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-bold text-slate-900 truncate">
-                          {r.client_company || r.client_name || 'Cliente'}
-                        </p>
-                        {r.avoidable_contact && (
-                          <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4">
-                            Evitável
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-slate-500 truncate">
-                        {normalizeContactReason(r.contact_reason) ||
-                          r.contact_reason ||
-                          'Atendimento'}{' '}
-                        — {(r.description || '').substring(0, 70)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <StatusBadge status={r.status || 'Aberto'} />
-                      <span className="text-[10px] text-slate-400">
-                        {safeFormatDate(r.created)}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 5. GESTOR COMERCIAL: VISÃO DE NEGÓCIOS                                   */}
-      {/* ========================================================================= */}
-      {!isFullView && isGestorComercial && (
-        <div className="space-y-6">
-          {/* Disponibilidade da Equipe */}
-          <CollaboratorStatusPanel />
-
-          {/* Reconhecimento Social */}
-          <SocialRecognitionBanner awards={awards} />
-
-          {/* Barra de Filtro de Período para Negócios */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-subtle">
+    <DashboardCollapsibleProvider userId={user?.id || 'guest'}>
+      <div className="space-y-5">
+        {/* CABEÇALHO DO DASHBOARD */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-indigo-600" />
-              <span className="text-xs font-bold text-slate-800">
-                Filtrar Período de Análise Comercial:
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Select
-                value={commercialPeriod}
-                onValueChange={(val: any) => setCommercialPeriod(val)}
+              <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
+                Olá, {firstName}! 👋
+              </h2>
+              <Badge
+                variant="outline"
+                className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200"
               >
-                <SelectTrigger className="w-[180px] h-8 text-xs bg-slate-50">
-                  <SelectValue placeholder="Selecione o período" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today" className="text-xs">
-                    Hoje
-                  </SelectItem>
-                  <SelectItem value="7days" className="text-xs">
-                    Últimos 7 dias
-                  </SelectItem>
-                  <SelectItem value="month" className="text-xs">
-                    Mês Atual
-                  </SelectItem>
-                  <SelectItem value="all" className="text-xs">
-                    Todo o Período
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                {userRole}
+              </Badge>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">{roleSubtitle}</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <DashboardExpandCollapseToggle />
+
+            <Button
+              onClick={() => window.dispatchEvent(new CustomEvent('open-quick-log'))}
+              className="bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-700 hover:to-indigo-700 font-bold h-9"
+              size="sm"
+            >
+              <Zap className="h-4 w-4 mr-1.5" /> Registro Expresso
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/novo-atendimento')}
+              className="h-9"
+            >
+              <PlusCircle className="h-4 w-4 mr-1.5" /> Novo Atendimento
+            </Button>
+          </div>
+        </div>
+
+        {loadError && (
+          <div className="flex items-center justify-between p-3 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+              <span>{loadError}</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => loadData()}
+              className="h-7 text-xs text-amber-800 hover:bg-amber-100"
+            >
+              <RefreshCw className="h-3 w-3 mr-1" /> Tentar novamente
+            </Button>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <Keyboard className="h-3.5 w-3.5" />
+          <span>
+            Dica: pressione{' '}
+            <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-300 font-mono text-[10px]">
+              Alt+E
+            </kbd>{' '}
+            para registro expresso
+          </span>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 1. CONSULTOR: PÁGINA COMPACTA (< 1 TELA)                                 */}
+        {/* Meus números de hoje/semana + Minhas metas + Minhas ações (fila/alertas)   */}
+        {/* ========================================================================= */}
+        {!isFullView && isConsultor && (
+          <div className="space-y-4">
+            {/* Bloco 1: Meus Números de Hoje / Semana (Cards de Métricas) */}
+            <DashboardStats {...consultantStats} />
+
+            {/* Bloco 2: Minhas Metas + Meus Atendimentos Recentes (Resumo Compacto) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ConsultantTargetsWidget
+                user={user}
+                records={consultantRecords}
+                targets={userTargets}
+                globalTarget={globalTarget}
+              />
+
+              <CompactRecentRecords
+                records={consultantRecords}
+                title="Meus Últimos Atendimentos"
+                emptyMessage="Você ainda não possui atendimentos registrados hoje."
+                maxItems={5}
+              />
+            </div>
+
+            {/* Bloco 3: Minhas Ações (Fila Ativa pessoal + Alertas de Ação que lhe dizem respeito) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ActiveBacklogQueue
+                records={consultantRecords}
+                isWidget={true}
+                maxWidgetItems={5}
+                onUpdateRecord={() => loadData()}
+              />
+
+              <PerformanceAlerts
+                records={consultantRecords}
+                targetUserId={user?.id}
+                title="Minhas Ações & Alertas"
+                subtitle="Alertas de fila, TFR e projeção da sua meta pessoal de atendimento"
+              />
+            </div>
+
+            {/* SEÇÕES SECUNDÁRIAS COLAPSÁVEIS COM MEMÓRIA (Consultor: fechadas por padrão para manter < 1 tela) */}
+            <div className="space-y-3 pt-2 border-t border-slate-200/80">
+              <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
+                <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                  Módulos Complementares
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Preferências salvas automaticamente
+                </span>
+              </div>
+
+              {/* Equipe Disponível Hoje */}
+              <DashboardSection
+                id="consultor-team-availability"
+                title="Equipe Disponível Hoje & Ausências"
+                subtitle="Consulte quem está em atuação e ausências do núcleo"
+                icon={<Users2 className="h-4 w-4" />}
+                defaultOpen={false}
+                headerExtra={
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[11px] text-indigo-600 hover:text-indigo-800 p-1"
+                  >
+                    <span onClick={() => navigate('/banco-horas-ferias')}>Banco & Férias →</span>
+                  </Button>
+                }
+              >
+                <TeamAvailabilityToday users={users} absences={absences} currentUser={user} />
+              </DashboardSection>
+
+              {/* Status de Colaboradores */}
+              <DashboardSection
+                id="consultor-collab-status"
+                title="Status da Equipe (Em Pausa / Atendimento)"
+                subtitle="Painel operacional de pausas e atividades"
+                icon={<Zap className="h-4 w-4" />}
+                defaultOpen={false}
+              >
+                <CollaboratorStatusPanel />
+              </DashboardSection>
+
+              {/* Volume & Tendência Pessoal */}
+              <DashboardSection
+                id="consultor-trend"
+                title="Meu Volume de Atendimentos & Linha de Tendência"
+                subtitle="Evolução diária dos seus chamados e estimativa de fechamento"
+                icon={<TrendingUp className="h-4 w-4" />}
+                defaultOpen={false}
+              >
+                <ServiceVolumeTrendCard
+                  records={consultantRecords}
+                  title="Meu Volume de Atendimentos & Tendência"
+                  subtitle="Ritmo pessoal diário e estimativa de fechamento para sua meta individual"
+                />
+              </DashboardSection>
+
+              {/* Gamificação Pessoal & Conquistas */}
+              <DashboardSection
+                id="consultor-gamification"
+                title="Minha Gamificação, Badges & Reconhecimentos"
+                subtitle="Acompanhe seus pontos XP, nível de carreira e premiações da equipe"
+                icon={<Award className="h-4 w-4" />}
+                defaultOpen={false}
+              >
+                <div className="space-y-4">
+                  <SocialRecognitionBanner awards={awards} />
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <ConsultantGamification
+                      records={consultantRecords}
+                      userName={user?.name || ''}
+                      userId={user?.id}
+                    />
+                    <div className="lg:col-span-2">
+                      <AchievementFeed />
+                    </div>
+                  </div>
+                </div>
+              </DashboardSection>
+
+              {/* Autonomia & Treinamentos dos Clientes */}
+              <DashboardSection
+                id="consultor-autonomy-training"
+                title="Autonomia dos Clientes & Treinamentos"
+                subtitle="Índice de resoluções de primeiro contato e dúvidas evitáveis"
+                icon={<GraduationCap className="h-4 w-4" />}
+                defaultOpen={false}
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <AutonomyScorecard records={consultantRecords} clients={consultantClients} />
+                  <TrainingPanel records={consultantRecords} clients={consultantClients} />
+                </div>
+              </DashboardSection>
             </div>
           </div>
+        )}
 
-          {/* Cards de Volume total por período, Clientes Ativos, Taxa de autonomia geral */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
-              <CardContent className="p-4 flex items-center justify-between">
+        {/* ========================================================================= */}
+        {/* 2. SUPERVISOR / LÍDER: GESTÃO DA EQUIPE (< 1.5 TELAS)                    */}
+        {/* Visão da equipe, alertas de ação, Equipe Disponível Hoje e meta da equipe */}
+        {/* ========================================================================= */}
+        {!isFullView && isSupervisorOrLider && (
+          <div className="space-y-4">
+            {/* Faixa de Atenção / Equipe Disponível Hoje (com escopo INTER/NAC mantido) */}
+            <TeamAvailabilityToday users={users} absences={absences} currentUser={user} />
+
+            {/* Header resumo de liderança */}
+            <div className="bg-gradient-to-r from-indigo-50 via-white to-indigo-50 border border-indigo-100 rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                  <Users2 className="h-4 w-4" />
+                </div>
                 <div>
-                  <p className="text-xs font-medium text-slate-500">Volume Total de Atendimentos</p>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">
-                    {commercialFilteredRecords.length}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    {commercialPeriod === 'today'
-                      ? 'No dia de hoje'
-                      : commercialPeriod === '7days'
-                        ? 'Nos últimos 7 dias'
-                        : commercialPeriod === 'month'
-                          ? 'No mês atual'
-                          : 'No histórico completo'}
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900">
+                    Painel de Liderança da Equipe
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Monitorando{' '}
+                    {teamUsers.length > 0
+                      ? `${teamUsers.length} consultores sob sua supervisão`
+                      : 'sua equipe de atendimento'}
                   </p>
                 </div>
-                <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
-                  <Headset className="h-6 w-6" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500">Clientes Ativos</p>
-                  <p className="text-2xl font-extrabold text-emerald-600 mt-1">
-                    {commercialActiveClients.length}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    de {commercialClients.length} clientes na base
-                  </p>
-                </div>
-                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
-                  <Building2 className="h-6 w-6" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500">Taxa de Autonomia Geral</p>
-                  <p className="text-2xl font-extrabold text-indigo-600 mt-1">
-                    {commercialAutonomyRate}%
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Proporção de demandas resolvidas sem retrabalho
-                  </p>
-                </div>
-                <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
-                  <Award className="h-6 w-6" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Gráfico Comparativo entre Núcleos de Atendimento */}
-          <Card className="border-slate-200 shadow-subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-indigo-600" /> Gráfico Comparativo entre Núcleos
-                  de Atendimento
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/relatorios-grupo')}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 p-0 h-auto"
-                >
-                  Ver relatório completo <ArrowRight className="h-3 w-3 ml-1" />
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ChartContainer config={commercialChartConfig} className="h-[280px] w-full">
-                <BarChart data={commercialGroupComparison}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={30} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar
-                    dataKey="total"
-                    name="Total Atendimentos"
-                    fill="#6366f1"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="avoidable"
-                    name="Contatos Evitáveis"
-                    fill="#f43f5e"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ChartContainer>
-
-              {/* Tabela Resumo dos Núcleos */}
-              <div className="overflow-x-auto rounded-lg border border-slate-100">
-                <Table>
-                  <TableHeader className="bg-slate-50">
-                    <TableRow>
-                      <TableHead className="text-xs font-bold">Núcleo de Atendimento</TableHead>
-                      <TableHead className="text-xs font-bold text-center">Total</TableHead>
-                      <TableHead className="text-xs font-bold text-center">Evitáveis</TableHead>
-                      <TableHead className="text-xs font-bold text-center">
-                        Taxa de Autonomia
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {commercialGroupComparison.map((g) => (
-                      <TableRow key={g.group} className="hover:bg-slate-50">
-                        <TableCell className="text-xs font-semibold text-slate-900">
-                          {g.name}
-                        </TableCell>
-                        <TableCell className="text-xs text-center">{g.total}</TableCell>
-                        <TableCell className="text-xs text-center text-rose-600 font-semibold">
-                          {g.avoidable}
-                        </TableCell>
-                        <TableCell className="text-xs text-center">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                              g.autonomy >= 70
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-amber-100 text-amber-800'
-                            }`}
-                          >
-                            {g.autonomy}%
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/relatorio-consultor')}
+                  className="text-xs h-7 text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+                >
+                  Relatório Individual <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/metas-desempenho')}
+                  className="text-xs h-7 text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+                >
+                  Metas da Equipe <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Cards de métricas da equipe */}
+            <DashboardStats {...teamStats} />
+
+            {/* Alertas de Desempenho e Ação da Equipe */}
+            <PerformanceAlerts records={teamRecords} />
+
+            {/* Fila / Backlog ativo da equipe + Resumo Compacto dos Últimos Atendimentos */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ActiveBacklogQueue
+                records={teamRecords}
+                isWidget={true}
+                maxWidgetItems={5}
+                onUpdateRecord={() => loadData()}
+              />
+
+              <CompactRecentRecords
+                records={teamRecords}
+                title="Últimos Atendimentos da Equipe"
+                emptyMessage="Nenhum atendimento registrado pela equipe até o momento."
+                showConsultant={true}
+                maxItems={5}
+              />
+            </div>
+
+            {/* SEÇÕES SECUNDÁRIAS COLAPSÁVEIS COM MEMÓRIA (Gestor: 2-3 abertas por padrão) */}
+            <div className="space-y-3 pt-2 border-t border-slate-200/80">
+              <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
+                <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5 text-indigo-500" />
+                  Análises Complementares da Equipe
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Preferências salvas automaticamente
+                </span>
+              </div>
+
+              {/* Volume & Projeção de Metas da Equipe (Aberto por padrão) */}
+              <DashboardSection
+                id="team-volume-trend"
+                title="Volume de Atendimentos & Linha de Tendência da Equipe"
+                subtitle="Evolução diária da equipe liderada e estimativa de meta para o fim do mês"
+                icon={<TrendingUp className="h-4 w-4" />}
+                defaultOpen={true}
+              >
+                <ServiceVolumeTrendCard
+                  records={teamRecords}
+                  title="Volume de Atendimentos & Linha de Tendência da Equipe"
+                  subtitle="Evolução diária da equipe liderada e estimativa de meta para o fim do mês"
+                />
+              </DashboardSection>
+
+              {/* Status Operacional de Pausas (Aberto por padrão) */}
+              <DashboardSection
+                id="team-collab-status"
+                title="Status Operacional em Tempo Real (Pausas & Atuação)"
+                subtitle="Tempo em pausa, almoço e atendimentos ativos"
+                icon={<Zap className="h-4 w-4" />}
+                defaultOpen={true}
+              >
+                <CollaboratorStatusPanel />
+              </DashboardSection>
+
+              {/* Gamificação & Feed de Conquistas */}
+              <DashboardSection
+                id="team-gamification"
+                title="Reconhecimento Social, Gamificação & Ranking"
+                subtitle="Destaques mensais, conquistas desbloqueadas e feed da equipe"
+                icon={<Award className="h-4 w-4" />}
+                defaultOpen={false}
+              >
+                <div className="space-y-4">
+                  <SocialRecognitionBanner awards={awards} />
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <ConsultantGamification
+                      records={consultantRecords}
+                      userName={user?.name || ''}
+                      userId={user?.id}
+                    />
+                    <div className="lg:col-span-2">
+                      <AchievementFeed />
+                    </div>
+                  </div>
+                </div>
+              </DashboardSection>
+
+              {/* Autonomia dos Clientes Liderados */}
+              <DashboardSection
+                id="team-autonomy"
+                title="Scorecard de Autonomia dos Clientes da Equipe"
+                subtitle="Percentual de contatos evitáveis e agências prioritárias"
+                icon={<BarChart3 className="h-4 w-4" />}
+                defaultOpen={false}
+                headerExtra={
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[11px] text-indigo-600 hover:text-indigo-800 p-1"
+                  >
+                    <span onClick={() => navigate('/autonomia')}>Painel Completo →</span>
+                  </Button>
+                }
+              >
+                <AutonomyScorecard records={teamRecords} clients={accessibleClients} />
+              </DashboardSection>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 3. MASTER / GERENTE: VISÃO COMPLETA REORGANIZADA (~1.5 TELAS)             */}
+        {/* Estruturada com os blocos primários no topo e seções secundárias colapsadas */}
+        {/* ========================================================================= */}
+        {isFullView && (
+          <div className="space-y-4">
+            {/* Bloco 1: Métricas Globais (Cards responsivos com CSAT inteligente) */}
+            <DashboardStats {...generalStats} />
+
+            {/* Bloco 2: Faixa de Atenção Operacional: Equipe Disponível Hoje + Alertas */}
+            <TeamAvailabilityToday users={users} absences={absences} currentUser={user} />
+
+            <PerformanceAlerts records={accessibleRecords} />
+
+            {/* Bloco 3: Volume & Tendência com Meta do Mês */}
+            <ServiceVolumeTrendCard
+              records={accessibleRecords}
+              title="Volume de Atendimentos & Linha de Tendência (Visão Geral)"
+              subtitle="Evolução diária dos chamados e projeção do ritmo para fechamento do mês corrente"
+            />
+
+            {/* Bloco 4: Fila / Backlog Ativo + Resumo Compacto dos Últimos Atendimentos */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ActiveBacklogQueue
+                records={accessibleRecords}
+                isWidget={true}
+                maxWidgetItems={5}
+                onUpdateRecord={() => loadData()}
+              />
+
+              <CompactRecentRecords
+                records={accessibleRecords}
+                title="Atendimentos Recentes (Geral)"
+                emptyMessage="Nenhum atendimento recente."
+                showConsultant={true}
+                maxItems={5}
+              />
+            </div>
+
+            {/* SEÇÕES SECUNDÁRIAS COLAPSÁVEIS COM MEMÓRIA (2 primeiras abertas por padrão) */}
+            <div className="space-y-3 pt-2 border-t border-slate-200/80">
+              <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
+                <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5 text-indigo-500" />
+                  Módulos Gerenciais Secundários
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Preferências salvas automaticamente
+                </span>
+              </div>
+
+              {/* Status Operacional em Tempo Real (Aberto por padrão) */}
+              <DashboardSection
+                id="master-collab-status"
+                title="Status Operacional em Tempo Real (Pausas & Produtividade)"
+                subtitle="Controle consolidado de colaboradores em pausa, almoço e atendimentos"
+                icon={<Zap className="h-4 w-4" />}
+                defaultOpen={true}
+              >
+                <CollaboratorStatusPanel />
+              </DashboardSection>
+
+              {/* Reconhecimento Social & Gamificação (Aberto por padrão) */}
+              <DashboardSection
+                id="master-recognition-gamification"
+                title="Reconhecimento Social, Gamificação & Ranking"
+                subtitle="Destaques mensais, conquistas desbloqueadas e feed da operação"
+                icon={<Award className="h-4 w-4" />}
+                defaultOpen={true}
+              >
+                <div className="space-y-4">
+                  <SocialRecognitionBanner awards={awards} />
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <ConsultantGamification
+                      records={records}
+                      userName={user?.name}
+                      userId={user?.id}
+                      userRole={user?.role}
+                    />
+                    <div className="lg:col-span-2">
+                      <AchievementFeed />
+                    </div>
+                  </div>
+                </div>
+              </DashboardSection>
+
+              {/* Autonomia dos Clientes & Painel de Treinamento */}
+              <DashboardSection
+                id="master-autonomy-training"
+                title="Scorecard de Autonomia & Painel de Treinamentos"
+                subtitle="Clientes com maior índice de dúvidas evitáveis e recomendações de capacitação"
+                icon={<GraduationCap className="h-4 w-4" />}
+                defaultOpen={false}
+                headerExtra={
+                  <div className="flex items-center gap-1">
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px] text-indigo-600 hover:text-indigo-800 p-1"
+                    >
+                      <span onClick={() => navigate('/autonomia')}>Autonomia →</span>
+                    </Button>
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px] text-indigo-600 hover:text-indigo-800 p-1"
+                    >
+                      <span onClick={() => navigate('/painel-treinamento')}>Treinamentos →</span>
+                    </Button>
+                  </div>
+                }
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <AutonomyScorecard records={accessibleRecords} clients={accessibleClients} />
+                  <TrainingPanel records={accessibleRecords} clients={accessibleClients} />
+                </div>
+              </DashboardSection>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 4. EXECUTIVO DE CONTAS: FOCO NOS CLIENTES QUE GERENCIA                   */}
+        {/* ========================================================================= */}
+        {!isFullView && isExecutivoContas && (
+          <div className="space-y-4">
+            {/* Banner de Identificação */}
+            <div className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 border border-emerald-200 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                  <Building2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900">
+                    Carteira de Clientes do Executivo
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {currentExecutive
+                      ? `Visão dedicada das contas gerenciadas por ${currentExecutive.name}`
+                      : 'Visão dedicada da sua carteira de clientes'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/painel-executivo')}
+                className="text-xs h-7 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+              >
+                Abrir Painel Executivo <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+
+            {/* Cards de Total de Clientes, Ativos e Inativos */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+                <CardContent className="p-3.5 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-slate-500">Total de Clientes</p>
+                    <p className="text-2xl font-extrabold text-slate-900 mt-1">
+                      {executiveClients.length}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Sob sua gestão comercial</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+                <CardContent className="p-3.5 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-slate-500">Clientes Ativos</p>
+                    <p className="text-2xl font-extrabold text-emerald-600 mt-1">
+                      {executiveActiveClients.length}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Operando normalmente</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+                <CardContent className="p-3.5 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-slate-500">Clientes Inativos</p>
+                    <p className="text-2xl font-extrabold text-rose-600 mt-1">
+                      {executiveInactiveClients.length}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Com pendência ou bloqueio</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-rose-50 text-rose-600 shrink-0">
+                    <XCircle className="h-5 w-5" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Scorecard de Autonomia + Resumo Compacto dos Últimos Atendimentos */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <AutonomyScorecard records={executiveRecords} clients={executiveClients} />
+
+              <CompactRecentRecords
+                records={executiveRecords}
+                title="Últimos Atendimentos da Carteira"
+                emptyMessage="Nenhum atendimento registrado para os clientes da sua carteira."
+                maxItems={5}
+              />
+            </div>
+
+            {/* SEÇÕES SECUNDÁRIAS COLAPSÁVEIS COM MEMÓRIA */}
+            <div className="space-y-3 pt-2 border-t border-slate-200/80">
+              {/* Treinamentos Pendentes dos Clientes (Aberto por padrão) */}
+              <DashboardSection
+                id="exec-pending-trainings"
+                title="Treinamentos Sugeridos & Demandas Evitáveis"
+                subtitle="Clientes da carteira que acumulam chamados com dúvidas evitáveis"
+                icon={<GraduationCap className="h-4 w-4" />}
+                defaultOpen={true}
+                badge={
+                  executivePendingTrainings.length > 0 ? (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] bg-amber-50 text-amber-800 border-amber-200"
+                    >
+                      {executivePendingTrainings.length} agência
+                      {executivePendingTrainings.length > 1 ? 's' : ''}
+                    </Badge>
+                  ) : null
+                }
+              >
+                <div className="space-y-2">
+                  {executivePendingTrainings.length === 0 ? (
+                    <div className="p-4 bg-slate-50 rounded-lg text-center">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto mb-1.5" />
+                      <p className="text-xs text-slate-600 font-medium">
+                        Nenhuma agência com demanda crítica de treinamento
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Seus clientes estão com baixo volume de dúvidas evitáveis.
+                      </p>
+                    </div>
+                  ) : (
+                    executivePendingTrainings.slice(0, 5).map((item, idx) => (
+                      <div
+                        key={`exec-train-${idx}`}
+                        className="flex items-center justify-between p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-900 truncate">
+                            {item.clientName}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {item.avoidableCount} chamados evitáveis registrados
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate('/painel-treinamento')}
+                          className="text-[10px] h-6 bg-white text-indigo-700 border-indigo-200 shrink-0 ml-2"
+                        >
+                          Sugerir Treinamento
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </DashboardSection>
+
+              {/* Status Operacional & Reconhecimentos */}
+              <DashboardSection
+                id="exec-status-recognition"
+                title="Status da Equipe & Reconhecimento Social"
+                subtitle="Disponibilidade em tempo real e premiações do mês"
+                icon={<Award className="h-4 w-4" />}
+                defaultOpen={false}
+              >
+                <div className="space-y-4">
+                  <SocialRecognitionBanner awards={awards} />
+                  <CollaboratorStatusPanel />
+                </div>
+              </DashboardSection>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 5. GESTOR COMERCIAL: VISÃO DE NEGÓCIOS                                   */}
+        {/* ========================================================================= */}
+        {!isFullView && isGestorComercial && (
+          <div className="space-y-4">
+            {/* Barra de Filtro de Período para Negócios */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-subtle">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-indigo-600" />
+                <span className="text-xs font-bold text-slate-800">
+                  Período de Análise Comercial:
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={commercialPeriod}
+                  onValueChange={(val: any) => setCommercialPeriod(val)}
+                >
+                  <SelectTrigger className="w-[180px] h-8 text-xs bg-slate-50">
+                    <SelectValue placeholder="Selecione o período" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today" className="text-xs">
+                      Hoje
+                    </SelectItem>
+                    <SelectItem value="7days" className="text-xs">
+                      Últimos 7 dias
+                    </SelectItem>
+                    <SelectItem value="month" className="text-xs">
+                      Mês Atual
+                    </SelectItem>
+                    <SelectItem value="all" className="text-xs">
+                      Todo o Período
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Cards de Volume total por período, Clientes Ativos, Taxa de autonomia geral */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+                <CardContent className="p-3.5 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-slate-500">Volume de Atendimentos</p>
+                    <p className="text-2xl font-extrabold text-slate-900 mt-1">
+                      {commercialFilteredRecords.length}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {commercialPeriod === 'today'
+                        ? 'No dia de hoje'
+                        : commercialPeriod === '7days'
+                          ? 'Nos últimos 7 dias'
+                          : commercialPeriod === 'month'
+                            ? 'No mês atual'
+                            : 'No histórico completo'}
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                    <Headset className="h-5 w-5" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+                <CardContent className="p-3.5 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-slate-500">Clientes Ativos</p>
+                    <p className="text-2xl font-extrabold text-emerald-600 mt-1">
+                      {commercialActiveClients.length}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      de {commercialClients.length} clientes na base
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200 shadow-subtle hover:border-slate-300 transition-colors">
+                <CardContent className="p-3.5 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-slate-500">Taxa de Autonomia Geral</p>
+                    <p className="text-2xl font-extrabold text-indigo-600 mt-1">
+                      {commercialAutonomyRate}%
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Demandas sem contato evitável
+                    </p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                    <Award className="h-5 w-5" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* SEÇÕES COLAPSÁVEIS COM MEMÓRIA: Gráfico comparativo de núcleos, status e reconhecimentos */}
+            <div className="space-y-3 pt-1">
+              {/* Gráfico Comparativo entre Núcleos de Atendimento (Aberto por padrão) */}
+              <DashboardSection
+                id="comm-group-comparison"
+                title="Gráfico Comparativo entre Núcleos de Atendimento"
+                subtitle="Distribuição do volume total e contatos evitáveis por núcleo"
+                icon={<Layers className="h-4 w-4" />}
+                defaultOpen={true}
+                headerExtra={
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[11px] text-indigo-600 hover:text-indigo-800 p-1"
+                  >
+                    <span onClick={() => navigate('/relatorios-grupo')}>Relatório Grupo →</span>
+                  </Button>
+                }
+              >
+                <div className="space-y-4">
+                  <ChartContainer config={commercialChartConfig} className="h-[260px] w-full">
+                    <BarChart data={commercialGroupComparison}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={30} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar
+                        dataKey="total"
+                        name="Total Atendimentos"
+                        fill="#6366f1"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="avoidable"
+                        name="Contatos Evitáveis"
+                        fill="#f43f5e"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ChartContainer>
+
+                  {/* Tabela Resumo dos Núcleos */}
+                  <div className="overflow-x-auto rounded-lg border border-slate-100">
+                    <Table>
+                      <TableHeader className="bg-slate-50">
+                        <TableRow>
+                          <TableHead className="text-xs font-bold">Núcleo de Atendimento</TableHead>
+                          <TableHead className="text-xs font-bold text-center">Total</TableHead>
+                          <TableHead className="text-xs font-bold text-center">Evitáveis</TableHead>
+                          <TableHead className="text-xs font-bold text-center">
+                            Taxa de Autonomia
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {commercialGroupComparison.map((g) => (
+                          <TableRow key={g.group} className="hover:bg-slate-50">
+                            <TableCell className="text-xs font-semibold text-slate-900">
+                              {g.name}
+                            </TableCell>
+                            <TableCell className="text-xs text-center">{g.total}</TableCell>
+                            <TableCell className="text-xs text-center text-rose-600 font-semibold">
+                              {g.avoidable}
+                            </TableCell>
+                            <TableCell className="text-xs text-center">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                                  g.autonomy >= 70
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}
+                              >
+                                {g.autonomy}%
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </DashboardSection>
+
+              {/* Resumo Compacto dos Últimos Atendimentos (Aberto por padrão) */}
+              <DashboardSection
+                id="comm-recent-records"
+                title="Atendimentos Recentes dos Clientes"
+                subtitle="Últimas ocorrências registradas no período"
+                icon={<Headset className="h-4 w-4" />}
+                defaultOpen={true}
+              >
+                <CompactRecentRecords
+                  records={commercialFilteredRecords}
+                  title="Últimos Atendimentos Registrados"
+                  emptyMessage="Nenhum atendimento recente no período selecionado."
+                  showConsultant={true}
+                  maxItems={5}
+                />
+              </DashboardSection>
+
+              {/* Status Operacional & Reconhecimentos */}
+              <DashboardSection
+                id="comm-status-recognition"
+                title="Disponibilidade da Equipe & Premiações"
+                subtitle="Visão em tempo real das pausas e premiações mensais"
+                icon={<Award className="h-4 w-4" />}
+                defaultOpen={false}
+              >
+                <div className="space-y-4">
+                  <SocialRecognitionBanner awards={awards} />
+                  <CollaboratorStatusPanel />
+                </div>
+              </DashboardSection>
+            </div>
+          </div>
+        )}
+      </div>
+    </DashboardCollapsibleProvider>
   )
 }
