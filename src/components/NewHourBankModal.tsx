@@ -116,6 +116,12 @@ export function NewHourBankModal({
                 {eligibleUsers.map((u) => (
                   <SelectItem key={u.id} value={u.id} className="text-xs">
                     {u.name} — {u.role}
+                    {Array.isArray(u.service_groups) && u.service_groups.length > 0
+                      ? ` (${u.service_groups.join(', ')})`
+                      : ''}
+                    {Array.isArray(u.departments) && u.departments.length > 0
+                      ? ` [${u.departments.map((d) => (d === 'Internacional' ? 'INTER' : 'NAC')).join('/')}]`
+                      : ''}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -41,6 +41,12 @@ import { deleteHourBankEntry, deleteAbsence } from '@/services/banco-ferias'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { toast } from '@/hooks/use-toast'
 
+const DEPARTMENT_FILTER_OPTIONS = [
+  { value: 'all', label: 'Todas as Equipes (INTER e NAC)' },
+  { value: 'Internacional', label: 'Internacional (INTER)' },
+  { value: 'Nacional', label: 'Nacional (NAC)' },
+]
+
 interface TeamManagementViewProps {
   users: UserRecord[]
   entries: HourBankEntryRecord[]
@@ -66,6 +72,7 @@ export function TeamManagementView({
 }: TeamManagementViewProps) {
   const [subTab, setSubTab] = useState<'hours' | 'vacations' | 'labor'>('hours')
   const [selectedGroup, setSelectedGroup] = useState<string>('all')
+  const [selectedDept, setSelectedDept] = useState<string>('all')
   const [searchName, setSearchName] = useState<string>('')
 
   // Filtragem de colaboradores da equipe
@@ -75,12 +82,16 @@ export function TeamManagementView({
         const uGroups = (u.service_groups as string[] | undefined) || []
         if (!uGroups.includes(selectedGroup)) return false
       }
+      if (selectedDept !== 'all') {
+        const uDepts = (u.departments as string[] | undefined) || []
+        if (!uDepts.includes(selectedDept)) return false
+      }
       if (searchName) {
         if (!u.name.toLowerCase().includes(searchName.toLowerCase())) return false
       }
       return true
     })
-  }, [users, selectedGroup, searchName])
+  }, [users, selectedGroup, selectedDept, searchName])
 
   // Usuários elegíveis para banco de horas (NÃO gestores)
   const hourBankUsers = useMemo(() => {
@@ -195,7 +206,7 @@ export function TeamManagementView({
                 />
               </div>
 
-              <div className="w-full sm:w-44">
+              <div className="w-full sm:w-36">
                 <Select value={selectedGroup} onValueChange={setSelectedGroup}>
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Núcleo" />
@@ -205,6 +216,21 @@ export function TeamManagementView({
                     {SERVICE_GROUP_OPTIONS.map((g) => (
                       <SelectItem key={g.value} value={g.value}>
                         {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full sm:w-44">
+                <Select value={selectedDept} onValueChange={setSelectedDept}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Equipe (INTER / NAC)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENT_FILTER_OPTIONS.map((d) => (
+                      <SelectItem key={d.value} value={d.value}>
+                        {d.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -276,7 +302,7 @@ export function TeamManagementView({
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50">
                     <TableHead>Colaborador</TableHead>
-                    <TableHead>Núcleo</TableHead>
+                    <TableHead>Núcleo / Equipe</TableHead>
                     <TableHead className="text-right">Créditos</TableHead>
                     <TableHead className="text-right">Débitos</TableHead>
                     <TableHead className="text-right">Saldo Atual</TableHead>
@@ -294,10 +320,32 @@ export function TeamManagementView({
                         </span>
                       </TableCell>
                       <TableCell>
-                        {Array.isArray(item.user.service_groups) &&
-                        item.user.service_groups.length > 0
-                          ? item.user.service_groups.join(', ')
-                          : 'Geral'}
+                        <div className="space-y-0.5">
+                          <span className="font-medium text-slate-700 block">
+                            {Array.isArray(item.user.service_groups) &&
+                            item.user.service_groups.length > 0
+                              ? item.user.service_groups.join(', ')
+                              : 'Geral'}
+                          </span>
+                          {Array.isArray(item.user.departments) &&
+                            item.user.departments.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {item.user.departments.map((d) => (
+                                  <Badge
+                                    key={d}
+                                    variant="outline"
+                                    className={`text-[9px] px-1 py-0 font-medium ${
+                                      d === 'Internacional'
+                                        ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    }`}
+                                  >
+                                    {d === 'Internacional' ? 'INTER' : 'NAC'}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right text-emerald-600 font-medium">
                         +{item.credited}h
@@ -394,7 +442,7 @@ export function TeamManagementView({
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50">
                     <TableHead>Colaborador</TableHead>
-                    <TableHead>Cargo / Núcleo</TableHead>
+                    <TableHead>Cargo / Núcleo / Equipe</TableHead>
                     <TableHead>Tempo de Empresa</TableHead>
                     <TableHead>Ciclo Aquisitivo</TableHead>
                     <TableHead>Prazo Concessivo</TableHead>
@@ -416,9 +464,26 @@ export function TeamManagementView({
                       <TableCell>
                         <span className="text-slate-700">{user.role}</span>
                         {Array.isArray(user.service_groups) && user.service_groups.length > 0 && (
-                          <span className="block text-[10px] text-slate-400">
-                            {user.service_groups.join(', ')}
+                          <span className="block text-[10px] text-slate-500 font-medium">
+                            Núcleo: {user.service_groups.join(', ')}
                           </span>
+                        )}
+                        {Array.isArray(user.departments) && user.departments.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {user.departments.map((d) => (
+                              <Badge
+                                key={d}
+                                variant="outline"
+                                className={`text-[9px] px-1 py-0 ${
+                                  d === 'Internacional'
+                                    ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                }`}
+                              >
+                                {d === 'Internacional' ? 'INTER' : 'NAC'}
+                              </Badge>
+                            ))}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="text-slate-600">

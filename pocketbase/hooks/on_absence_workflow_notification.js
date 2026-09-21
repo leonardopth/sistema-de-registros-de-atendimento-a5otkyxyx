@@ -16,11 +16,27 @@ onRecordAfterCreateSuccess((e) => {
     var requester = $app.findRecordById('users', userId)
     var requesterName = requester.getString('name') || 'Colaborador'
 
+    function extractArray(val) {
+      if (!val) return []
+      if (Array.isArray(val)) return val
+      if (typeof val === 'string' && val.length > 0) {
+        try {
+          var parsed = JSON.parse(val)
+          if (Array.isArray(parsed)) return parsed
+          return [val]
+        } catch (_) {
+          return [val]
+        }
+      }
+      return []
+    }
+
     // Se foi criada como Pendente de aprovação, avisa os gestores
     if (status === 'Pendente') {
       var matchedManagers = []
       try {
-        var uGroups = requester.get('service_groups') || []
+        var uGroups = extractArray(requester.get('service_groups'))
+        var uDepts = extractArray(requester.get('departments'))
         var allManagers = $app.findRecordsByFilter(
           'users',
           "role = 'Gerente' || role = 'Supervisor' || role = 'Líder' || role = 'Master' || master_access = true",
@@ -34,29 +50,43 @@ onRecordAfterCreateSuccess((e) => {
           if (mgr.id === requester.id) continue
 
           var mgrRole = mgr.getString('role') || ''
-          var mgrGroups = mgr.get('service_groups') || []
+          var mgrGroups = extractArray(mgr.get('service_groups'))
+          var mgrDepts = extractArray(mgr.get('departments'))
 
           if (
             mgrRole === 'Master' ||
             mgr.getBool('master_access') ||
-            (mgrRole === 'Gerente' && mgrGroups.length === 0)
+            (mgrRole === 'Gerente' && mgrGroups.length === 0 && mgrDepts.length === 0)
           ) {
             matchedManagers.push(mgr)
             continue
           }
 
-          var match = false
-          for (var a = 0; a < uGroups.length; a++) {
-            for (var b = 0; b < mgrGroups.length; b++) {
-              if (uGroups[a] === mgrGroups[b]) {
-                match = true
+          var groupMatch = true
+          if (mgrGroups.length > 0) {
+            var foundG = false
+            for (var a = 0; a < uGroups.length; a++) {
+              if (mgrGroups.indexOf(uGroups[a]) !== -1) {
+                foundG = true
                 break
               }
             }
-            if (match) break
+            groupMatch = foundG
           }
 
-          if (match) {
+          var deptMatch = true
+          if (mgrDepts.length > 0) {
+            var foundD = false
+            for (var d = 0; d < uDepts.length; d++) {
+              if (mgrDepts.indexOf(uDepts[d]) !== -1) {
+                foundD = true
+                break
+              }
+            }
+            deptMatch = foundD
+          }
+
+          if (groupMatch && deptMatch) {
             matchedManagers.push(mgr)
           }
         }
@@ -271,7 +301,23 @@ onRecordAfterUpdateSuccess((e) => {
       notifyUser(requester, rejTitle, rejMsg, defaultLink, 'error')
     } else if (newStatus === 'Cancelada') {
       if (oldStatus === 'Aprovada' || oldStatus === 'Pendente') {
-        var uGroups = requester.get('service_groups') || []
+        function extractArr(val) {
+          if (!val) return []
+          if (Array.isArray(val)) return val
+          if (typeof val === 'string' && val.length > 0) {
+            try {
+              var parsed = JSON.parse(val)
+              if (Array.isArray(parsed)) return parsed
+              return [val]
+            } catch (_) {
+              return [val]
+            }
+          }
+          return []
+        }
+
+        var uGroups = extractArr(requester.get('service_groups'))
+        var uDepts = extractArr(requester.get('departments'))
         var allManagers = $app.findRecordsByFilter(
           'users',
           "role = 'Gerente' || role = 'Supervisor' || role = 'Líder' || role = 'Master' || master_access = true",
@@ -294,23 +340,40 @@ onRecordAfterUpdateSuccess((e) => {
           var m = allManagers[c]
           if (m.id === requester.id) continue
           var mRole = m.getString('role') || ''
-          var mGroups = m.get('service_groups') || []
+          var mGroups = extractArr(m.get('service_groups'))
+          var mDepts = extractArr(m.get('departments'))
 
           var canSee =
             mRole === 'Master' ||
             m.getBool('master_access') ||
-            (mRole === 'Gerente' && mGroups.length === 0)
+            (mRole === 'Gerente' && mGroups.length === 0 && mDepts.length === 0)
 
           if (!canSee) {
-            for (var x = 0; x < uGroups.length; x++) {
-              for (var y = 0; y < mGroups.length; y++) {
-                if (uGroups[x] === mGroups[y]) {
-                  canSee = true
+            var groupOk = true
+            if (mGroups.length > 0) {
+              var foundG2 = false
+              for (var x = 0; x < uGroups.length; x++) {
+                if (mGroups.indexOf(uGroups[x]) !== -1) {
+                  foundG2 = true
                   break
                 }
               }
-              if (canSee) break
+              groupOk = foundG2
             }
+
+            var deptOk = true
+            if (mDepts.length > 0) {
+              var foundD2 = false
+              for (var y = 0; y < uDepts.length; y++) {
+                if (mDepts.indexOf(uDepts[y]) !== -1) {
+                  foundD2 = true
+                  break
+                }
+              }
+              deptOk = foundD2
+            }
+
+            canSee = groupOk && deptOk
           }
 
           if (canSee) {

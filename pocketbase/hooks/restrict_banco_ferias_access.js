@@ -100,7 +100,13 @@ onRecordViewRequest((e) => {
   }
 
   var serviceGroups = extractArray(auth.get('service_groups'))
-  if (serviceGroups.length === 0 && (role === 'Gerente' || role === 'Gestor Comercial')) {
+  var departments = extractArray(auth.get('departments'))
+
+  if (
+    serviceGroups.length === 0 &&
+    departments.length === 0 &&
+    (role === 'Gerente' || role === 'Gestor Comercial')
+  ) {
     // Gestor geral irrestrito
     return e.next()
   }
@@ -121,24 +127,44 @@ onRecordViewRequest((e) => {
     return e.next()
   }
 
-  // 2. Interseção exata de valores de service_groups
-  var targetGroups = extractArray(targetUser.get('service_groups'))
-  var hasExactMatch = false
-  for (var i = 0; i < serviceGroups.length; i++) {
-    var sg = serviceGroups[i]
-    if (sg && targetGroups.indexOf(sg) !== -1) {
-      hasExactMatch = true
-      break
+  // 2. Validação conjunta de Núcleo (service_groups) e Equipe (departments)
+  // 2a. Núcleo
+  if (serviceGroups.length > 0) {
+    var targetGroups = extractArray(targetUser.get('service_groups'))
+    var hasGroupMatch = false
+    for (var i = 0; i < serviceGroups.length; i++) {
+      var sg = serviceGroups[i]
+      if (sg && targetGroups.indexOf(sg) !== -1) {
+        hasGroupMatch = true
+        break
+      }
+    }
+    if (!hasGroupMatch) {
+      return e.forbiddenError(
+        'Você não tem permissão para visualizar o banco de horas de colaboradores fora do seu núcleo.',
+      )
     }
   }
 
-  if (hasExactMatch) {
-    return e.next()
+  // 2b. Equipe / Departamento (Nacional / Internacional)
+  if (departments.length > 0) {
+    var targetDepartments = extractArray(targetUser.get('departments'))
+    var hasDeptMatch = false
+    for (var d = 0; d < departments.length; d++) {
+      var dept = departments[d]
+      if (dept && targetDepartments.indexOf(dept) !== -1) {
+        hasDeptMatch = true
+        break
+      }
+    }
+    if (!hasDeptMatch) {
+      return e.forbiddenError(
+        'Você não tem permissão para visualizar o banco de horas de colaboradores fora da sua equipe.',
+      )
+    }
   }
 
-  return e.forbiddenError(
-    'Você não tem permissão para visualizar o banco de horas de colaboradores fora do seu escopo.',
-  )
+  return e.next()
 }, 'hour_bank_entries')
 
 // -------------------------------------------------------------
@@ -227,7 +253,13 @@ onRecordViewRequest((e) => {
   }
 
   var serviceGroups = extractArray(auth.get('service_groups'))
-  if (serviceGroups.length === 0 && (role === 'Gerente' || role === 'Gestor Comercial')) {
+  var departments = extractArray(auth.get('departments'))
+
+  if (
+    serviceGroups.length === 0 &&
+    departments.length === 0 &&
+    (role === 'Gerente' || role === 'Gestor Comercial')
+  ) {
     // Gestor geral irrestrito
     return e.next()
   }
@@ -248,22 +280,42 @@ onRecordViewRequest((e) => {
     return e.next()
   }
 
-  // 2. Interseção exata de valores de service_groups
-  var targetGroups = extractArray(targetUser.get('service_groups'))
-  var hasExactMatch = false
-  for (var i = 0; i < serviceGroups.length; i++) {
-    var sg = serviceGroups[i]
-    if (sg && targetGroups.indexOf(sg) !== -1) {
-      hasExactMatch = true
-      break
+  // 2. Validação conjunta de Núcleo (service_groups) e Equipe (departments)
+  // 2a. Núcleo
+  if (serviceGroups.length > 0) {
+    var targetGroups = extractArray(targetUser.get('service_groups'))
+    var hasGroupMatch = false
+    for (var i = 0; i < serviceGroups.length; i++) {
+      var sg = serviceGroups[i]
+      if (sg && targetGroups.indexOf(sg) !== -1) {
+        hasGroupMatch = true
+        break
+      }
+    }
+    if (!hasGroupMatch) {
+      return e.forbiddenError(
+        'Você não tem permissão para visualizar ausências de colaboradores fora do seu núcleo.',
+      )
     }
   }
 
-  if (hasExactMatch) {
-    return e.next()
+  // 2b. Equipe / Departamento (Nacional / Internacional)
+  if (departments.length > 0) {
+    var targetDepartments = extractArray(targetUser.get('departments'))
+    var hasDeptMatch = false
+    for (var d = 0; d < departments.length; d++) {
+      var dept = departments[d]
+      if (dept && targetDepartments.indexOf(dept) !== -1) {
+        hasDeptMatch = true
+        break
+      }
+    }
+    if (!hasDeptMatch) {
+      return e.forbiddenError(
+        'Você não tem permissão para visualizar ausências de colaboradores fora da sua equipe.',
+      )
+    }
   }
 
-  return e.forbiddenError(
-    'Você não tem permissão para visualizar ausências de colaboradores fora do seu escopo.',
-  )
+  return e.next()
 }, 'absences')

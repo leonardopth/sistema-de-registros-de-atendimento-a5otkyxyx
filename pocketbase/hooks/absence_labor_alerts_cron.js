@@ -77,34 +77,70 @@ cronAdd('absence_and_labor_alerts_daily', '30 7 * * *', function () {
       }
     }
 
-    // Helper para achar gestores responsáveis por um consultor (por Núcleo ou geral)
+    function extractArray(val) {
+      if (!val) return []
+      if (Array.isArray(val)) return val
+      if (typeof val === 'string' && val.length > 0) {
+        try {
+          var parsed = JSON.parse(val)
+          if (Array.isArray(parsed)) return parsed
+          return [val]
+        } catch (_) {
+          return [val]
+        }
+      }
+      return []
+    }
+
+    // Helper para achar gestores responsáveis por um consultor (por Núcleo + Equipe ou geral)
     function getManagersForUser(userRecord) {
       var matched = []
-      var uGroups = userRecord.get('service_groups') || []
+      var uGroups = extractArray(userRecord.get('service_groups'))
+      var uDepts = extractArray(userRecord.get('departments'))
 
       for (var mg = 0; mg < managerUsers.length; mg++) {
         var mgr = managerUsers[mg]
-        var mgrGroups = mgr.get('service_groups') || []
+        var mgrGroups = extractArray(mgr.get('service_groups'))
+        var mgrDepts = extractArray(mgr.get('departments'))
         var mgrRole = mgr.getString('role') || ''
 
         // Master ou Gerente sem restrição vê todos
-        if (mgrRole === 'Master' || (mgrRole === 'Gerente' && mgrGroups.length === 0)) {
+        if (
+          mgrRole === 'Master' ||
+          mgr.getBool('master_access') ||
+          (mgrRole === 'Gerente' && mgrGroups.length === 0 && mgrDepts.length === 0)
+        ) {
           matched.push(mgr)
           continue
         }
 
-        // Supervisor/Líder do mesmo Núcleo
-        var hasMatch = false
-        for (var gA = 0; gA < uGroups.length; gA++) {
-          for (var gB = 0; gB < mgrGroups.length; gB++) {
-            if (uGroups[gA] === mgrGroups[gB]) {
-              hasMatch = true
+        // 1. Núcleo
+        var groupMatch = true
+        if (mgrGroups.length > 0) {
+          var foundG = false
+          for (var gA = 0; gA < uGroups.length; gA++) {
+            if (mgrGroups.indexOf(uGroups[gA]) !== -1) {
+              foundG = true
               break
             }
           }
-          if (hasMatch) break
+          groupMatch = foundG
         }
-        if (hasMatch) {
+
+        // 2. Equipe (departments)
+        var deptMatch = true
+        if (mgrDepts.length > 0) {
+          var foundD = false
+          for (var dA = 0; dA < uDepts.length; dA++) {
+            if (mgrDepts.indexOf(uDepts[dA]) !== -1) {
+              foundD = true
+              break
+            }
+          }
+          deptMatch = foundD
+        }
+
+        if (groupMatch && deptMatch) {
           matched.push(mgr)
         }
       }

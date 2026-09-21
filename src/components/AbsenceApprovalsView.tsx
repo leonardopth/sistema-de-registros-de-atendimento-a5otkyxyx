@@ -59,6 +59,12 @@ interface AbsenceApprovalsViewProps {
   onRefresh: () => void
 }
 
+const DEPARTMENT_OPTIONS = [
+  { value: 'all', label: 'Todas as Equipes (INTER e NAC)' },
+  { value: 'Internacional', label: 'Internacional (INTER)' },
+  { value: 'Nacional', label: 'Nacional (NAC)' },
+]
+
 export function AbsenceApprovalsView({
   currentUser,
   users,
@@ -67,6 +73,7 @@ export function AbsenceApprovalsView({
   onRefresh,
 }: AbsenceApprovalsViewProps) {
   const [selectedGroup, setSelectedGroup] = useState<string>('all')
+  const [selectedDept, setSelectedDept] = useState<string>('all')
   const [selectedReason, setSelectedReason] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'pending' | 'resolved' | 'all'>('pending')
@@ -113,6 +120,11 @@ export function AbsenceApprovalsView({
         if (!uGroups.includes(selectedGroup)) return false
       }
 
+      if (selectedDept !== 'all') {
+        const uDepts = (u?.departments as string[] | undefined) || []
+        if (!uDepts.includes(selectedDept)) return false
+      }
+
       if (selectedReason !== 'all' && abs.reason !== selectedReason) return false
 
       if (statusFilter === 'pending') {
@@ -123,7 +135,15 @@ export function AbsenceApprovalsView({
 
       return true
     })
-  }, [scopedAbsences, usersMap, searchTerm, selectedGroup, selectedReason, statusFilter])
+  }, [
+    scopedAbsences,
+    usersMap,
+    searchTerm,
+    selectedGroup,
+    selectedDept,
+    selectedReason,
+    statusFilter,
+  ])
 
   // Contadores
   const pendingCount = useMemo(() => {
@@ -224,9 +244,21 @@ export function AbsenceApprovalsView({
 
     const team = users.filter((m) => {
       const selGroups = (u.service_groups as string[] | undefined) || []
-      if (selGroups.length === 0) return true
-      const mGroups = (m.service_groups as string[] | undefined) || []
-      return mGroups.some((g) => selGroups.includes(g))
+      const selDepts = (u.departments as string[] | undefined) || []
+
+      let groupMatch = true
+      if (selGroups.length > 0) {
+        const mGroups = (m.service_groups as string[] | undefined) || []
+        groupMatch = mGroups.some((g) => selGroups.includes(g))
+      }
+
+      let deptMatch = true
+      if (selDepts.length > 0) {
+        const mDepts = (m.departments as string[] | undefined) || []
+        deptMatch = mDepts.some((d) => selDepts.includes(d))
+      }
+
+      return groupMatch && deptMatch
     })
 
     const startDate = actionItem.absence.start_date.substring(0, 10)
@@ -306,7 +338,7 @@ export function AbsenceApprovalsView({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="w-full sm:w-40 min-w-[130px]">
+              <div className="w-full sm:w-36 min-w-[120px]">
                 <Select value={selectedGroup} onValueChange={setSelectedGroup}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Núcleo" />
@@ -316,6 +348,21 @@ export function AbsenceApprovalsView({
                     {SERVICE_GROUP_OPTIONS.map((g) => (
                       <SelectItem key={g.value} value={g.value}>
                         {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full sm:w-44 min-w-[140px]">
+                <Select value={selectedDept} onValueChange={setSelectedDept}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Equipe (INTER / NAC)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENT_OPTIONS.map((d) => (
+                      <SelectItem key={d.value} value={d.value}>
+                        {d.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -420,11 +467,31 @@ export function AbsenceApprovalsView({
                       <TableCell className="text-slate-600 whitespace-nowrap">
                         <div>
                           <span className="font-medium text-slate-700">{u?.role || '—'}</span>
-                          {Array.isArray(u?.service_groups) && u.service_groups.length > 0 && (
-                            <p className="text-[10px] text-slate-500">
-                              {u.service_groups.join(', ')}
-                            </p>
-                          )}
+                          <div className="flex flex-wrap items-center gap-1">
+                            {Array.isArray(u?.service_groups) && u.service_groups.length > 0 && (
+                              <span className="text-[10px] text-slate-500">
+                                {u.service_groups.join(', ')}
+                              </span>
+                            )}
+                            {Array.isArray(u?.departments) && u.departments.length > 0 && (
+                              <Badge
+                                variant="outline"
+                                className={`text-[9px] px-1 py-0 ${
+                                  u.departments.includes('Internacional') &&
+                                  !u.departments.includes('Nacional')
+                                    ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                    : u.departments.includes('Nacional') &&
+                                        !u.departments.includes('Internacional')
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                      : 'bg-purple-50 text-purple-700 border-purple-200'
+                                }`}
+                              >
+                                {u.departments
+                                  .map((d) => (d === 'Internacional' ? 'INTER' : 'NAC'))
+                                  .join('/')}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
 

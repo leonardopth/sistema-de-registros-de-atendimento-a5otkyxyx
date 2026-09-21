@@ -53,6 +53,11 @@ export function getUserBases(user: UserRecord | null): CommercialBase[] {
   return user.bases
 }
 
+export function getUserDepartments(user: UserRecord | null): string[] {
+  if (!user) return []
+  return normalizeStringArray(user.departments)
+}
+
 export function hasGroupRestriction(user: UserRecord | null): boolean {
   if (!user || isMasterUser(user)) return false
   const groups = getUserServiceGroups(user)
@@ -173,16 +178,20 @@ function normalizeStringArray(val: unknown): string[] {
 }
 
 /**
- * Regra de acesso estrita e de correspondência EXATA para o módulo Banco de Horas & Férias:
- * - Master ou master_access = true: acesso a todos os colaboradores.
+ * Regra de acesso estrita e de correspondência CONJUNTA (Núcleo + Equipe) para o módulo Banco de Horas & Férias:
+ * - Master ou master_access = true: visão irrestrita (todos os colaboradores).
  * - O próprio usuário sempre acessa seus próprios dados.
- * - Gerente ou Gestor Comercial sem nenhum service_groups: gestor geral irrestrito (acesso a todos).
- * - Supervisor, Líder, Gerente, Gestor Comercial com service_groups configurados:
- *     * Vínculo direto via supervisor_id (target.supervisor_id === user.id)
- *     * OU interseção EXATA entre os service_groups do logado e os service_groups do alvo.
- *       Ex.: Se logado tem ["SAO"], só acessa quem tem exatamente o valor "SAO".
- *       Se equipe tem "INTER" e outro "NAC", um usuário vinculado apenas a "INTER" NÃO acessa quem tem "NAC".
- *       Não há correspondência parcial nem por prefixo.
+ * - Vínculo direto de supervisão (target.supervisor_id === currentUser.id): permitido.
+ * - Gerente ou Gestor Comercial sem nenhum service_groups E sem departments: gestor geral irrestrito (acesso a todos).
+ * - Gestores / Supervisores / Líderes / Gestores Comerciais:
+ *     1. Validação de Núcleo (service_groups):
+ *        Se o gestor possuir service_groups, o alvo DEVE ter interseção EXATA em pelo menos um núcleo.
+ *        Se o gestor não possuir service_groups, passa (não tem restrição de núcleo).
+ *     2. Validação de Equipe (departments - 'Internacional' / 'Nacional'):
+ *        Se o gestor possuir departments definidos (ex: apenas ['Internacional'] ou ['Nacional']):
+ *        o alvo DEVE compartilhar pelo menos um departamento com o gestor.
+ *        Gestor só INTER não vê NAC e vice-versa; gestor com ambos vê as duas equipes.
+ *        Se o gestor NÃO possuir departments definidos, aplica apenas a restrição de núcleo (não trava gestor sem equipe marcada).
  * - Consultores ou demais colaboradores: acessam APENAS a si mesmos.
  */
 export function canAccessUserInBancoHoras(
@@ -202,29 +211,43 @@ export function canAccessUserInBancoHoras(
     return false
   }
 
-  const userGroups = normalizeStringArray(currentUser.service_groups)
-
-  // Gerente ou Gestor Comercial geral sem grupos específicos tem visão irrestrita
-  if (userGroups.length === 0 && (role === 'Gerente' || role === 'Gestor Comercial')) {
-    return true
-  }
-
   // 1. Vínculo direto de supervisão
   const targetSupervisorId = (targetUser as any).supervisor_id
   if (targetSupervisorId && targetSupervisorId === currentUser.id) {
     return true
   }
 
-  // 2. Interseção EXATA entre os grupos de atendimento (service_groups)
-  if (userGroups.length > 0) {
+  const managerGroups = normalizeStringArray(currentUser.service_groups)
+  const managerDepts = normalizeStringArray(currentUser.departments)
+
+  // Gerente ou Gestor Comercial geral sem grupos específicos e sem departamentos tem visão irrestrita
+  if (
+    managerGroups.length === 0 &&
+    managerDepts.length === 0 &&
+    (role === 'Gerente' || role === 'Gestor Comercial')
+  ) {
+    return true
+  }
+
+  // 2. Validação do Núcleo (service_groups)
+  if (managerGroups.length > 0) {
     const targetGroups = normalizeStringArray(targetUser.service_groups)
-    const hasExactIntersection = userGroups.some((g) => targetGroups.includes(g))
-    if (hasExactIntersection) {
-      return true
+    const hasGroupMatch = managerGroups.some((g) => targetGroups.includes(g))
+    if (!hasGroupMatch) {
+      return false
     }
   }
 
-  return false
+  // 3. Validação da Equipe / Departamento (departments: Internacional / Nacional)
+  if (managerDepts.length > 0) {
+    const targetDepts = normalizeStringArray(targetUser.departments)
+    const hasDeptMatch = managerDepts.some((d) => targetDepts.includes(d))
+    if (!hasDeptMatch) {
+      return false
+    }
+  }
+
+  return true
 }
 
 /**

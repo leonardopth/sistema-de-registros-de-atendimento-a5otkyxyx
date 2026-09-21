@@ -19,6 +19,7 @@ import {
 import { UserRecord } from '@/types/service_record'
 import { AbsenceRecord, AbsenceReason } from '@/types/banco-ferias'
 import { getGMT3DateString } from '@/lib/timezone'
+import { canAccessUserInBancoHoras } from '@/lib/service-group-access'
 
 interface TeamAvailabilityTodayProps {
   users: UserRecord[]
@@ -64,23 +65,10 @@ export function TeamAvailabilityToday({
     return map
   }, [activeAbsencesToday])
 
-  // Filtragem por escopo RBAC se líder/supervisor
+  // Filtragem por escopo RBAC (Núcleo + Equipe via canAccessUserInBancoHoras)
   const filteredUsers = useMemo(() => {
     if (!currentUser) return users
-    const isMaster = currentUser.role === 'Master' || currentUser.master_access === true
-    const isGerente = currentUser.role === 'Gerente'
-    if (isMaster || isGerente) return users
-
-    // Líder/Supervisor: filtra pelo seu Núcleo (service_groups)
-    const userGroups = (currentUser.service_groups as string[] | undefined) || []
-    if (userGroups.length > 0) {
-      return users.filter((u) => {
-        if (u.id === currentUser.id) return true
-        const uGroups = (u.service_groups as string[] | undefined) || []
-        return uGroups.some((g) => userGroups.includes(g))
-      })
-    }
-    return users
+    return users.filter((u) => canAccessUserInBancoHoras(u, currentUser))
   }, [users, currentUser])
 
   // Status de cada membro da equipe
@@ -320,11 +308,21 @@ export function TeamAvailabilityToday({
                         item.user.service_groups.length > 0 && (
                           <>
                             <span>•</span>
-                            <span className="text-slate-600 font-medium">
+                            <span className="text-slate-600 font-medium truncate">
                               {item.user.service_groups.join(', ')}
                             </span>
                           </>
                         )}
+                      {Array.isArray(item.user.departments) && item.user.departments.length > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className="text-slate-500 font-medium">
+                            {item.user.departments
+                              .map((d) => (d === 'Internacional' ? 'INTER' : 'NAC'))
+                              .join('/')}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

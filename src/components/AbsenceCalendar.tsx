@@ -36,6 +36,12 @@ interface AbsenceCalendarProps {
   canManage?: boolean
 }
 
+const DEPARTMENT_OPTIONS = [
+  { value: 'all', label: 'Todas as Equipes (INTER e NAC)' },
+  { value: 'Internacional', label: 'Internacional (INTER)' },
+  { value: 'Nacional', label: 'Nacional (NAC)' },
+]
+
 const MONTH_NAMES = [
   'Janeiro',
   'Fevereiro',
@@ -62,6 +68,7 @@ export function AbsenceCalendar({
 }: AbsenceCalendarProps) {
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [selectedGroup, setSelectedGroup] = useState<string>('all')
+  const [selectedDept, setSelectedDept] = useState<string>('all')
   const [selectedReason, setSelectedReason] = useState<string>('all')
   const [selectedUser, setSelectedUser] = useState<string>('all')
   const [selectedDayDetails, setSelectedDayDetails] = useState<{
@@ -111,12 +118,19 @@ export function AbsenceCalendar({
       })
     }
 
+    if (selectedDept !== 'all') {
+      list = list.filter((u) => {
+        const uDepts = (u.departments as string[] | undefined) || []
+        return uDepts.includes(selectedDept)
+      })
+    }
+
     if (selectedUser !== 'all') {
       list = list.filter((u) => u.id === selectedUser)
     }
 
     return list
-  }, [scopedBaseUsers, selectedGroup, selectedUser])
+  }, [scopedBaseUsers, selectedGroup, selectedDept, selectedUser])
 
   const eligibleUserIds = useMemo(() => {
     return new Set(eligibleUsers.map((u) => u.id))
@@ -302,7 +316,7 @@ export function AbsenceCalendar({
             {/* Ações e Filtros */}
             <div className="flex flex-wrap items-center gap-2">
               {/* Filtro Núcleo */}
-              <div className="w-full sm:w-40 min-w-[130px]">
+              <div className="w-full sm:w-36 min-w-[120px]">
                 <Select value={selectedGroup} onValueChange={setSelectedGroup}>
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Núcleo" />
@@ -312,6 +326,22 @@ export function AbsenceCalendar({
                     {SERVICE_GROUP_OPTIONS.map((g) => (
                       <SelectItem key={g.value} value={g.value}>
                         {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Filtro Equipe (INTER / NAC) */}
+              <div className="w-full sm:w-44 min-w-[140px]">
+                <Select value={selectedDept} onValueChange={setSelectedDept}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Equipe (INTER / NAC)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENT_OPTIONS.map((d) => (
+                      <SelectItem key={d.value} value={d.value}>
+                        {d.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -527,12 +557,23 @@ export function AbsenceCalendar({
                               </Badge>
                             )}
                           </div>
-                          {Array.isArray(absUser.service_groups) &&
-                            absUser.service_groups.length > 0 && (
-                              <p className="text-[10px] text-slate-500 mt-0.5">
-                                Núcleo: {absUser.service_groups.join(', ')}
-                              </p>
-                            )}
+                          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                            {Array.isArray(absUser.service_groups) &&
+                              absUser.service_groups.length > 0 && (
+                                <span className="text-[10px] text-slate-500">
+                                  Núcleo: {absUser.service_groups.join(', ')}
+                                </span>
+                              )}
+                            {Array.isArray(absUser.departments) &&
+                              absUser.departments.length > 0 && (
+                                <span className="text-[10px] text-indigo-600 font-medium">
+                                  •{' '}
+                                  {absUser.departments
+                                    .map((d) => (d === 'Internacional' ? 'INTER' : 'NAC'))
+                                    .join('/')}
+                                </span>
+                              )}
+                          </div>
                           {absence.notes && (
                             <p className="text-[11px] text-slate-600 italic mt-1">
                               "{absence.notes}"
@@ -584,7 +625,12 @@ export function AbsenceCalendar({
                         <span className="font-semibold text-slate-900 truncate block">
                           {u.name}
                         </span>
-                        <span className="text-[10px] text-slate-500 truncate block">{u.role}</span>
+                        <span className="text-[10px] text-slate-500 truncate block">
+                          {u.role}
+                          {Array.isArray(u.departments) && u.departments.length > 0
+                            ? ` • ${u.departments.map((d) => (d === 'Internacional' ? 'INTER' : 'NAC')).join('/')}`
+                            : ''}
+                        </span>
                       </div>
                       <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
                     </div>

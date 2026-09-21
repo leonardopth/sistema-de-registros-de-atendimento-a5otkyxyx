@@ -78,14 +78,25 @@ export function NewAbsenceModal({
 
   const selectedUser = users.find((u) => u.id === userId)
 
-  // Membros do mesmo Núcleo do usuário selecionado para verificação de cobertura (match EXATO)
+  // Membros da mesma equipe/núcleo do usuário selecionado para verificação de cobertura (match conjunto Núcleo + Equipe)
   const sameTeamUsers = selectedUser
     ? users.filter((u) => {
         const selGroups = (selectedUser.service_groups as string[] | undefined) || []
-        if (selGroups.length === 0) return true
-        const uGroups = (u.service_groups as string[] | undefined) || []
-        // Interseção exata entre os grupos de atendimento
-        return uGroups.some((g) => selGroups.includes(g))
+        const selDepts = (selectedUser.departments as string[] | undefined) || []
+
+        let groupMatch = true
+        if (selGroups.length > 0) {
+          const uGroups = (u.service_groups as string[] | undefined) || []
+          groupMatch = uGroups.some((g) => selGroups.includes(g))
+        }
+
+        let deptMatch = true
+        if (selDepts.length > 0) {
+          const uDepts = (u.departments as string[] | undefined) || []
+          deptMatch = uDepts.some((d) => selDepts.includes(d))
+        }
+
+        return groupMatch && deptMatch
       })
     : []
 
@@ -191,6 +202,9 @@ export function NewAbsenceModal({
                     {u.name} — {u.role}
                     {Array.isArray(u.service_groups) && u.service_groups.length > 0
                       ? ` (${u.service_groups.join(', ')})`
+                      : ''}
+                    {Array.isArray(u.departments) && u.departments.length > 0
+                      ? ` [${u.departments.map((d) => (d === 'Internacional' ? 'INTER' : 'NAC')).join('/')}]`
                       : ''}
                   </SelectItem>
                 ))}
