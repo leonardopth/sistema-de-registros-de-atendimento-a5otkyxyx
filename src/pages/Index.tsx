@@ -2,14 +2,6 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import {
   Select,
@@ -18,23 +10,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { getServiceRecords } from '@/services/service_records'
 import { getClients } from '@/services/clients'
 import { getAccountExecutives } from '@/services/account_executives'
 import { getUsers } from '@/services/users'
-import { getTrainings } from '@/services/trainings'
-import { getMonthlyAwards } from '@/services/gamification'
 import { getUserTargets, UserTargetRecord } from '@/services/user-targets'
 import { getGlobalTarget } from '@/services/global-targets'
 import { getCsatStats, CsatStatItem } from '@/services/csat'
-import { MonthlyAwardRecord } from '@/types/gamification'
 import {
   ServiceRecord,
   ClientRecord,
@@ -42,31 +24,20 @@ import {
   UserRecord,
   GlobalTargetRecord,
 } from '@/types/service_record'
-import type { TrainingRecord } from '@/types/training'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { DashboardStats } from '@/components/DashboardStats'
-import { ConsultantGamification } from '@/components/ConsultantGamification'
-import { AchievementFeed } from '@/components/AchievementFeed'
-import { SocialRecognitionBanner } from '@/components/SocialRecognitionBanner'
-import { AutonomyScorecard } from '@/components/AutonomyScorecard'
-import { TrainingPanel } from '@/components/TrainingPanel'
 import { PerformanceAlerts } from '@/components/PerformanceAlerts'
-import { ServiceVolumeTrendCard } from '@/components/ServiceVolumeTrendCard'
-import { ActiveBacklogQueue } from '@/components/ActiveBacklogQueue'
-import { CollaboratorStatusPanel } from '@/components/CollaboratorStatusPanel'
 import { TeamAvailabilityToday } from '@/components/TeamAvailabilityToday'
 import { CompactRecentRecords } from '@/components/CompactRecentRecords'
 import { ConsultantTargetsWidget } from '@/components/ConsultantTargetsWidget'
 import {
   DashboardCollapsibleProvider,
-  DashboardSection,
   DashboardExpandCollapseToggle,
 } from '@/components/DashboardCollapsible'
 import { getAbsences } from '@/services/banco-ferias'
 import { AbsenceRecord } from '@/types/banco-ferias'
 import { filterClientsByUserAccess, filterRecordsByUserAccess } from '@/lib/service-group-access'
-import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { getGMT3DateString } from '@/lib/timezone'
 import { calculateReopenRate } from '@/lib/reopen-utils'
 import {
@@ -78,16 +49,11 @@ import {
   RefreshCw,
   Building2,
   Users2,
-  GraduationCap,
   Award,
   BarChart3,
   CheckCircle2,
   XCircle,
-  Layers,
   ArrowRight,
-  TrendingUp,
-  Target,
-  Sparkles,
 } from 'lucide-react'
 
 export default function Index() {
@@ -98,8 +64,6 @@ export default function Index() {
   const [clients, setClients] = useState<ClientRecord[]>([])
   const [executives, setExecutives] = useState<AccountExecutiveRecord[]>([])
   const [users, setUsers] = useState<UserRecord[]>([])
-  const [trainings, setTrainings] = useState<TrainingRecord[]>([])
-  const [awards, setAwards] = useState<MonthlyAwardRecord[]>([])
   const [absences, setAbsences] = useState<AbsenceRecord[]>([])
   const [userTargets, setUserTargets] = useState<UserTargetRecord[]>([])
   const [globalTarget, setGlobalTarget] = useState<GlobalTargetRecord | null>(null)
@@ -117,15 +81,13 @@ export default function Index() {
         getClients(),
         getAccountExecutives(),
         getUsers(),
-        getTrainings(),
-        getMonthlyAwards(),
         getAbsences("status != 'cancelada'", '-start_date'),
         getUserTargets(),
         getGlobalTarget(),
         getCsatStats(),
       ])
 
-      const [rRes, cRes, eRes, uRes, tRes, aRes, absRes, utRes, gtRes, csatRes] = results
+      const [rRes, cRes, eRes, uRes, absRes, utRes, gtRes, csatRes] = results
 
       if (rRes.status === 'fulfilled') {
         setRecords(Array.isArray(rRes.value) ? rRes.value : [])
@@ -153,19 +115,6 @@ export default function Index() {
       } else {
         console.warn('Falha ao carregar usuários no Index:', uRes.reason)
         setUsers([])
-      }
-
-      if (tRes.status === 'fulfilled') {
-        setTrainings(Array.isArray(tRes.value) ? tRes.value : [])
-      } else {
-        console.warn('Falha ao carregar treinamentos no Index:', tRes.reason)
-        setTrainings([])
-      }
-
-      if (aRes.status === 'fulfilled') {
-        setAwards(Array.isArray(aRes.value) ? aRes.value : [])
-      } else {
-        setAwards([])
       }
 
       if (absRes && absRes.status === 'fulfilled') {
@@ -209,11 +158,8 @@ export default function Index() {
   // Subscrições realtime para sincronização contínua
   useRealtime('service_records', () => loadData(), true)
   useRealtime('clients', () => loadData(), true)
-  useRealtime('trainings', () => loadData(), true)
   useRealtime('account_executives', () => loadData(), true)
-  useRealtime('monthly_awards', () => loadData(), true)
-  useRealtime('gamification', () => loadData(), true)
-  useRealtime('badges', () => loadData(), true)
+  useRealtime('users', () => loadData(), true)
   useRealtime('absences', () => loadData(), true)
 
   const safeRecords = Array.isArray(records) ? records : []
@@ -480,30 +426,6 @@ export default function Index() {
     return executiveClients.filter((c) => Boolean(c.blocked))
   }, [executiveClients])
 
-  const executivePendingTrainings = useMemo(() => {
-    const list: { clientName: string; avoidableCount: number; lastDate?: string }[] = []
-    executiveClients.forEach((client) => {
-      const recs = executiveRecords.filter(
-        (r) =>
-          r.client === client.id ||
-          r.expand?.client?.id === client.id ||
-          r.client_company === client.company,
-      )
-      const avoidable = recs.filter((r) => r.avoidable_contact).length
-      const clientTrainings = trainings.filter(
-        (t) => t.client === client.id || t.expand?.client?.id === client.id,
-      )
-      if (avoidable > 0 || clientTrainings.length > 0) {
-        list.push({
-          clientName: client.company || client.name,
-          avoidableCount: avoidable,
-          lastDate: clientTrainings[0]?.training_date,
-        })
-      }
-    })
-    return list.sort((a, b) => b.avoidableCount - a.avoidableCount)
-  }, [executiveClients, executiveRecords, trainings])
-
   // --- 4. GESTOR COMERCIAL ---
   const commercialFilteredRecords = useMemo(() => {
     const userBases = (user?.bases as string[] | undefined) || []
@@ -569,44 +491,6 @@ export default function Index() {
     const avoidableRate = Math.round((avoidable / total) * 100)
     return 100 - avoidableRate
   }, [commercialFilteredRecords])
-
-  const commercialGroupComparison = useMemo(() => {
-    const coMap = new Map<string, string>()
-    for (const c of safeClients) {
-      if (c.company) coMap.set(c.company, c.service_group || '')
-    }
-    const clientMap = new Map(safeClients.map((c) => [c.id, c]))
-
-    return SERVICE_GROUP_OPTIONS.map((group) => {
-      const gr = commercialFilteredRecords.filter((r) => {
-        const cid = r.client || r.expand?.client?.id
-        if (cid) {
-          const cl = clientMap.get(cid)
-          if (cl?.service_group === group.value) return true
-        }
-        if (r.client_company && coMap.get(r.client_company) === group.value) return true
-        return false
-      })
-      const total = gr.length
-      const avoidable = gr.filter((r) => r.avoidable_contact).length
-      const rate = total > 0 ? Math.round((avoidable / total) * 100) : 0
-      const autonomy = 100 - rate
-
-      return {
-        group: group.value,
-        name: group.label,
-        total,
-        avoidable,
-        autonomy,
-        rate,
-      }
-    })
-  }, [safeClients, commercialFilteredRecords])
-
-  const commercialChartConfig: ChartConfig = {
-    total: { label: 'Total de Atendimentos', color: '#6366f1' },
-    avoidable: { label: 'Contatos Evitáveis', color: '#f43f5e' },
-  }
 
   // --- 5. GERENTE / MASTER (Geral) ---
   const generalTodayRecords = useMemo(() => {
@@ -749,14 +633,14 @@ export default function Index() {
 
         {/* ========================================================================= */}
         {/* 1. CONSULTOR: PÁGINA COMPACTA (< 1 TELA)                                 */}
-        {/* Meus números de hoje/semana + Minhas metas + Minhas ações (fila/alertas)   */}
+        {/* Meus números de hoje/semana + Minhas metas + Últimos 5 + Alertas de Ação */}
         {/* ========================================================================= */}
         {!isFullView && isConsultor && (
           <div className="space-y-4">
             {/* Bloco 1: Meus Números de Hoje / Semana (Cards de Métricas) */}
             <DashboardStats {...consultantStats} />
 
-            {/* Bloco 2: Minhas Metas + Meus Atendimentos Recentes (Resumo Compacto) */}
+            {/* Bloco 2: Minhas Metas + Meus Atendimentos Recentes (Últimos 5) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <ConsultantTargetsWidget
                 user={user}
@@ -773,125 +657,19 @@ export default function Index() {
               />
             </div>
 
-            {/* Bloco 3: Minhas Ações (Fila Ativa pessoal + Alertas de Ação que lhe dizem respeito) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ActiveBacklogQueue
-                records={consultantRecords}
-                isWidget={true}
-                maxWidgetItems={5}
-                onUpdateRecord={() => loadData()}
-              />
-
-              <PerformanceAlerts
-                records={consultantRecords}
-                targetUserId={user?.id}
-                title="Minhas Ações & Alertas"
-                subtitle="Alertas de fila, TFR e projeção da sua meta pessoal de atendimento"
-              />
-            </div>
-
-            {/* SEÇÕES SECUNDÁRIAS COLAPSÁVEIS COM MEMÓRIA (Consultor: fechadas por padrão para manter < 1 tela) */}
-            <div className="space-y-3 pt-2 border-t border-slate-200/80">
-              <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
-                <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-                  Módulos Complementares
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  Preferências salvas automaticamente
-                </span>
-              </div>
-
-              {/* Equipe Disponível Hoje */}
-              <DashboardSection
-                id="consultor-team-availability"
-                title="Equipe Disponível Hoje & Ausências"
-                subtitle="Consulte quem está em atuação e ausências do núcleo"
-                icon={<Users2 className="h-4 w-4" />}
-                defaultOpen={false}
-                headerExtra={
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-[11px] text-indigo-600 hover:text-indigo-800 p-1"
-                  >
-                    <span onClick={() => navigate('/banco-horas-ferias')}>Banco & Férias →</span>
-                  </Button>
-                }
-              >
-                <TeamAvailabilityToday users={users} absences={absences} currentUser={user} />
-              </DashboardSection>
-
-              {/* Status de Colaboradores */}
-              <DashboardSection
-                id="consultor-collab-status"
-                title="Status da Equipe (Em Pausa / Atendimento)"
-                subtitle="Painel operacional de pausas e atividades"
-                icon={<Zap className="h-4 w-4" />}
-                defaultOpen={false}
-              >
-                <CollaboratorStatusPanel />
-              </DashboardSection>
-
-              {/* Volume & Tendência Pessoal */}
-              <DashboardSection
-                id="consultor-trend"
-                title="Meu Volume de Atendimentos & Linha de Tendência"
-                subtitle="Evolução diária dos seus chamados e estimativa de fechamento"
-                icon={<TrendingUp className="h-4 w-4" />}
-                defaultOpen={false}
-              >
-                <ServiceVolumeTrendCard
-                  records={consultantRecords}
-                  title="Meu Volume de Atendimentos & Tendência"
-                  subtitle="Ritmo pessoal diário e estimativa de fechamento para sua meta individual"
-                />
-              </DashboardSection>
-
-              {/* Gamificação Pessoal & Conquistas */}
-              <DashboardSection
-                id="consultor-gamification"
-                title="Minha Gamificação, Badges & Reconhecimentos"
-                subtitle="Acompanhe seus pontos XP, nível de carreira e premiações da equipe"
-                icon={<Award className="h-4 w-4" />}
-                defaultOpen={false}
-              >
-                <div className="space-y-4">
-                  <SocialRecognitionBanner awards={awards} />
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <ConsultantGamification
-                      records={consultantRecords}
-                      userName={user?.name || ''}
-                      userId={user?.id}
-                    />
-                    <div className="lg:col-span-2">
-                      <AchievementFeed />
-                    </div>
-                  </div>
-                </div>
-              </DashboardSection>
-
-              {/* Autonomia & Treinamentos dos Clientes */}
-              <DashboardSection
-                id="consultor-autonomy-training"
-                title="Autonomia dos Clientes & Treinamentos"
-                subtitle="Índice de resoluções de primeiro contato e dúvidas evitáveis"
-                icon={<GraduationCap className="h-4 w-4" />}
-                defaultOpen={false}
-              >
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <AutonomyScorecard records={consultantRecords} clients={consultantClients} />
-                  <TrainingPanel records={consultantRecords} clients={consultantClients} />
-                </div>
-              </DashboardSection>
-            </div>
+            {/* Bloco 3: Alertas de Ação que lhe dizem respeito (Fila completa em /fila-atendimentos) */}
+            <PerformanceAlerts
+              records={consultantRecords}
+              targetUserId={user?.id}
+              title="Minhas Ações & Alertas"
+              subtitle="Alertas de fila, TFR e projeção da sua meta pessoal de atendimento"
+            />
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* 2. SUPERVISOR / LÍDER: GESTÃO DA EQUIPE (< 1.5 TELAS)                    */}
-        {/* Visão da equipe, alertas de ação, Equipe Disponível Hoje e meta da equipe */}
+        {/* 2. SUPERVISOR / LÍDER: GESTÃO DA EQUIPE (~1 TELA)                         */}
+        {/* Equipe Disponível Hoje + Métricas + Alertas de Ação + Últimos 5          */}
         {/* ========================================================================= */}
         {!isFullView && isSupervisorOrLider && (
           <div className="space-y-4">
@@ -933,6 +711,14 @@ export default function Index() {
                 >
                   Metas da Equipe <ArrowRight className="h-3 w-3 ml-1" />
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/fila-atendimentos')}
+                  className="text-xs h-7 text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+                >
+                  Fila &amp; Aging <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
               </div>
             </div>
 
@@ -942,234 +728,45 @@ export default function Index() {
             {/* Alertas de Desempenho e Ação da Equipe */}
             <PerformanceAlerts records={teamRecords} />
 
-            {/* Fila / Backlog ativo da equipe + Resumo Compacto dos Últimos Atendimentos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ActiveBacklogQueue
-                records={teamRecords}
-                isWidget={true}
-                maxWidgetItems={5}
-                onUpdateRecord={() => loadData()}
-              />
-
-              <CompactRecentRecords
-                records={teamRecords}
-                title="Últimos Atendimentos da Equipe"
-                emptyMessage="Nenhum atendimento registrado pela equipe até o momento."
-                showConsultant={true}
-                maxItems={5}
-              />
-            </div>
-
-            {/* SEÇÕES SECUNDÁRIAS COLAPSÁVEIS COM MEMÓRIA (Gestor: 2-3 abertas por padrão) */}
-            <div className="space-y-3 pt-2 border-t border-slate-200/80">
-              <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
-                <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5 text-indigo-500" />
-                  Análises Complementares da Equipe
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  Preferências salvas automaticamente
-                </span>
-              </div>
-
-              {/* Volume & Projeção de Metas da Equipe (Aberto por padrão) */}
-              <DashboardSection
-                id="team-volume-trend"
-                title="Volume de Atendimentos & Linha de Tendência da Equipe"
-                subtitle="Evolução diária da equipe liderada e estimativa de meta para o fim do mês"
-                icon={<TrendingUp className="h-4 w-4" />}
-                defaultOpen={true}
-              >
-                <ServiceVolumeTrendCard
-                  records={teamRecords}
-                  title="Volume de Atendimentos & Linha de Tendência da Equipe"
-                  subtitle="Evolução diária da equipe liderada e estimativa de meta para o fim do mês"
-                />
-              </DashboardSection>
-
-              {/* Status Operacional de Pausas (Aberto por padrão) */}
-              <DashboardSection
-                id="team-collab-status"
-                title="Status Operacional em Tempo Real (Pausas & Atuação)"
-                subtitle="Tempo em pausa, almoço e atendimentos ativos"
-                icon={<Zap className="h-4 w-4" />}
-                defaultOpen={true}
-              >
-                <CollaboratorStatusPanel />
-              </DashboardSection>
-
-              {/* Gamificação & Feed de Conquistas */}
-              <DashboardSection
-                id="team-gamification"
-                title="Reconhecimento Social, Gamificação & Ranking"
-                subtitle="Destaques mensais, conquistas desbloqueadas e feed da equipe"
-                icon={<Award className="h-4 w-4" />}
-                defaultOpen={false}
-              >
-                <div className="space-y-4">
-                  <SocialRecognitionBanner awards={awards} />
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <ConsultantGamification
-                      records={consultantRecords}
-                      userName={user?.name || ''}
-                      userId={user?.id}
-                    />
-                    <div className="lg:col-span-2">
-                      <AchievementFeed />
-                    </div>
-                  </div>
-                </div>
-              </DashboardSection>
-
-              {/* Autonomia dos Clientes Liderados */}
-              <DashboardSection
-                id="team-autonomy"
-                title="Scorecard de Autonomia dos Clientes da Equipe"
-                subtitle="Percentual de contatos evitáveis e agências prioritárias"
-                icon={<BarChart3 className="h-4 w-4" />}
-                defaultOpen={false}
-                headerExtra={
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-[11px] text-indigo-600 hover:text-indigo-800 p-1"
-                  >
-                    <span onClick={() => navigate('/autonomia')}>Painel Completo →</span>
-                  </Button>
-                }
-              >
-                <AutonomyScorecard records={teamRecords} clients={accessibleClients} />
-              </DashboardSection>
-            </div>
+            {/* Resumo Compacto dos Últimos Atendimentos da Equipe */}
+            <CompactRecentRecords
+              records={teamRecords}
+              title="Últimos Atendimentos da Equipe"
+              emptyMessage="Nenhum atendimento registrado pela equipe até o momento."
+              showConsultant={true}
+              maxItems={5}
+            />
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* 3. MASTER / GERENTE: VISÃO COMPLETA REORGANIZADA (~1.5 TELAS)             */}
-        {/* Estruturada com os blocos primários no topo e seções secundárias colapsadas */}
+        {/* 3. MASTER / GERENTE: VISÃO DIRETA E COMPACTA (~1 TELA)                    */}
+        {/* Métricas Globais + Disponibilidade Hoje + Alertas + Últimos 5             */}
         {/* ========================================================================= */}
         {isFullView && (
           <div className="space-y-4">
             {/* Bloco 1: Métricas Globais (Cards responsivos com CSAT inteligente) */}
             <DashboardStats {...generalStats} />
 
-            {/* Bloco 2: Faixa de Atenção Operacional: Equipe Disponível Hoje + Alertas */}
+            {/* Bloco 2: Faixa de Atenção Operacional: Equipe Disponível Hoje */}
             <TeamAvailabilityToday users={users} absences={absences} currentUser={user} />
 
+            {/* Bloco 3: Central de Alertas de Ação (TFR crítico, chamados parados, etc) */}
             <PerformanceAlerts records={accessibleRecords} />
 
-            {/* Bloco 3: Volume & Tendência com Meta do Mês */}
-            <ServiceVolumeTrendCard
+            {/* Bloco 4: Resumo Compacto dos Últimos Atendimentos (Geral) */}
+            <CompactRecentRecords
               records={accessibleRecords}
-              title="Volume de Atendimentos & Linha de Tendência (Visão Geral)"
-              subtitle="Evolução diária dos chamados e projeção do ritmo para fechamento do mês corrente"
+              title="Atendimentos Recentes (Geral)"
+              emptyMessage="Nenhum atendimento recente."
+              showConsultant={true}
+              maxItems={5}
             />
-
-            {/* Bloco 4: Fila / Backlog Ativo + Resumo Compacto dos Últimos Atendimentos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ActiveBacklogQueue
-                records={accessibleRecords}
-                isWidget={true}
-                maxWidgetItems={5}
-                onUpdateRecord={() => loadData()}
-              />
-
-              <CompactRecentRecords
-                records={accessibleRecords}
-                title="Atendimentos Recentes (Geral)"
-                emptyMessage="Nenhum atendimento recente."
-                showConsultant={true}
-                maxItems={5}
-              />
-            </div>
-
-            {/* SEÇÕES SECUNDÁRIAS COLAPSÁVEIS COM MEMÓRIA (2 primeiras abertas por padrão) */}
-            <div className="space-y-3 pt-2 border-t border-slate-200/80">
-              <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
-                <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5 text-indigo-500" />
-                  Módulos Gerenciais Secundários
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  Preferências salvas automaticamente
-                </span>
-              </div>
-
-              {/* Status Operacional em Tempo Real (Aberto por padrão) */}
-              <DashboardSection
-                id="master-collab-status"
-                title="Status Operacional em Tempo Real (Pausas & Produtividade)"
-                subtitle="Controle consolidado de colaboradores em pausa, almoço e atendimentos"
-                icon={<Zap className="h-4 w-4" />}
-                defaultOpen={true}
-              >
-                <CollaboratorStatusPanel />
-              </DashboardSection>
-
-              {/* Reconhecimento Social & Gamificação (Aberto por padrão) */}
-              <DashboardSection
-                id="master-recognition-gamification"
-                title="Reconhecimento Social, Gamificação & Ranking"
-                subtitle="Destaques mensais, conquistas desbloqueadas e feed da operação"
-                icon={<Award className="h-4 w-4" />}
-                defaultOpen={true}
-              >
-                <div className="space-y-4">
-                  <SocialRecognitionBanner awards={awards} />
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <ConsultantGamification
-                      records={records}
-                      userName={user?.name}
-                      userId={user?.id}
-                      userRole={user?.role}
-                    />
-                    <div className="lg:col-span-2">
-                      <AchievementFeed />
-                    </div>
-                  </div>
-                </div>
-              </DashboardSection>
-
-              {/* Autonomia dos Clientes & Painel de Treinamento */}
-              <DashboardSection
-                id="master-autonomy-training"
-                title="Scorecard de Autonomia & Painel de Treinamentos"
-                subtitle="Clientes com maior índice de dúvidas evitáveis e recomendações de capacitação"
-                icon={<GraduationCap className="h-4 w-4" />}
-                defaultOpen={false}
-                headerExtra={
-                  <div className="flex items-center gap-1">
-                    <Button
-                      asChild
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-[11px] text-indigo-600 hover:text-indigo-800 p-1"
-                    >
-                      <span onClick={() => navigate('/autonomia')}>Autonomia →</span>
-                    </Button>
-                    <Button
-                      asChild
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-[11px] text-indigo-600 hover:text-indigo-800 p-1"
-                    >
-                      <span onClick={() => navigate('/painel-treinamento')}>Treinamentos →</span>
-                    </Button>
-                  </div>
-                }
-              >
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <AutonomyScorecard records={accessibleRecords} clients={accessibleClients} />
-                  <TrainingPanel records={accessibleRecords} clients={accessibleClients} />
-                </div>
-              </DashboardSection>
-            </div>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* 4. EXECUTIVO DE CONTAS: FOCO NOS CLIENTES QUE GERENCIA                   */}
+        {/* 4. EXECUTIVO DE CONTAS: FOCO NOS CLIENTES QUE GERENCIA (~1 TELA)          */}
         {/* ========================================================================= */}
         {!isFullView && isExecutivoContas && (
           <div className="space-y-4">
@@ -1248,97 +845,18 @@ export default function Index() {
               </Card>
             </div>
 
-            {/* Scorecard de Autonomia + Resumo Compacto dos Últimos Atendimentos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <AutonomyScorecard records={executiveRecords} clients={executiveClients} />
-
-              <CompactRecentRecords
-                records={executiveRecords}
-                title="Últimos Atendimentos da Carteira"
-                emptyMessage="Nenhum atendimento registrado para os clientes da sua carteira."
-                maxItems={5}
-              />
-            </div>
-
-            {/* SEÇÕES SECUNDÁRIAS COLAPSÁVEIS COM MEMÓRIA */}
-            <div className="space-y-3 pt-2 border-t border-slate-200/80">
-              {/* Treinamentos Pendentes dos Clientes (Aberto por padrão) */}
-              <DashboardSection
-                id="exec-pending-trainings"
-                title="Treinamentos Sugeridos & Demandas Evitáveis"
-                subtitle="Clientes da carteira que acumulam chamados com dúvidas evitáveis"
-                icon={<GraduationCap className="h-4 w-4" />}
-                defaultOpen={true}
-                badge={
-                  executivePendingTrainings.length > 0 ? (
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] bg-amber-50 text-amber-800 border-amber-200"
-                    >
-                      {executivePendingTrainings.length} agência
-                      {executivePendingTrainings.length > 1 ? 's' : ''}
-                    </Badge>
-                  ) : null
-                }
-              >
-                <div className="space-y-2">
-                  {executivePendingTrainings.length === 0 ? (
-                    <div className="p-4 bg-slate-50 rounded-lg text-center">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto mb-1.5" />
-                      <p className="text-xs text-slate-600 font-medium">
-                        Nenhuma agência com demanda crítica de treinamento
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Seus clientes estão com baixo volume de dúvidas evitáveis.
-                      </p>
-                    </div>
-                  ) : (
-                    executivePendingTrainings.slice(0, 5).map((item, idx) => (
-                      <div
-                        key={`exec-train-${idx}`}
-                        className="flex items-center justify-between p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-100"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-slate-900 truncate">
-                            {item.clientName}
-                          </p>
-                          <p className="text-[10px] text-slate-500">
-                            {item.avoidableCount} chamados evitáveis registrados
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => navigate('/painel-treinamento')}
-                          className="text-[10px] h-6 bg-white text-indigo-700 border-indigo-200 shrink-0 ml-2"
-                        >
-                          Sugerir Treinamento
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </DashboardSection>
-
-              {/* Status Operacional & Reconhecimentos */}
-              <DashboardSection
-                id="exec-status-recognition"
-                title="Status da Equipe & Reconhecimento Social"
-                subtitle="Disponibilidade em tempo real e premiações do mês"
-                icon={<Award className="h-4 w-4" />}
-                defaultOpen={false}
-              >
-                <div className="space-y-4">
-                  <SocialRecognitionBanner awards={awards} />
-                  <CollaboratorStatusPanel />
-                </div>
-              </DashboardSection>
-            </div>
+            {/* Resumo Compacto dos Últimos Atendimentos da Carteira */}
+            <CompactRecentRecords
+              records={executiveRecords}
+              title="Últimos Atendimentos da Carteira"
+              emptyMessage="Nenhum atendimento registrado para os clientes da sua carteira."
+              maxItems={5}
+            />
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* 5. GESTOR COMERCIAL: VISÃO DE NEGÓCIOS                                   */}
+        {/* 5. GESTOR COMERCIAL: VISÃO DE NEGÓCIOS (~1 TELA)                         */}
         {/* ========================================================================= */}
         {!isFullView && isGestorComercial && (
           <div className="space-y-4">
@@ -1436,126 +954,14 @@ export default function Index() {
               </Card>
             </div>
 
-            {/* SEÇÕES COLAPSÁVEIS COM MEMÓRIA: Gráfico comparativo de núcleos, status e reconhecimentos */}
-            <div className="space-y-3 pt-1">
-              {/* Gráfico Comparativo entre Núcleos de Atendimento (Aberto por padrão) */}
-              <DashboardSection
-                id="comm-group-comparison"
-                title="Gráfico Comparativo entre Núcleos de Atendimento"
-                subtitle="Distribuição do volume total e contatos evitáveis por núcleo"
-                icon={<Layers className="h-4 w-4" />}
-                defaultOpen={true}
-                headerExtra={
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-[11px] text-indigo-600 hover:text-indigo-800 p-1"
-                  >
-                    <span onClick={() => navigate('/relatorios-grupo')}>Relatório Grupo →</span>
-                  </Button>
-                }
-              >
-                <div className="space-y-4">
-                  <ChartContainer config={commercialChartConfig} className="h-[260px] w-full">
-                    <BarChart data={commercialGroupComparison}>
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={30} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar
-                        dataKey="total"
-                        name="Total Atendimentos"
-                        fill="#6366f1"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="avoidable"
-                        name="Contatos Evitáveis"
-                        fill="#f43f5e"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ChartContainer>
-
-                  {/* Tabela Resumo dos Núcleos */}
-                  <div className="overflow-x-auto rounded-lg border border-slate-100">
-                    <Table>
-                      <TableHeader className="bg-slate-50">
-                        <TableRow>
-                          <TableHead className="text-xs font-bold">Núcleo de Atendimento</TableHead>
-                          <TableHead className="text-xs font-bold text-center">Total</TableHead>
-                          <TableHead className="text-xs font-bold text-center">Evitáveis</TableHead>
-                          <TableHead className="text-xs font-bold text-center">
-                            Taxa de Autonomia
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {commercialGroupComparison.map((g) => (
-                          <TableRow key={g.group} className="hover:bg-slate-50">
-                            <TableCell className="text-xs font-semibold text-slate-900">
-                              {g.name}
-                            </TableCell>
-                            <TableCell className="text-xs text-center">{g.total}</TableCell>
-                            <TableCell className="text-xs text-center text-rose-600 font-semibold">
-                              {g.avoidable}
-                            </TableCell>
-                            <TableCell className="text-xs text-center">
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                                  g.autonomy >= 70
-                                    ? 'bg-emerald-100 text-emerald-800'
-                                    : 'bg-amber-100 text-amber-800'
-                                }`}
-                              >
-                                {g.autonomy}%
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              </DashboardSection>
-
-              {/* Resumo Compacto dos Últimos Atendimentos (Aberto por padrão) */}
-              <DashboardSection
-                id="comm-recent-records"
-                title="Atendimentos Recentes dos Clientes"
-                subtitle="Últimas ocorrências registradas no período"
-                icon={<Headset className="h-4 w-4" />}
-                defaultOpen={true}
-              >
-                <CompactRecentRecords
-                  records={commercialFilteredRecords}
-                  title="Últimos Atendimentos Registrados"
-                  emptyMessage="Nenhum atendimento recente no período selecionado."
-                  showConsultant={true}
-                  maxItems={5}
-                />
-              </DashboardSection>
-
-              {/* Status Operacional & Reconhecimentos */}
-              <DashboardSection
-                id="comm-status-recognition"
-                title="Disponibilidade da Equipe & Premiações"
-                subtitle="Visão em tempo real das pausas e premiações mensais"
-                icon={<Award className="h-4 w-4" />}
-                defaultOpen={false}
-              >
-                <div className="space-y-4">
-                  <SocialRecognitionBanner awards={awards} />
-                  <CollaboratorStatusPanel />
-                </div>
-              </DashboardSection>
-            </div>
+            {/* Resumo Compacto dos Últimos Atendimentos */}
+            <CompactRecentRecords
+              records={commercialFilteredRecords}
+              title="Últimos Atendimentos Registrados"
+              emptyMessage="Nenhum atendimento recente no período selecionado."
+              showConsultant={true}
+              maxItems={5}
+            />
           </div>
         )}
       </div>

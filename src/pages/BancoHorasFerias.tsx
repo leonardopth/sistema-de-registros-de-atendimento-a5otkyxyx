@@ -35,6 +35,7 @@ import { TeamManagementView } from '@/components/TeamManagementView'
 import { MySituationView } from '@/components/MySituationView'
 import { AbsenceAlertSettings } from '@/components/AbsenceAlertSettings'
 import { AbsenceApprovalsView } from '@/components/AbsenceApprovalsView'
+import { CollaboratorStatusPanel } from '@/components/CollaboratorStatusPanel'
 import { LgIntegrationCard } from '@/components/LgIntegrationCard'
 import { NewAbsenceModal } from '@/components/NewAbsenceModal'
 import { NewHourBankModal } from '@/components/NewHourBankModal'
@@ -329,6 +330,16 @@ export function BancoHorasFerias() {
             </TabsTrigger>
           )}
 
+          {canManage && (
+            <TabsTrigger
+              value="status-operacional"
+              className="text-xs data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm gap-1.5 shrink-0"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              Status & Pausas em Tempo Real
+            </TabsTrigger>
+          )}
+
           {isLeaderOrAdmin && (
             <TabsTrigger
               value="configuracoes"
@@ -431,6 +442,18 @@ export function BancoHorasFerias() {
               ) : (
                 <div className="py-12 text-center text-xs text-slate-400">Carregando...</div>
               )}
+            </ErrorBoundary>
+          </TabsContent>
+        )}
+
+        {/* 5. Status Operacional de Pausas (Visão de Liderança) */}
+        {canManage && (
+          <TabsContent
+            value="status-operacional"
+            className="space-y-4 m-0 min-w-0 w-full focus-visible:outline-none focus-visible:ring-0"
+          >
+            <ErrorBoundary>
+              <CollaboratorStatusPanel />
             </ErrorBoundary>
           </TabsContent>
         )}
