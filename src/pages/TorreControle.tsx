@@ -37,6 +37,7 @@ import { ControlTowerConfigModal } from '@/components/ControlTowerConfigModal'
 import { ControlTowerDetailModal } from '@/components/ControlTowerDetailModal'
 import { ControlTowerAssignModal } from '@/components/ControlTowerAssignModal'
 import { ControlTowerAgentLoadCard } from '@/components/ControlTowerAgentLoadCard'
+import { SlaCountdownBadge, computeSlaStatus } from '@/components/SlaCountdownBadge'
 import {
   SlidersHorizontal,
   RefreshCw,
@@ -53,6 +54,8 @@ import {
   AlertTriangle,
   Flame,
   CheckCircle2,
+  Inbox,
+  ShieldAlert,
 } from 'lucide-react'
 
 export default function TorreControle() {
@@ -68,7 +71,7 @@ export default function TorreControle() {
   // Filtros
   const [search, setSearch] = useState('')
   const [filterPriority, setFilterPriority] = useState<string>('Todas')
-  const [filterStatus, setFilterStatus] = useState<string>('Ativos') // 'Ativos' | 'Todos' | Status específico
+  const [filterStatus, setFilterStatus] = useState<string>('Ativos') // 'Ativos' | 'Todos' | 'Estourados/Escalados' | Status específico
   const [filterGroup, setFilterGroup] = useState<string>('Todos')
   const [filterTeam, setFilterTeam] = useState<string>('Todas')
   const [onlyMine, setOnlyMine] = useState(false)
@@ -285,6 +288,9 @@ export default function TorreControle() {
       // Status
       if (filterStatus === 'Ativos') {
         if (em.status === 'Resolvido') return false
+      } else if (filterStatus === 'Estourados/Escalados') {
+        const sla = computeSlaStatus(em.sla_deadline, em.status)
+        if (!sla.isBreached && em.status !== 'Escalado') return false
       } else if (filterStatus !== 'Todos') {
         if (em.status !== filterStatus) return false
       }
@@ -335,10 +341,15 @@ export default function TorreControle() {
     const p2Active = accessibleEmails.filter(
       (e) => e.priority === 'P2' && e.status !== 'Resolvido' && !e.is_noise,
     ).length
+    const escalatedOrBreached = accessibleEmails.filter((e) => {
+      if (e.status === 'Resolvido' || e.is_noise) return false
+      const sla = computeSlaStatus(e.sla_deadline, e.status)
+      return e.status === 'Escalado' || sla.isBreached
+    }).length
     const myActive = accessibleEmails.filter(
       (e) => e.assigned_to === user?.id && e.status !== 'Resolvido',
     ).length
-    return { totalActive, p1Active, p2Active, myActive }
+    return { totalActive, p1Active, p2Active, escalatedOrBreached, myActive }
   }, [accessibleEmails, user])
 
   const clearFilters = () => {
@@ -376,15 +387,14 @@ export default function TorreControle() {
               variant="outline"
               className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-bold"
             >
-              Etapa 1
+              Etapa 2 — Escalação por SLA
             </Badge>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Fila unificada de e-mails priorizados por embarque, cancelamentos, clientes VIP e tempo
-            na caixa
+            Fila de e-mails compartilhados por núcleo e equipe INTER/NAC com escalação automática
+            por SLA em horas úteis
           </p>
         </div>
-
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
@@ -426,7 +436,7 @@ export default function TorreControle() {
       </div>
 
       {/* KPI Cards Rápidos */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <Card className="p-3 border-slate-200 bg-white">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
             Total Ativos
@@ -434,6 +444,33 @@ export default function TorreControle() {
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-extrabold text-slate-900">{counts.totalActive}</span>
             <span className="text-[11px] text-slate-500">na fila</span>
+          </div>
+        </Card>
+
+        <Card
+          className={`p-3 border-rose-300 transition-all cursor-pointer ${
+            filterStatus === 'Estourados/Escalados'
+              ? 'bg-rose-100 ring-2 ring-rose-500'
+              : 'bg-rose-50/60 hover:bg-rose-100/70'
+          }`}
+          onClick={() => {
+            setFilterStatus((prev) =>
+              prev === 'Estourados/Escalados' ? 'Ativos' : 'Estourados/Escalados',
+            )
+          }}
+          title="Clique para filtrar apenas e-mails escalados ou com prazo de SLA estourado"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block">
+              SLA Estourado / Escalado
+            </span>
+            <Flame className="h-4 w-4 text-rose-600 animate-pulse" />
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-2xl font-extrabold text-rose-800">
+              {counts.escalatedOrBreached}
+            </span>
+            <span className="text-[11px] text-rose-700 font-semibold">requer ação</span>
           </div>
         </Card>
 
@@ -514,6 +551,7 @@ export default function TorreControle() {
               className="h-8 text-xs w-full border border-slate-200 rounded-md px-2 bg-white text-slate-700"
             >
               <option value="Ativos">Status: Ativos na Fila</option>
+              <option value="Estourados/Escalados">🚨 Estourados / Escalados</option>
               <option value="Todos">Status: Todos</option>
               <option value="Novo">Novo</option>
               <option value="Em tratamento">Em tratamento</option>
@@ -628,11 +666,11 @@ export default function TorreControle() {
                 <TableHead className="text-xs font-bold text-slate-700 min-w-[130px]">
                   Cliente / Agência
                 </TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 w-28">
-                  Núcleo / Equipe
+                <TableHead className="text-xs font-bold text-slate-700 min-w-[150px]">
+                  Caixa / Núcleo
                 </TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 w-28">
-                  Tempo na Caixa
+                <TableHead className="text-xs font-bold text-slate-700 w-36">
+                  SLA & Espera
                 </TableHead>
                 <TableHead className="text-xs font-bold text-slate-700 w-32">Responsável</TableHead>
                 <TableHead className="text-xs font-bold text-slate-700 w-28">Status</TableHead>
@@ -652,11 +690,20 @@ export default function TorreControle() {
 
                 const signals = Array.isArray(item.detected_signals) ? item.detected_signals : []
                 const isAssignedToMe = Boolean(item.assigned_to && item.assigned_to === user?.id)
+                const isEscalated = item.status === 'Escalado'
+                const slaInfo = computeSlaStatus(item.sla_deadline, item.status)
+                const isBreached = slaInfo.isBreached || isEscalated
 
                 return (
                   <TableRow
                     key={item.id}
-                    className="cursor-pointer hover:bg-indigo-50/40 transition-colors"
+                    className={`cursor-pointer transition-colors ${
+                      isEscalated
+                        ? 'bg-rose-50/70 hover:bg-rose-100/60 border-l-4 border-l-rose-600'
+                        : isBreached
+                          ? 'bg-amber-50/40 hover:bg-amber-100/50 border-l-4 border-l-amber-500'
+                          : 'hover:bg-indigo-50/40'
+                    }`}
                     onClick={() => {
                       setSelectedEmail(item)
                       setDetailModalOpen(true)
@@ -736,23 +783,32 @@ export default function TorreControle() {
                       </div>
                     </TableCell>
 
-                    {/* Núcleo / Equipe */}
+                    {/* Núcleo / Caixa Compartilhada */}
                     <TableCell className="align-middle text-xs">
-                      <div className="space-y-0.5">
-                        <span className="block font-medium text-slate-800">
+                      <div className="space-y-1">
+                        <span className="inline-flex items-center gap-1 font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          <Inbox className="h-3 w-3 text-indigo-600 shrink-0" />
                           {item.service_group ? getServiceGroupLabel(item.service_group) : '—'}
                         </span>
-                        <span className="block text-[10px] text-slate-500 font-semibold">
-                          {item.team || 'Nacional'}
-                        </span>
+                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                          <span className="font-medium">{item.team || 'Nacional'}</span>
+                          {item.inbox_address && (
+                            <span className="truncate max-w-[120px]" title={item.inbox_address}>
+                              • {item.inbox_address}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
 
-                    {/* Tempo na Caixa (horas úteis) */}
+                    {/* SLA Regressivo & Espera em Horas Úteis */}
                     <TableCell className="align-middle">
-                      <div className="flex items-center gap-1 text-xs font-bold text-slate-700">
-                        <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                        <span>{item.business_hours_waiting ?? 0}h</span>
+                      <div className="space-y-1">
+                        <SlaCountdownBadge deadline={item.sla_deadline} status={item.status} />
+                        <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                          <Clock className="h-3 w-3 text-slate-400 shrink-0" />
+                          <span>{item.business_hours_waiting ?? 0}h úteis na caixa</span>
+                        </div>
                       </div>
                     </TableCell>
 
@@ -773,7 +829,7 @@ export default function TorreControle() {
                     {/* Status */}
                     <TableCell className="align-middle">
                       <Badge
-                        variant="outline"
+                        variant={item.status === 'Escalado' ? 'destructive' : 'outline'}
                         className={`text-[10px] font-bold px-2 py-0.5 ${
                           item.status === 'Novo'
                             ? 'bg-blue-50 text-blue-700 border-blue-200'
@@ -782,10 +838,13 @@ export default function TorreControle() {
                               : item.status === 'Aguardando cliente'
                                 ? 'bg-amber-50 text-amber-700 border-amber-200'
                                 : item.status === 'Escalado'
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  ? 'bg-rose-600 text-white font-extrabold animate-pulse'
                                   : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         }`}
                       >
+                        {item.status === 'Escalado' && (
+                          <Flame className="h-3 w-3 mr-0.5 shrink-0" />
+                        )}
                         {item.status}
                       </Badge>
                     </TableCell>

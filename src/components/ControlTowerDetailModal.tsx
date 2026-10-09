@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ControlTowerEmailRecord, ControlTowerStatus } from '@/types/control_tower'
 import { formatGMT3DateTime } from '@/lib/timezone'
+import { SlaCountdownBadge } from '@/components/SlaCountdownBadge'
+import { getServiceGroupLabel } from '@/lib/service-groups'
 import {
   Mail,
   Clock,
@@ -18,7 +20,8 @@ import {
   Calendar,
   AlertTriangle,
   CheckCircle2,
-  Share2,
+  Inbox,
+  Flame,
 } from 'lucide-react'
 
 interface ControlTowerDetailModalProps {
@@ -129,10 +132,19 @@ export function ControlTowerDetailModal({
             </div>
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                Núcleo & Equipe
+                Caixa & Núcleo de Origem
               </span>
-              <p className="text-slate-800">
-                {email.service_group || '—'} • {email.team || 'Nacional'}
+              <p className="text-slate-800 flex items-center gap-1 font-medium">
+                <Inbox className="h-3.5 w-3.5 text-indigo-500" />
+                {email.service_group ? getServiceGroupLabel(email.service_group) : '—'}
+                {email.inbox_address && (
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    ({email.inbox_address})
+                  </span>
+                )}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Equipe: <strong>{email.team || 'Nacional'}</strong>
               </p>
             </div>
             <div>
@@ -141,21 +153,42 @@ export function ControlTowerDetailModal({
               </span>
               <p className="text-slate-800 flex items-center gap-1">
                 <User className="h-3.5 w-3.5 text-slate-500" />
-                {email.expand?.assigned_to?.name || 'Não atribuído (Fila livre)'}
+                {email.expand?.assigned_to?.name || (
+                  <span className="text-rose-600 font-bold italic">Não atribuído (Fila livre)</span>
+                )}
               </p>
             </div>
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                Tempo na Caixa (Útil)
+                SLA & Tempo na Caixa
               </span>
-              <p className="text-slate-800 flex items-center gap-1 font-semibold">
-                <Clock className="h-3.5 w-3.5 text-amber-600" />
-                {email.business_hours_waiting !== undefined
-                  ? `${email.business_hours_waiting}h úteis`
-                  : '—'}
-              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <SlaCountdownBadge deadline={email.sla_deadline} status={email.status} />
+                <span className="text-[11px] text-slate-500">
+                  ({email.business_hours_waiting ?? 0}h úteis decorridas)
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* Destaque de Escalação se o item estiver Escalado */}
+          {email.status === 'Escalado' && (
+            <div className="p-3 bg-rose-50 border-2 border-rose-300 rounded-lg space-y-1">
+              <div className="flex items-center gap-1.5 text-rose-800 font-bold">
+                <Flame className="h-4 w-4 text-rose-600 animate-pulse" />
+                <span>Atendimento Escalado para Supervisão</span>
+              </div>
+              <p className="text-xs text-rose-700">
+                {email.escalated_reason ||
+                  'O prazo de SLA para atendimento em horas úteis foi estourado.'}
+              </p>
+              {email.escalated_at && (
+                <p className="text-[10px] text-rose-600 font-mono">
+                  Escalado em: {formatGMT3DateTime(email.escalated_at)}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Sinais Detectados */}
           <div className="space-y-1.5">
@@ -247,6 +280,14 @@ export function ControlTowerDetailModal({
                 onClick={() => onStatusChange(email.id, 'Aguardando cliente')}
               >
                 Aguardando cliente
+              </Button>
+              <Button
+                variant={email.status === 'Escalado' ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs text-rose-700 border-rose-300 hover:bg-rose-50"
+                onClick={() => onStatusChange(email.id, 'Escalado')}
+              >
+                Escalado
               </Button>
               <Button
                 variant={email.status === 'Resolvido' ? 'default' : 'outline'}

@@ -45,6 +45,7 @@ export interface ControlTowerEmailRecord {
   received_at?: string
   service_group?: ServiceGroup
   team?: TravelType
+  inbox_address?: string
   client?: string
   reservation_number?: string
   detected_dates?: string[]
@@ -59,6 +60,9 @@ export interface ControlTowerEmailRecord {
   email_analysis_log?: string
   business_hours_waiting?: number
   sla_deadline?: string
+  escalated_at?: string
+  escalation_alert_sent?: boolean
+  escalated_reason?: string
   created: string
   updated: string
   expand?: {
@@ -70,7 +74,7 @@ export interface ControlTowerEmailRecord {
 export interface ControlTowerFilters {
   search?: string
   priority?: ControlTowerPriority | 'Todas'
-  status?: ControlTowerStatus | 'Todos' | 'Ativos'
+  status?: ControlTowerStatus | 'Todos' | 'Ativos' | 'Estourados/Escalados'
   service_group?: string
   team?: 'Nacional' | 'Internacional' | 'Todas'
   onlyAssignedToMe?: boolean

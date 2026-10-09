@@ -13,9 +13,14 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '@/hooks/use-auth'
 import { getUsers } from '@/services/users'
 import { getUserTargets, type UserTargetRecord } from '@/services/user-targets'
 import { getGlobalTarget } from '@/services/global-targets'
+import { getControlTowerEmails } from '@/services/control_tower'
+import type { ControlTowerEmailRecord } from '@/types/control_tower'
+import { filterControlTowerEmailsByAccess } from '@/lib/service-group-access'
+import { computeSlaStatus } from '@/components/SlaCountdownBadge'
 import type { UserRecord, GlobalTargetRecord, ServiceRecord } from '@/types/service_record'
 import { computePerformanceAlerts, canManageTargets, type PerformanceAlert } from '@/lib/metas'
 import { getRoleLabel } from '@/lib/role-labels'
@@ -64,19 +69,21 @@ const ROLE_DISPLAY_ORDER = [
  */
 export function PerformanceAlerts({
   records,
-  targetUserId,
   title,
   subtitle,
+  targetUserId,
 }: PerformanceAlertsProps) {
+  const { user: currentUser } = useAuth()
   const [users, setUsers] = useState<UserRecord[]>([])
   const [targets, setTargets] = useState<UserTargetRecord[]>([])
   const [globalTarget, setGlobalTarget] = useState<GlobalTargetRecord | null>(null)
+  const [towerEmails, setTowerEmails] = useState<ControlTowerEmailRecord[]>([])
   const [activeTab, setActiveTab] = useState<'all' | 'action' | 'performance'>('all')
 
   useEffect(() => {
     let active = true
-    Promise.all([getUsers(), getUserTargets(), getGlobalTarget()])
-      .then(([u, t, g]) => {
+    Promise.all([getUsers(), getUserTargets(), getGlobalTarget(), getControlTowerEmails()])
+      .then(([u, t, g, emails]) => {
         if (!active) return
         const internal = u.filter((item) =>
           [
@@ -94,13 +101,13 @@ export function PerformanceAlerts({
         setUsers(internal)
         setTargets(t)
         setGlobalTarget(g)
+        setTowerEmails(emails || [])
       })
       .catch((err) => console.error(err))
     return () => {
       active = false
     }
   }, [])
-
   // 1. Alertas de Desempenho existentes
   const perfAlerts = useMemo<PerformanceAlert[]>(() => {
     if (!globalTarget) return []
@@ -111,10 +118,49 @@ export function PerformanceAlerts({
     return computed
   }, [users, targets, globalTarget, records, targetUserId])
 
-  // 2. Alertas de Ação Automáticos (Frente C1)
+  // 2. Alertas de Ação Automáticos (Frente C1 + E-mails Escalados da Torre de Controle)
   const actionAlerts = useMemo<ActionAlertItem[]>(() => {
     const items: ActionAlertItem[] = []
     const now = Date.now()
+
+    // 2.0 E-mails Escalados e com SLA Estourado na Torre de Controle (respeitando segregação de caixa núcleo+equipe)
+    const accessibleTowerEmails = filterControlTowerEmailsByAccess(towerEmails, currentUser)
+    const escalatedOrBreachedEmails = accessibleTowerEmails.filter((em) => {
+      if (em.status === 'Resolvido' || em.is_noise) return false
+      const sla = computeSlaStatus(em.sla_deadline, em.status)
+      return em.status === 'Escalado' || sla.isBreached
+    })
+
+    escalatedOrBreachedEmails.forEach((email) => {
+      const sla = computeSlaStatus(email.sla_deadline, email.status)
+      const isEscalatedStatus = email.status === 'Escalado'
+      const subject = email.subject || '(Sem assunto)'
+      const sender = email.sender_name || email.sender_email
+      const assignedName = email.expand?.assigned_to?.name || 'Não atribuído (Fila livre)'
+      const waiting = email.business_hours_waiting ?? 0
+      const group = email.service_group || 'Geral'
+      const team = email.team || 'Nacional'
+
+      items.push({
+        id: `tower-escalated-${email.id}`,
+        category: 'backlog_critical',
+        severity: 'critical',
+        title: `Torre [${email.priority}]: ${subject}`,
+        description: `E-mail ${isEscalatedStatus ? 'escalado para supervisão' : 'com prazo estourado'} (${waiting}h úteis na caixa • Núcleo ${group} / ${team}). Remetente: ${sender}. Responsável: ${assignedName}.`,
+        responsibleName: assignedName,
+        responsibleId: email.assigned_to,
+        serviceRecordId: email.id,
+        link: '/torre-controle',
+        badgeLabel: isEscalatedStatus ? '🚨 Escalado' : sla.label,
+        timestamp: email.escalated_at || email.received_at || email.created,
+        meta: {
+          isTowerEmail: true,
+          emailId: email.id,
+          priority: email.priority,
+          slaDeadline: email.sla_deadline,
+        },
+      })
+    })
 
     // 2.1 Backlog envelhecido (> 2h moderado, > 24h crítico)
     const openRecords = records.filter(
@@ -287,7 +333,7 @@ export function PerformanceAlerts({
     }
 
     return items
-  }, [records, targets, globalTarget, users, targetUserId])
+  }, [records, targets, globalTarget, users, towerEmails, currentUser, targetUserId])
 
   // Agrupamento dos alertas de desempenho por cargo do colaborador
   const groupedPerfAlerts = useMemo(() => {
@@ -523,7 +569,11 @@ export function PerformanceAlerts({
                               : 'text-amber-800 bg-amber-100 hover:bg-amber-200'
                           }`}
                         >
-                          {item.category === 'projection_risk' ? 'Ver Metas' : 'Ver Atendimento'}{' '}
+                          {(item.meta as any)?.isTowerEmail
+                            ? 'Ver na Torre'
+                            : item.category === 'projection_risk'
+                              ? 'Ver Metas'
+                              : 'Ver Atendimento'}{' '}
                           <ExternalLink className="h-3 w-3" />
                         </Link>
                       </div>

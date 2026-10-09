@@ -45,5 +45,10 @@ export interface ActionAlertItem {
     projectedPct?: number
     projectedTotal?: number
     target?: number
+    isTowerEmail?: boolean
+    emailId?: string
+    priority?: string
+    slaDeadline?: string
+    [key: string]: any
   }
 }
