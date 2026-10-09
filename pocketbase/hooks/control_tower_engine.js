@@ -416,6 +416,27 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
   }
 })
 
+// Disparo automático na alteração de status via PocketBase REST API
+onRecordUpdate((e) => {
+  try {
+    var rec = e.record
+    var newStatus = rec.getString('status')
+    var oldStatus = rec.original().getString('status')
+
+    var nowIso = new Date().toISOString()
+    // 1. Se assumiu ou transicionou para "Em tratamento" pela primeira vez
+    if (newStatus === 'Em tratamento' && !rec.getString('first_response_at')) {
+      rec.set('first_response_at', nowIso)
+    }
+
+    // 2. Se mudou para "Resolvido"
+    if (newStatus === 'Resolvido' && oldStatus !== 'Resolvido') {
+      rec.set('resolved_at', nowIso)
+    }
+  } catch (_) {}
+  e.next()
+}, 'control_tower_emails')
+
 // ROTAS HTTP API
 
 // 1. Endpoint para forçar recálculo geral
@@ -1586,8 +1607,14 @@ routerAdd(
 
     try {
       var record = $app.findFirstRecordByData('control_tower_emails', 'id', emailId)
+      var nowIso = new Date().toISOString()
       record.set('assigned_to', targetUserId || null)
-      record.set('assigned_at', targetUserId ? new Date().toISOString() : null)
+      record.set('assigned_at', targetUserId ? nowIso : null)
+
+      // Gravar primeira resposta (first_response_at) se ainda não tiver e estiver sendo assumido
+      if (targetUserId && !record.getString('first_response_at')) {
+        record.set('first_response_at', nowIso)
+      }
 
       var curStatus = record.getString('status')
       if (targetUserId && (curStatus === 'Novo' || curStatus === 'Escalado')) {
@@ -1600,7 +1627,7 @@ routerAdd(
             : prio === 'P2'
               ? cfg.target_sla_p2_hours
               : cfg.target_sla_p3_hours
-        var newDeadline = addBizHours(new Date().toISOString(), targetHours, cfg)
+        var newDeadline = addBizHours(nowIso, targetHours, cfg)
         record.set('sla_deadline', newDeadline)
       }
 
@@ -1620,7 +1647,10 @@ routerAdd(
           for (var c = 0; c < children.length; c++) {
             var ch = children[c]
             ch.set('assigned_to', targetUserId || null)
-            ch.set('assigned_at', targetUserId ? new Date().toISOString() : null)
+            ch.set('assigned_at', targetUserId ? nowIso : null)
+            if (targetUserId && !ch.getString('first_response_at')) {
+              ch.set('first_response_at', nowIso)
+            }
             if (
               targetUserId &&
               (ch.getString('status') === 'Novo' || ch.getString('status') === 'Escalado')

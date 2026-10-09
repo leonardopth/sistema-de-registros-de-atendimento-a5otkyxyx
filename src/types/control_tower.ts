@@ -64,6 +64,8 @@ export interface ControlTowerEmailRecord {
   escalated_at?: string
   escalation_alert_sent?: boolean
   escalated_reason?: string
+  first_response_at?: string
+  resolved_at?: string
   thread_id?: string
   thread_root?: string
   message_count?: number

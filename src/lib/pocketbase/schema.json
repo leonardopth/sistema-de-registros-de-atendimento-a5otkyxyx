@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-09T17:58:28.427Z",
+  "generatedAt": "2026-10-09T18:16:25.810Z",
   "collections": [
     {
       "name": "users",
@@ -3023,6 +3023,18 @@
         },
         {
           "name": "last_message_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "first_response_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "resolved_at",
           "type": "date",
           "required": false,
           "system": false

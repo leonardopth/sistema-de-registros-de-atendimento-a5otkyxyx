@@ -37,8 +37,10 @@ import { ControlTowerConfigModal } from '@/components/ControlTowerConfigModal'
 import { ControlTowerDetailModal } from '@/components/ControlTowerDetailModal'
 import { ControlTowerAssignModal } from '@/components/ControlTowerAssignModal'
 import { ControlTowerAgentLoadCard } from '@/components/ControlTowerAgentLoadCard'
+import { ControlTowerPerformancePanel } from '@/components/ControlTowerPerformancePanel'
 import { SlaCountdownBadge, computeSlaStatus } from '@/components/SlaCountdownBadge'
 import { getAnalyzedSignals } from '@/lib/control-tower-signals'
+import { AgingBucketKey, getAgingBucketKey, calcBizHours } from '@/lib/control-tower-performance'
 import {
   SlidersHorizontal,
   RefreshCw,
@@ -59,6 +61,8 @@ import {
   ShieldAlert,
   MessagesSquare,
   MessageSquareText,
+  BarChart3,
+  ListFilter,
 } from 'lucide-react'
 
 export default function TorreControle() {
@@ -71,12 +75,16 @@ export default function TorreControle() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
 
+  // Aba ativa: 'fila' (fila operacional) ou 'desempenho' (painel analítico da torre)
+  const [activeTab, setActiveTab] = useState<'fila' | 'desempenho'>('fila')
+
   // Filtros
   const [search, setSearch] = useState('')
   const [filterPriority, setFilterPriority] = useState<string>('Todas')
   const [filterStatus, setFilterStatus] = useState<string>('Ativos') // 'Ativos' | 'Todos' | 'Estourados/Escalados' | Status específico
   const [filterGroup, setFilterGroup] = useState<string>('Todos')
   const [filterTeam, setFilterTeam] = useState<string>('Todas')
+  const [filterAgingBucket, setFilterAgingBucket] = useState<AgingBucketKey | null>(null)
   const [onlyMultipleMessages, setOnlyMultipleMessages] = useState<boolean>(false)
   const [onlyMine, setOnlyMine] = useState(false)
   const [hideNoise, setHideNoise] = useState(true)
@@ -311,6 +319,16 @@ export default function TorreControle() {
           if (em.team !== filterTeam) return false
         }
 
+        // Filtro de Faixa de Aging vindo do Gráfico de Desempenho
+        if (filterAgingBucket) {
+          const waiting =
+            typeof em.business_hours_waiting === 'number' && em.business_hours_waiting > 0
+              ? em.business_hours_waiting
+              : calcBizHours(em.received_at || em.created, new Date().toISOString(), config)
+          const bucket = getAgingBucketKey(waiting)
+          if (bucket !== filterAgingBucket) return false
+        }
+
         // Somente meus atribuídos
         if (onlyMine && user) {
           if (em.assigned_to !== user.id) return false
@@ -394,6 +412,7 @@ export default function TorreControle() {
     setFilterStatus('Ativos')
     setFilterGroup('Todos')
     setFilterTeam('Todas')
+    setFilterAgingBucket(null)
     setOnlyMultipleMessages(false)
     setOnlyMine(false)
     setHideNoise(true)
@@ -407,11 +426,23 @@ export default function TorreControle() {
     filterStatus !== 'Ativos' ||
     filterGroup !== 'Todos' ||
     filterTeam !== 'Todas' ||
+    filterAgingBucket !== null ||
     onlyMultipleMessages ||
     onlyMine ||
     !hideNoise ||
     filterAssignedUserId ||
     sortBy !== 'score'
+
+  // Transição interativa do gráfico de aging para a fila operacional
+  const handleFilterAgingBucketFromPanel = (bucketKey: AgingBucketKey) => {
+    setFilterAgingBucket(bucketKey)
+    setFilterStatus('Ativos')
+    setActiveTab('fila')
+    toast({
+      title: `Fila filtrada por aging "${bucketKey}"`,
+      description: 'Exibindo apenas e-mails ativos dentro dessa faixa de tempo na caixa.',
+    })
+  }
 
   return (
     <div className="space-y-4 max-w-full overflow-x-hidden">
@@ -425,17 +456,44 @@ export default function TorreControle() {
             </h2>
             <Badge
               variant="outline"
-              className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-bold"
+              className="bg-emerald-50 text-emerald-700 border-emerald-300 text-xs font-bold"
             >
-              Etapa 3 — Threading & Persistência
+              Etapa 4 — Painel de Desempenho
             </Badge>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Fila agrupada por conversa (1 item por thread) com escalação por SLA e detecção de
-            cliente insistente
+            Fila operacional com SLA, threading e painel analítico de desempenho da torre
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Alternador de Abas: Fila Operacional vs Desempenho */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-md border border-slate-200 mr-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('fila')}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all ${
+                activeTab === 'fila'
+                  ? 'bg-white text-indigo-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <ListFilter className="h-3.5 w-3.5" />
+              Fila Operacional
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('desempenho')}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded transition-all ${
+                activeTab === 'desempenho'
+                  ? 'bg-white text-indigo-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              Desempenho
+            </button>
+          </div>
+
           <Button
             variant="outline"
             size="sm"
@@ -475,561 +533,601 @@ export default function TorreControle() {
         </div>
       </div>
 
-      {/* KPI Cards Rápidos */}
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-        <Card className="p-3 border-slate-200 bg-white">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-            Total Ativos
-          </span>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-extrabold text-slate-900">{counts.totalActive}</span>
-            <span className="text-[11px] text-slate-500">na fila</span>
-          </div>
-        </Card>
-
-        <Card
-          className={`p-3 border-rose-300 transition-all cursor-pointer ${
-            filterStatus === 'Estourados/Escalados'
-              ? 'bg-rose-100 ring-2 ring-rose-500'
-              : 'bg-rose-50/60 hover:bg-rose-100/70'
-          }`}
-          onClick={() => {
-            setFilterStatus((prev) =>
-              prev === 'Estourados/Escalados' ? 'Ativos' : 'Estourados/Escalados',
-            )
-          }}
-          title="Clique para filtrar apenas e-mails escalados ou com prazo de SLA estourado"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block">
-              SLA Estourado / Escalado
-            </span>
-            <Flame className="h-4 w-4 text-rose-600 animate-pulse" />
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-extrabold text-rose-800">
-              {counts.escalatedOrBreached}
-            </span>
-            <span className="text-[11px] text-rose-700 font-semibold">requer ação</span>
-          </div>
-        </Card>
-
-        <Card className="p-3 border-red-200 bg-red-50/40">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block">
-            Prioridade P1
-          </span>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-extrabold text-red-700">{counts.p1Active}</span>
-            <span className="text-[11px] text-red-600 font-semibold">críticos</span>
-          </div>
-        </Card>
-
-        <Card className="p-3 border-amber-200 bg-amber-50/40">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">
-            Prioridade P2
-          </span>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-extrabold text-amber-800">{counts.p2Active}</span>
-            <span className="text-[11px] text-amber-700 font-semibold">médios</span>
-          </div>
-        </Card>
-
-        <Card className="p-3 border-indigo-200 bg-indigo-50/40">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">
-            Meus Atribuídos
-          </span>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-extrabold text-indigo-900">{counts.myActive}</span>
-            <span className="text-[11px] text-indigo-700 font-semibold">sob meu cuidado</span>
-          </div>
-        </Card>
-
-        {/* Card de Conversas com Múltiplas Mensagens */}
-        <Card
-          className={`p-3 border-purple-200 transition-all cursor-pointer ${
-            onlyMultipleMessages
-              ? 'bg-purple-100 ring-2 ring-purple-500'
-              : 'bg-purple-50/50 hover:bg-purple-100/60'
-          }`}
-          onClick={() => setOnlyMultipleMessages((prev) => !prev)}
-          title="Clique para alternar filtro de threads com múltiplas mensagens"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 block">
-              Threads Reincidentes
-            </span>
-            <MessagesSquare className="h-4 w-4 text-purple-600" />
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-extrabold text-purple-900">
-              {counts.multiMessageActive}
-            </span>
-            <span className="text-[11px] text-purple-700 font-semibold">≥2 msgs</span>
-          </div>
-        </Card>
-      </div>
-
-      {/* Painel de Carga por Atendente */}
-      <ControlTowerAgentLoadCard
-        loads={loads}
-        unassignedCount={unassignedCount}
-        selectedUserId={filterAssignedUserId}
-        onFilterUser={(uId) => {
-          setFilterAssignedUserId((prev) => (prev === uId ? '' : uId))
-        }}
-      />
-
-      {/* Barra de Filtros e Busca */}
-      <Card className="p-3 border-slate-200 space-y-2 bg-white shadow-subtle">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-          {/* Busca */}
-          <div className="relative sm:col-span-2">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-            <Input
-              placeholder="Buscar por cliente, assunto, remetente, reserva..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 text-xs w-full"
-            />
-          </div>
-
-          {/* Filtro Prioridade */}
-          <div>
-            <select
-              value={filterPriority}
-              onChange={(e) => setFilterPriority(e.target.value)}
-              className="h-8 text-xs w-full border border-slate-200 rounded-md px-2 bg-white text-slate-700"
-            >
-              <option value="Todas">Prioridade (Todas)</option>
-              <option value="P1">P1 (Alta Prioridade)</option>
-              <option value="P2">P2 (Média Prioridade)</option>
-              <option value="P3">P3 (Normal)</option>
-            </select>
-          </div>
-
-          {/* Filtro Status */}
-          <div>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="h-8 text-xs w-full border border-slate-200 rounded-md px-2 bg-white text-slate-700"
-            >
-              <option value="Ativos">Status: Ativos na Fila</option>
-              <option value="Estourados/Escalados">🚨 Estourados / Escalados</option>
-              <option value="Todos">Status: Todos</option>
-              <option value="Novo">Novo</option>
-              <option value="Em tratamento">Em tratamento</option>
-              <option value="Aguardando cliente">Aguardando cliente</option>
-              <option value="Resolvido">Resolvido</option>
-              <option value="Escalado">Escalado</option>
-            </select>
-          </div>
-
-          {/* Filtro Núcleo */}
-          <div>
-            <select
-              value={filterGroup}
-              onChange={(e) => setFilterGroup(e.target.value)}
-              className="h-8 text-xs w-full border border-slate-200 rounded-md px-2 bg-white text-slate-700"
-            >
-              <option value="Todos">Núcleo (Todos)</option>
-              {SERVICE_GROUP_OPTIONS.map((g) => (
-                <option key={g.value} value={g.value}>
-                  {g.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filtro Equipe INTER / NAC */}
-          <div>
-            <select
-              value={filterTeam}
-              onChange={(e) => setFilterTeam(e.target.value)}
-              className="h-8 text-xs w-full border border-slate-200 rounded-md px-2 bg-white text-slate-700"
-            >
-              <option value="Todas">Equipe (Todas)</option>
-              <option value="Nacional">Nacional</option>
-              <option value="Internacional">Internacional</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Linha secundária de filtros rápidos */}
-        <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs flex-wrap gap-2">
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium select-none">
-              <input
-                type="checkbox"
-                checked={onlyMine}
-                onChange={(e) => setOnlyMine(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span>Somente meus atribuídos</span>
-            </label>
-
-            <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium select-none">
-              <input
-                type="checkbox"
-                checked={onlyMultipleMessages}
-                onChange={(e) => setOnlyMultipleMessages(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-              />
-              <span className="text-purple-800 font-semibold flex items-center gap-1">
-                <MessagesSquare className="h-3.5 w-3.5 text-purple-600" />
-                Somente conversas com múltiplas mensagens
+      {/* RENDERIZAÇÃO CONDICIONAL DA ABA */}
+      {activeTab === 'desempenho' ? (
+        /* ABA DE DESEMPENHO DA TORRE */
+        <ControlTowerPerformancePanel
+          emails={accessibleEmails}
+          config={config}
+          onFilterAgingBucket={handleFilterAgingBucketFromPanel}
+        />
+      ) : (
+        /* ABA DA FILA OPERACIONAL */
+        <>
+          {/* KPI Cards Rápidos */}
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+            <Card className="p-3 border-slate-200 bg-white">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Total Ativos
               </span>
-            </label>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-extrabold text-slate-900">{counts.totalActive}</span>
+                <span className="text-[11px] text-slate-500">na fila</span>
+              </div>
+            </Card>
 
-            <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium select-none">
-              <input
-                type="checkbox"
-                checked={hideNoise}
-                onChange={(e) => setHideNoise(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span>Ocultar ruído (No-reply/Spam)</span>
-            </label>
-
-            {filterAssignedUserId && (
-              <Badge
-                variant="outline"
-                className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px]"
-              >
-                Filtrado por atendente específico
-                <button
-                  type="button"
-                  onClick={() => setFilterAssignedUserId('')}
-                  className="ml-1 text-indigo-900 font-bold hover:text-red-600"
-                >
-                  ×
-                </button>
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 mr-2">
-              <span className="text-[11px] text-slate-500">Ordenar:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="h-6 text-[11px] border border-slate-200 rounded px-1.5 bg-white text-slate-700"
-              >
-                <option value="score">Maior Score</option>
-                <option value="messages">Mais Mensagens (Thread)</option>
-                <option value="sla">Menor SLA</option>
-                <option value="recent">Mais Recentes</option>
-              </select>
-            </div>
-            <span className="text-[11px] text-slate-500">
-              {filteredEmails.length} conversa{filteredEmails.length === 1 ? '' : 's'} na fila
-            </span>
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="h-6 text-[11px] text-slate-500 hover:text-slate-900 px-1.5"
-              >
-                <FilterX className="h-3 w-3 mr-1" /> Limpar filtros
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      {/* Tabela da Fila Única da Torre */}
-      <Card className="border-slate-200 overflow-hidden shadow-subtle">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50 hover:bg-slate-50">
-                <TableHead className="text-xs font-bold text-slate-700 w-24">Prioridade</TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 min-w-[240px]">
-                  Conversa & Assunto
-                </TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 w-24 text-center">
-                  Mensagens
-                </TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 min-w-[180px]">
-                  Sinais Detectados
-                </TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 min-w-[130px]">
-                  Cliente / Agência
-                </TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 min-w-[140px]">
-                  Caixa / Núcleo
-                </TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 w-36">
-                  SLA & Espera
-                </TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 w-32">Responsável</TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 w-28">Status</TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 text-right w-40">
-                  Ações
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEmails.map((item) => {
-                const priorityBadge =
-                  item.priority === 'P1'
-                    ? 'bg-red-50 text-red-700 border-red-300'
-                    : item.priority === 'P2'
-                      ? 'bg-amber-50 text-amber-700 border-amber-300'
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-300'
-
-                const analyzedSignals = getAnalyzedSignals(item.detected_signals)
-                const isAssignedToMe = Boolean(item.assigned_to && item.assigned_to === user?.id)
-                const isEscalated = item.status === 'Escalado'
-                const slaInfo = computeSlaStatus(item.sla_deadline, item.status)
-                const isBreached = slaInfo.isBreached || isEscalated
-
-                return (
-                  <TableRow
-                    key={item.id}
-                    className={`cursor-pointer transition-colors ${
-                      isEscalated
-                        ? 'bg-rose-50/70 hover:bg-rose-100/60 border-l-4 border-l-rose-600'
-                        : isBreached
-                          ? 'bg-amber-50/40 hover:bg-amber-100/50 border-l-4 border-l-amber-500'
-                          : 'hover:bg-indigo-50/40'
-                    }`}
-                    onClick={() => {
-                      setSelectedEmail(item)
-                      setDetailModalOpen(true)
-                    }}
-                  >
-                    {/* Prioridade & Score */}
-                    <TableCell className="align-middle">
-                      <div className="flex flex-col items-start gap-0.5">
-                        <Badge
-                          variant="outline"
-                          className={`font-extrabold text-[11px] px-2 py-0.5 ${priorityBadge}`}
-                        >
-                          {item.priority}
-                        </Badge>
-                        <span className="text-[10px] text-slate-500 font-mono font-semibold">
-                          {item.score} pts
-                        </span>
-                      </div>
-                    </TableCell>
-
-                    {/* Assunto e Remetente */}
-                    <TableCell className="align-middle">
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-semibold text-xs text-slate-900 truncate max-w-[280px]">
-                            {(item.subject || '(Sem assunto)')
-                              .replace(
-                                /^\s*(re\s*:\s*|fwd\s*:\s*|enc\s*:\s*|res\s*:\s*|rv\s*:\s*)+/gi,
-                                '',
-                              )
-                              .trim()}
-                          </p>
-                        </div>
-                        <p className="text-[11px] text-slate-500 truncate max-w-[280px]">
-                          {item.sender_name ? `${item.sender_name} • ` : ''}
-                          {item.sender_email}
-                        </p>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {item.reservation_number && (
-                            <span className="inline-block px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 text-[10px] font-mono font-bold">
-                              PNR: {item.reservation_number}
-                            </span>
-                          )}
-                          {item.last_message_at && (
-                            <span className="text-[10px] text-slate-400">
-                              Última:{' '}
-                              {new Date(item.last_message_at).toLocaleTimeString('pt-BR', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    {/* Contador de Mensagens (Threading) */}
-                    <TableCell className="align-middle text-center">
-                      {(item.message_count || 1) > 1 ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300 shadow-xs">
-                          <MessagesSquare className="h-3 w-3 text-indigo-600" />x
-                          {item.message_count}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-slate-500 bg-slate-100">
-                          <Mail className="h-3 w-3 text-slate-400" />1
-                        </span>
-                      )}
-                    </TableCell>
-
-                    {/* Sinais em Chips */}
-                    <TableCell className="align-middle">
-                      <div className="flex flex-wrap gap-1 max-w-[240px]">
-                        {analyzedSignals.map((sigObj, sIdx) => {
-                          return (
-                            <span
-                              key={sIdx}
-                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                                sigObj.isPersistent
-                                  ? 'bg-purple-100 text-purple-800 border-purple-300'
-                                  : sigObj.isRed
-                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                    : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                              }`}
-                            >
-                              {sigObj.isPersistent && <Flame className="h-3 w-3 text-purple-600" />}
-                              {sigObj.label}
-                            </span>
-                          )
-                        })}
-                        {analyzedSignals.length === 0 && (
-                          <span className="text-[11px] text-slate-400">—</span>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    {/* Cliente / Agência */}
-                    <TableCell className="align-middle">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-slate-800 truncate max-w-[140px]">
-                          {item.expand?.client?.company ||
-                            item.expand?.client?.name ||
-                            'Não vinculado'}
-                        </p>
-                        {item.expand?.client?.priority_client && (
-                          <span className="inline-block mt-0.5 text-[9px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold">
-                            ⭐ VIP
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    {/* Núcleo / Caixa Compartilhada */}
-                    <TableCell className="align-middle text-xs">
-                      <div className="space-y-1">
-                        <span className="inline-flex items-center gap-1 font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                          <Inbox className="h-3 w-3 text-indigo-600 shrink-0" />
-                          {item.service_group ? getServiceGroupLabel(item.service_group) : '—'}
-                        </span>
-                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                          <span className="font-medium">{item.team || 'Nacional'}</span>
-                          {item.inbox_address && (
-                            <span className="truncate max-w-[120px]" title={item.inbox_address}>
-                              • {item.inbox_address}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    {/* SLA Regressivo & Espera em Horas Úteis */}
-                    <TableCell className="align-middle">
-                      <div className="space-y-1">
-                        <SlaCountdownBadge deadline={item.sla_deadline} status={item.status} />
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                          <Clock className="h-3 w-3 text-slate-400 shrink-0" />
-                          <span>{item.business_hours_waiting ?? 0}h úteis na caixa</span>
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    {/* Responsável (Ownership) */}
-                    <TableCell className="align-middle">
-                      {item.expand?.assigned_to ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-800 truncate max-w-[120px]">
-                          <User className="h-3 w-3 text-slate-400" />
-                          <span className="truncate">{item.expand.assigned_to.name}</span>
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-semibold text-slate-400 italic">
-                          Fila livre
-                        </span>
-                      )}
-                    </TableCell>
-
-                    {/* Status */}
-                    <TableCell className="align-middle">
-                      <Badge
-                        variant={item.status === 'Escalado' ? 'destructive' : 'outline'}
-                        className={`text-[10px] font-bold px-2 py-0.5 ${
-                          item.status === 'Novo'
-                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                            : item.status === 'Em tratamento'
-                              ? 'bg-purple-50 text-purple-700 border-purple-200'
-                              : item.status === 'Aguardando cliente'
-                                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                : item.status === 'Escalado'
-                                  ? 'bg-rose-600 text-white font-extrabold animate-pulse'
-                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        }`}
-                      >
-                        {item.status === 'Escalado' && (
-                          <Flame className="h-3 w-3 mr-0.5 shrink-0" />
-                        )}
-                        {item.status}
-                      </Badge>
-                    </TableCell>
-
-                    {/* Ações */}
-                    <TableCell className="align-middle text-right">
-                      <div
-                        className="flex items-center justify-end gap-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {!isAssignedToMe ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs text-indigo-600 hover:text-indigo-900 px-2 font-semibold"
-                            onClick={() => handleAssignToMe(item.id)}
-                            title="Assumir este atendimento para si"
-                          >
-                            <UserCheck className="h-3.5 w-3.5 mr-1" /> Assumir
-                          </Button>
-                        ) : (
-                          <span className="text-[11px] font-bold text-indigo-700 px-2">Meu</span>
-                        )}
-
-                        {isLeaderOrMaster && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs text-slate-600 hover:text-slate-900 px-2"
-                            onClick={() => handleAssignToOther(item.id)}
-                            title="Atribuir a outro atendente"
-                          >
-                            Atribuir
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+            <Card
+              className={`p-3 border-rose-300 transition-all cursor-pointer ${
+                filterStatus === 'Estourados/Escalados'
+                  ? 'bg-rose-100 ring-2 ring-rose-500'
+                  : 'bg-rose-50/60 hover:bg-rose-100/70'
+              }`}
+              onClick={() => {
+                setFilterStatus((prev) =>
+                  prev === 'Estourados/Escalados' ? 'Ativos' : 'Estourados/Escalados',
                 )
-              })}
+              }}
+              title="Clique para filtrar apenas e-mails escalados ou com prazo de SLA estourado"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block">
+                  SLA Estourado / Escalado
+                </span>
+                <Flame className="h-4 w-4 text-rose-600 animate-pulse" />
+              </div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-extrabold text-rose-800">
+                  {counts.escalatedOrBreached}
+                </span>
+                <span className="text-[11px] text-rose-700 font-semibold">requer ação</span>
+              </div>
+            </Card>
 
-              {filteredEmails.length === 0 && !loading && (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center py-10 text-xs text-slate-400">
-                    Nenhuma conversa encontrada na Torre de Controle com os filtros selecionados.
-                  </TableCell>
-                </TableRow>
-              )}
+            <Card className="p-3 border-red-200 bg-red-50/40">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block">
+                Prioridade P1
+              </span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-extrabold text-red-700">{counts.p1Active}</span>
+                <span className="text-[11px] text-red-600 font-semibold">críticos</span>
+              </div>
+            </Card>
 
-              {loading && (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center py-10 text-xs text-slate-400">
-                    Carregando conversas da Torre de Controle...
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+            <Card className="p-3 border-amber-200 bg-amber-50/40">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">
+                Prioridade P2
+              </span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-extrabold text-amber-800">{counts.p2Active}</span>
+                <span className="text-[11px] text-amber-700 font-semibold">médios</span>
+              </div>
+            </Card>
+
+            <Card className="p-3 border-indigo-200 bg-indigo-50/40">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">
+                Meus Atribuídos
+              </span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-extrabold text-indigo-900">{counts.myActive}</span>
+                <span className="text-[11px] text-indigo-700 font-semibold">sob meu cuidado</span>
+              </div>
+            </Card>
+
+            {/* Card de Conversas com Múltiplas Mensagens */}
+            <Card
+              className={`p-3 border-purple-200 transition-all cursor-pointer ${
+                onlyMultipleMessages
+                  ? 'bg-purple-100 ring-2 ring-purple-500'
+                  : 'bg-purple-50/50 hover:bg-purple-100/60'
+              }`}
+              onClick={() => setOnlyMultipleMessages((prev) => !prev)}
+              title="Clique para alternar filtro de threads com múltiplas mensagens"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 block">
+                  Threads Reincidentes
+                </span>
+                <MessagesSquare className="h-4 w-4 text-purple-600" />
+              </div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-extrabold text-purple-900">
+                  {counts.multiMessageActive}
+                </span>
+                <span className="text-[11px] text-purple-700 font-semibold">≥2 msgs</span>
+              </div>
+            </Card>
+          </div>
+
+          {/* Painel de Carga por Atendente */}
+          <ControlTowerAgentLoadCard
+            loads={loads}
+            unassignedCount={unassignedCount}
+            selectedUserId={filterAssignedUserId}
+            onFilterUser={(uId) => {
+              setFilterAssignedUserId((prev) => (prev === uId ? '' : uId))
+            }}
+          />
+
+          {/* Barra de Filtros e Busca */}
+          <Card className="p-3 border-slate-200 space-y-2 bg-white shadow-subtle">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+              {/* Busca */}
+              <div className="relative sm:col-span-2">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                <Input
+                  placeholder="Buscar por cliente, assunto, remetente, reserva..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-8 h-8 text-xs w-full"
+                />
+              </div>
+
+              {/* Filtro Prioridade */}
+              <div>
+                <select
+                  value={filterPriority}
+                  onChange={(e) => setFilterPriority(e.target.value)}
+                  className="h-8 text-xs w-full border border-slate-200 rounded-md px-2 bg-white text-slate-700"
+                >
+                  <option value="Todas">Prioridade (Todas)</option>
+                  <option value="P1">P1 (Alta Prioridade)</option>
+                  <option value="P2">P2 (Média Prioridade)</option>
+                  <option value="P3">P3 (Normal)</option>
+                </select>
+              </div>
+
+              {/* Filtro Status */}
+              <div>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="h-8 text-xs w-full border border-slate-200 rounded-md px-2 bg-white text-slate-700"
+                >
+                  <option value="Ativos">Status: Ativos na Fila</option>
+                  <option value="Estourados/Escalados">🚨 Estourados / Escalados</option>
+                  <option value="Todos">Status: Todos</option>
+                  <option value="Novo">Novo</option>
+                  <option value="Em tratamento">Em tratamento</option>
+                  <option value="Aguardando cliente">Aguardando cliente</option>
+                  <option value="Resolvido">Resolvido</option>
+                  <option value="Escalado">Escalado</option>
+                </select>
+              </div>
+
+              {/* Filtro Núcleo */}
+              <div>
+                <select
+                  value={filterGroup}
+                  onChange={(e) => setFilterGroup(e.target.value)}
+                  className="h-8 text-xs w-full border border-slate-200 rounded-md px-2 bg-white text-slate-700"
+                >
+                  <option value="Todos">Núcleo (Todos)</option>
+                  {SERVICE_GROUP_OPTIONS.map((g) => (
+                    <option key={g.value} value={g.value}>
+                      {g.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filtro Equipe INTER / NAC */}
+              <div>
+                <select
+                  value={filterTeam}
+                  onChange={(e) => setFilterTeam(e.target.value)}
+                  className="h-8 text-xs w-full border border-slate-200 rounded-md px-2 bg-white text-slate-700"
+                >
+                  <option value="Todas">Equipe (Todas)</option>
+                  <option value="Nacional">Nacional</option>
+                  <option value="Internacional">Internacional</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Linha secundária de filtros rápidos */}
+            <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium select-none">
+                  <input
+                    type="checkbox"
+                    checked={onlyMine}
+                    onChange={(e) => setOnlyMine(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>Somente meus atribuídos</span>
+                </label>
+
+                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium select-none">
+                  <input
+                    type="checkbox"
+                    checked={onlyMultipleMessages}
+                    onChange={(e) => setOnlyMultipleMessages(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <span className="text-purple-800 font-semibold flex items-center gap-1">
+                    <MessagesSquare className="h-3.5 w-3.5 text-purple-600" />
+                    Somente conversas com múltiplas mensagens
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium select-none">
+                  <input
+                    type="checkbox"
+                    checked={hideNoise}
+                    onChange={(e) => setHideNoise(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>Ocultar ruído (No-reply/Spam)</span>
+                </label>
+
+                {filterAssignedUserId && (
+                  <Badge
+                    variant="outline"
+                    className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px]"
+                  >
+                    Filtrado por atendente específico
+                    <button
+                      type="button"
+                      onClick={() => setFilterAssignedUserId('')}
+                      className="ml-1 text-indigo-900 font-bold hover:text-red-600"
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                )}
+
+                {filterAgingBucket && (
+                  <Badge
+                    variant="outline"
+                    className="bg-purple-100 text-purple-800 border-purple-300 text-[10px] font-bold"
+                  >
+                    Faixa Aging: {filterAgingBucket} úteis
+                    <button
+                      type="button"
+                      onClick={() => setFilterAgingBucket(null)}
+                      className="ml-1.5 text-purple-950 font-bold hover:text-red-600"
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 mr-2">
+                  <span className="text-[11px] text-slate-500">Ordenar:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="h-6 text-[11px] border border-slate-200 rounded px-1.5 bg-white text-slate-700"
+                  >
+                    <option value="score">Maior Score</option>
+                    <option value="messages">Mais Mensagens (Thread)</option>
+                    <option value="sla">Menor SLA</option>
+                    <option value="recent">Mais Recentes</option>
+                  </select>
+                </div>
+                <span className="text-[11px] text-slate-500">
+                  {filteredEmails.length} conversa{filteredEmails.length === 1 ? '' : 's'} na fila
+                </span>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-6 text-[11px] text-slate-500 hover:text-slate-900 px-1.5"
+                  >
+                    <FilterX className="h-3 w-3 mr-1" /> Limpar filtros
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          {/* Tabela da Fila Única da Torre */}
+          <Card className="border-slate-200 overflow-hidden shadow-subtle">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 hover:bg-slate-50">
+                    <TableHead className="text-xs font-bold text-slate-700 w-24">
+                      Prioridade
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-slate-700 min-w-[240px]">
+                      Conversa & Assunto
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-slate-700 w-24 text-center">
+                      Mensagens
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-slate-700 min-w-[180px]">
+                      Sinais Detectados
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-slate-700 min-w-[130px]">
+                      Cliente / Agência
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-slate-700 min-w-[140px]">
+                      Caixa / Núcleo
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-slate-700 w-36">
+                      SLA & Espera
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-slate-700 w-32">
+                      Responsável
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-slate-700 w-28">Status</TableHead>
+                    <TableHead className="text-xs font-bold text-slate-700 text-right w-40">
+                      Ações
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEmails.map((item) => {
+                    const priorityBadge =
+                      item.priority === 'P1'
+                        ? 'bg-red-50 text-red-700 border-red-300'
+                        : item.priority === 'P2'
+                          ? 'bg-amber-50 text-amber-700 border-amber-300'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-300'
+
+                    const analyzedSignals = getAnalyzedSignals(item.detected_signals)
+                    const isAssignedToMe = Boolean(
+                      item.assigned_to && item.assigned_to === user?.id,
+                    )
+                    const isEscalated = item.status === 'Escalado'
+                    const slaInfo = computeSlaStatus(item.sla_deadline, item.status)
+                    const isBreached = slaInfo.isBreached || isEscalated
+
+                    return (
+                      <TableRow
+                        key={item.id}
+                        className={`cursor-pointer transition-colors ${
+                          isEscalated
+                            ? 'bg-rose-50/70 hover:bg-rose-100/60 border-l-4 border-l-rose-600'
+                            : isBreached
+                              ? 'bg-amber-50/40 hover:bg-amber-100/50 border-l-4 border-l-amber-500'
+                              : 'hover:bg-indigo-50/40'
+                        }`}
+                        onClick={() => {
+                          setSelectedEmail(item)
+                          setDetailModalOpen(true)
+                        }}
+                      >
+                        {/* Prioridade & Score */}
+                        <TableCell className="align-middle">
+                          <div className="flex flex-col items-start gap-0.5">
+                            <Badge
+                              variant="outline"
+                              className={`font-extrabold text-[11px] px-2 py-0.5 ${priorityBadge}`}
+                            >
+                              {item.priority}
+                            </Badge>
+                            <span className="text-[10px] text-slate-500 font-mono font-semibold">
+                              {item.score} pts
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        {/* Assunto e Remetente */}
+                        <TableCell className="align-middle">
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-semibold text-xs text-slate-900 truncate max-w-[280px]">
+                                {(item.subject || '(Sem assunto)')
+                                  .replace(
+                                    /^\s*(re\s*:\s*|fwd\s*:\s*|enc\s*:\s*|res\s*:\s*|rv\s*:\s*)+/gi,
+                                    '',
+                                  )
+                                  .trim()}
+                              </p>
+                            </div>
+                            <p className="text-[11px] text-slate-500 truncate max-w-[280px]">
+                              {item.sender_name ? `${item.sender_name} • ` : ''}
+                              {item.sender_email}
+                            </p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {item.reservation_number && (
+                                <span className="inline-block px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 text-[10px] font-mono font-bold">
+                                  PNR: {item.reservation_number}
+                                </span>
+                              )}
+                              {item.last_message_at && (
+                                <span className="text-[10px] text-slate-400">
+                                  Última:{' '}
+                                  {new Date(item.last_message_at).toLocaleTimeString('pt-BR', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        {/* Contador de Mensagens (Threading) */}
+                        <TableCell className="align-middle text-center">
+                          {(item.message_count || 1) > 1 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300 shadow-xs">
+                              <MessagesSquare className="h-3 w-3 text-indigo-600" />x
+                              {item.message_count}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-slate-500 bg-slate-100">
+                              <Mail className="h-3 w-3 text-slate-400" />1
+                            </span>
+                          )}
+                        </TableCell>
+
+                        {/* Sinais em Chips */}
+                        <TableCell className="align-middle">
+                          <div className="flex flex-wrap gap-1 max-w-[240px]">
+                            {analyzedSignals.map((sigObj, sIdx) => {
+                              return (
+                                <span
+                                  key={sIdx}
+                                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                    sigObj.isPersistent
+                                      ? 'bg-purple-100 text-purple-800 border-purple-300'
+                                      : sigObj.isRed
+                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                        : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                  }`}
+                                >
+                                  {sigObj.isPersistent && (
+                                    <Flame className="h-3 w-3 text-purple-600" />
+                                  )}
+                                  {sigObj.label}
+                                </span>
+                              )
+                            })}
+                            {analyzedSignals.length === 0 && (
+                              <span className="text-[11px] text-slate-400">—</span>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        {/* Cliente / Agência */}
+                        <TableCell className="align-middle">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-800 truncate max-w-[140px]">
+                              {item.expand?.client?.company ||
+                                item.expand?.client?.name ||
+                                'Não vinculado'}
+                            </p>
+                            {item.expand?.client?.priority_client && (
+                              <span className="inline-block mt-0.5 text-[9px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold">
+                                ⭐ VIP
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        {/* Núcleo / Caixa Compartilhada */}
+                        <TableCell className="align-middle text-xs">
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1 font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                              <Inbox className="h-3 w-3 text-indigo-600 shrink-0" />
+                              {item.service_group ? getServiceGroupLabel(item.service_group) : '—'}
+                            </span>
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                              <span className="font-medium">{item.team || 'Nacional'}</span>
+                              {item.inbox_address && (
+                                <span className="truncate max-w-[120px]" title={item.inbox_address}>
+                                  • {item.inbox_address}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        {/* SLA Regressivo & Espera em Horas Úteis */}
+                        <TableCell className="align-middle">
+                          <div className="space-y-1">
+                            <SlaCountdownBadge deadline={item.sla_deadline} status={item.status} />
+                            <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                              <Clock className="h-3 w-3 text-slate-400 shrink-0" />
+                              <span>{item.business_hours_waiting ?? 0}h úteis na caixa</span>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        {/* Responsável (Ownership) */}
+                        <TableCell className="align-middle">
+                          {item.expand?.assigned_to ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-800 truncate max-w-[120px]">
+                              <User className="h-3 w-3 text-slate-400" />
+                              <span className="truncate">{item.expand.assigned_to.name}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-semibold text-slate-400 italic">
+                              Fila livre
+                            </span>
+                          )}
+                        </TableCell>
+
+                        {/* Status */}
+                        <TableCell className="align-middle">
+                          <Badge
+                            variant={item.status === 'Escalado' ? 'destructive' : 'outline'}
+                            className={`text-[10px] font-bold px-2 py-0.5 ${
+                              item.status === 'Novo'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : item.status === 'Em tratamento'
+                                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                  : item.status === 'Aguardando cliente'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : item.status === 'Escalado'
+                                      ? 'bg-rose-600 text-white font-extrabold animate-pulse'
+                                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}
+                          >
+                            {item.status === 'Escalado' && (
+                              <Flame className="h-3 w-3 mr-0.5 shrink-0" />
+                            )}
+                            {item.status}
+                          </Badge>
+                        </TableCell>
+
+                        {/* Ações */}
+                        <TableCell className="align-middle text-right">
+                          <div
+                            className="flex items-center justify-end gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {!isAssignedToMe ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs text-indigo-600 hover:text-indigo-900 px-2 font-semibold"
+                                onClick={() => handleAssignToMe(item.id)}
+                                title="Assumir este atendimento para si"
+                              >
+                                <UserCheck className="h-3.5 w-3.5 mr-1" /> Assumir
+                              </Button>
+                            ) : (
+                              <span className="text-[11px] font-bold text-indigo-700 px-2">
+                                Meu
+                              </span>
+                            )}
+
+                            {isLeaderOrMaster && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs text-slate-600 hover:text-slate-900 px-2"
+                                onClick={() => handleAssignToOther(item.id)}
+                                title="Atribuir a outro atendente"
+                              >
+                                Atribuir
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+
+                  {filteredEmails.length === 0 && !loading && (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-10 text-xs text-slate-400">
+                        Nenhuma conversa encontrada na Torre de Controle com os filtros
+                        selecionados.
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {loading && (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-10 text-xs text-slate-400">
+                        Carregando conversas da Torre de Controle...
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </>
+      )}
 
       {/* Modal de Parâmetros (Líder / Master) */}
       <ControlTowerConfigModal
