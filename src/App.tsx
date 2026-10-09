@@ -34,6 +34,7 @@ import RelatorioConsultor from '@/pages/RelatorioConsultor'
 import ComparativoAgentes from '@/pages/ComparativoAgentes'
 import RelatorioMotivos from '@/pages/RelatorioMotivos'
 import FilaAtendimentos from '@/pages/FilaAtendimentos'
+import TorreControle from '@/pages/TorreControle'
 import Auditoria from '@/pages/Auditoria'
 import MetasDesempenho from '@/pages/MetasDesempenho'
 import Login from '@/pages/Login'
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/novo-atendimento" element={<NovoAtendimento />} />
               <Route path="/atendimentos" element={<Atendimentos />} />
               <Route path="/fila-atendimentos" element={<FilaAtendimentos />} />
+              <Route path="/torre-controle" element={<TorreControle />} />
               <Route path="/central-relatorios" element={<CentralRelatorios />} />
               <Route path="/ajuda" element={<Ajuda />} />
               <Route

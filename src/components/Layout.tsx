@@ -39,6 +39,7 @@ import {
   Compass,
   Layers,
   CalendarDays,
+  Flame,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -69,6 +70,12 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Fila & Backlog',
         to: '/fila-atendimentos',
         icon: Layers,
+        visible: () => true,
+      },
+      {
+        label: 'Torre de Controle',
+        to: '/torre-controle',
+        icon: Flame,
         visible: () => true,
       },
       {

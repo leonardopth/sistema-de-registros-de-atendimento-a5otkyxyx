@@ -1,0 +1,87 @@
+import { UserRecord, ClientRecord, ServiceGroup, TravelType } from './service_record'
+
+export type ControlTowerPriority = 'P1' | 'P2' | 'P3'
+
+export type ControlTowerStatus =
+  | 'Novo'
+  | 'Em tratamento'
+  | 'Aguardando cliente'
+  | 'Resolvido'
+  | 'Escalado'
+
+export interface ControlTowerConfigRecord {
+  id: string
+  weight_departure_24h: number
+  weight_departure_48h: number
+  weight_cancellation: number
+  weight_priority_client: number
+  weight_per_hour_inbox: number
+  weight_promised_deadline: number
+  weight_formal_complaint: number
+  weight_repeat_contact: number
+  score_threshold_p1: number
+  score_threshold_p2: number
+  business_hours_start: string
+  business_hours_end: string
+  business_days: number[]
+  target_sla_p1_hours: number
+  target_sla_p2_hours: number
+  target_sla_p3_hours: number
+  updated_by?: string
+  created: string
+  updated: string
+  expand?: {
+    updated_by?: UserRecord
+  }
+}
+
+export interface ControlTowerEmailRecord {
+  id: string
+  subject?: string
+  sender_email: string
+  sender_name?: string
+  recipient_email?: string
+  body_snippet?: string
+  received_at?: string
+  service_group?: ServiceGroup
+  team?: TravelType
+  client?: string
+  reservation_number?: string
+  detected_dates?: string[]
+  detected_signals?: string[]
+  score: number
+  priority: ControlTowerPriority
+  status: ControlTowerStatus
+  assigned_to?: string
+  assigned_at?: string
+  is_noise?: boolean
+  external_message_id?: string
+  email_analysis_log?: string
+  business_hours_waiting?: number
+  sla_deadline?: string
+  created: string
+  updated: string
+  expand?: {
+    client?: ClientRecord
+    assigned_to?: UserRecord
+  }
+}
+
+export interface ControlTowerFilters {
+  search?: string
+  priority?: ControlTowerPriority | 'Todas'
+  status?: ControlTowerStatus | 'Todos' | 'Ativos'
+  service_group?: string
+  team?: 'Nacional' | 'Internacional' | 'Todas'
+  onlyAssignedToMe?: boolean
+  hideNoise?: boolean
+}
+
+export interface ControlTowerAgentLoad {
+  userId: string
+  userName: string
+  userEmail: string
+  avatar?: string
+  activeCount: number
+  p1Count: number
+}

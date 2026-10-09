@@ -156,6 +156,7 @@ export interface ClientRecord {
   block_reason?: string
   blocked_by?: string
   blocked_at?: string
+  priority_client?: boolean // Flag VIP do cliente para priorização na Torre de Controle
   created: string
   updated: string
   expand?: {

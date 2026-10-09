@@ -145,6 +145,8 @@ export default function Clientes() {
     loadClients()
   })
 
+  const [editPriorityClient, setEditPriorityClient] = useState(false)
+
   const handleSelectClient = (c: ClientRecord) => {
     if (!c) return
     setSelectedClient(c)
@@ -160,6 +162,7 @@ export default function Clientes() {
     setEditState(c.state || '')
     setEditNotes(c.notes || '')
     setEditServiceGroup(c.service_group || '')
+    setEditPriorityClient(Boolean(c.priority_client))
     setServiceGroupError('')
   }
 
@@ -186,6 +189,7 @@ export default function Clientes() {
         state: editState,
         notes: editNotes,
         service_group: editServiceGroup as ServiceGroup,
+        priority_client: editPriorityClient,
       })
       toast({ title: 'Cliente atualizado com sucesso' })
       loadClients()
@@ -431,6 +435,21 @@ export default function Clientes() {
                 />
                 {serviceGroupError && <p className="text-xs text-red-500">{serviceGroupError}</p>}
               </div>
+              <div className="flex items-center gap-2 p-2.5 bg-amber-50/60 border border-amber-200 rounded-md">
+                <input
+                  type="checkbox"
+                  id="editPriorityClient"
+                  checked={editPriorityClient}
+                  onChange={(e) => setEditPriorityClient(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                />
+                <label
+                  htmlFor="editPriorityClient"
+                  className="text-xs font-semibold text-amber-900 cursor-pointer"
+                >
+                  ⭐ Cliente Prioritário (VIP) — prioridade máxima no motor da Torre de Controle
+                </label>
+              </div>
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-600">Anotações Internas</label>
                 <textarea
@@ -647,7 +666,17 @@ export default function Clientes() {
                     onClick={() => openDetails(c)}
                   >
                     <TableCell className="text-xs font-semibold text-slate-900">
-                      {c.company || 'Pessoa Física'}
+                      <div className="flex items-center gap-1.5">
+                        <span>{c.company || 'Pessoa Física'}</span>
+                        {c.priority_client && (
+                          <span
+                            title="Cliente Prioritário (VIP)"
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200"
+                          >
+                            ⭐ VIP
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-xs">
                       {c.service_group ? (

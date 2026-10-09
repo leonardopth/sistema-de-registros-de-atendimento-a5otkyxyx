@@ -501,6 +501,32 @@ routerAdd(
           ealRec2.set('received_at', msg.receivedDateTime || new Date().toISOString())
           $app.save(ealRec2)
           processedCount++
+
+          // Disparar sincronização com a Torre de Controle se existir a tabela
+          try {
+            if ($app.hasTable('control_tower_emails')) {
+              var cteCol = $app.findCollectionByNameOrId('control_tower_emails')
+              var isNoise =
+                msgSender.toLowerCase().indexOf('noreply') !== -1 ||
+                msgSender.toLowerCase().indexOf('no-reply') !== -1
+              var cteRec = new Record(cteCol)
+              cteRec.set('subject', msgSubject)
+              cteRec.set('sender_email', msgSender)
+              cteRec.set('sender_name', msgSenderName)
+              cteRec.set('recipient_email', consultantEmail)
+              cteRec.set('body_snippet', msgBody.substring(0, 500))
+              cteRec.set('received_at', msg.receivedDateTime || new Date().toISOString())
+              cteRec.set('is_noise', isNoise)
+              cteRec.set('external_message_id', msg.id)
+              cteRec.set('email_analysis_log', ealRec2.id)
+              cteRec.set('status', isNoise ? 'Resolvido' : 'Novo')
+              cteRec.set('score', 10)
+              cteRec.set('priority', 'P3')
+              cteRec.set('team', 'Nacional')
+              if (matchedClientId) cteRec.set('client', matchedClientId)
+              $app.save(cteRec)
+            }
+          } catch (_) {}
         }
       }
     }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-24T17:31:05.988Z",
+  "generatedAt": "2026-10-09T17:10:37.083Z",
   "collections": [
     {
       "name": "users",
@@ -273,6 +273,12 @@
         {
           "name": "blocked_at",
           "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "priority_client",
+          "type": "bool",
           "required": false,
           "system": false
         }
@@ -2664,6 +2670,310 @@
         }
       ],
       "indexes": []
+    },
+    {
+      "name": "control_tower_configs",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'Líder' || @request.auth.role = 'Gerente' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'Líder' || @request.auth.role = 'Gerente' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Líder' || @request.auth.role = 'Gerente' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
+      },
+      "fields": [
+        {
+          "name": "weight_departure_24h",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "weight_departure_48h",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "weight_cancellation",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "weight_priority_client",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "weight_per_hour_inbox",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "weight_promised_deadline",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "weight_formal_complaint",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "weight_repeat_contact",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "score_threshold_p1",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "score_threshold_p2",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "business_hours_start",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "business_hours_end",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "business_days",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "target_sla_p1_hours",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "target_sla_p2_hours",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "target_sla_p3_hours",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "updated_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "control_tower_emails",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true)"
+      },
+      "fields": [
+        {
+          "name": "subject",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sender_email",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "sender_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "recipient_email",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "body_snippet",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "received_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "service_group",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Concierge", "Exclusivo", "LOT", "BR1", "BR2", "SAO", "SPI", "SUL"]
+        },
+        {
+          "name": "team",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Nacional", "Internacional"]
+        },
+        {
+          "name": "client",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "reservation_number",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "detected_dates",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "detected_signals",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "score",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "priority",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["P1", "P2", "P3"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Novo", "Em tratamento", "Aguardando cliente", "Resolvido", "Escalado"]
+        },
+        {
+          "name": "assigned_to",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "assigned_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_noise",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "external_message_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email_analysis_log",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "email_analysis_logs"
+        },
+        {
+          "name": "business_hours_waiting",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sla_deadline",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_cte_status_score ON control_tower_emails (status, score DESC)",
+        "CREATE INDEX idx_cte_priority ON control_tower_emails (priority)",
+        "CREATE INDEX idx_cte_assigned ON control_tower_emails (assigned_to)",
+        "CREATE INDEX idx_cte_external_msg ON control_tower_emails (external_message_id)",
+        "CREATE INDEX idx_cte_received ON control_tower_emails (received_at DESC)"
+      ]
     }
   ]
 }

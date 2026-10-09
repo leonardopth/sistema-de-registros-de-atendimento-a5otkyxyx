@@ -38,6 +38,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [notes, setNotes] = useState('')
+  const [priorityClient, setPriorityClient] = useState(false)
   const [agents, setAgents] = useState<AgentFormEntry[]>([])
   const [agentErrors, setAgentErrors] = useState<Record<number, { name?: string; email?: string }>>(
     {},
@@ -67,6 +68,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
     setCity('')
     setState('')
     setNotes('')
+    setPriorityClient(false)
     setAgents([])
     setAgentErrors({})
     setSelectedExecutiveId('')
@@ -129,6 +131,7 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
         account_executive: selectedExec.name,
         account_executive_rel: selectedExec.id,
         service_group: serviceGroup as ServiceGroup,
+        priority_client: priorityClient,
       })
       const validAgents = agents.filter((a) => a.name.trim() || a.email.trim() || a.phone.trim())
       for (const agent of validAgents) {
@@ -239,6 +242,21 @@ export function NewClientModal({ open, onOpenChange, onSuccess }: NewClientModal
               className="h-9"
             />
             {executiveError && <p className="text-xs text-red-500">{executiveError}</p>}
+          </div>
+          <div className="flex items-center gap-2 p-2.5 bg-amber-50/60 border border-amber-200 rounded-md">
+            <input
+              type="checkbox"
+              id="newPriorityClient"
+              checked={priorityClient}
+              onChange={(e) => setPriorityClient(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+            />
+            <Label
+              htmlFor="newPriorityClient"
+              className="text-xs font-semibold text-amber-900 cursor-pointer"
+            >
+              ⭐ Cliente Prioritário (VIP) — priorização especial na Torre de Controle
+            </Label>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="c-notes">Observações</Label>

@@ -263,3 +263,74 @@ export function getAccessibleUsersInBancoHoras(
 
   return allUsers.filter((u) => canAccessUserInBancoHoras(u, currentUser))
 }
+
+/**
+ * Validação de escopo estrito de Núcleo + Equipe (INTER/NAC) para a Torre de Controle:
+ * Segue exatamente a regra vigente de segregação de acesso (v0.0.251):
+ * - Master ou master_access = true: visão irrestrita (acesso a todos os itens).
+ * - Consultores ou atendentes com e-mail atribuído: sempre podem ver seus próprios itens atribuídos.
+ * - Gerente ou Gestor Comercial sem nenhum service_groups E sem departments: visão geral irrestrita.
+ * - Gestores / Supervisores / Líderes / Consultores:
+ *     1. Validação de Núcleo (service_groups):
+ *        Se o usuário tiver service_groups configurados, o e-mail DEVE pertencer a um dos seus núcleos (ou ser não vinculado se não restrito).
+ *     2. Validação de Equipe (departments - Internacional / Nacional):
+ *        Se o usuário tiver departamentos configurados (ex: ['Internacional'] ou ['Nacional']), o e-mail DEVE pertencer à mesma equipe.
+ */
+export function canAccessControlTowerEmail(
+  email:
+    | {
+        service_group?: string
+        team?: string
+        assigned_to?: string
+      }
+    | null
+    | undefined,
+  currentUser: UserRecord | null | undefined,
+): boolean {
+  if (!email || !currentUser) return false
+  if (isMasterUser(currentUser)) return true
+
+  // Se atribuído ao próprio usuário, tem acesso direto
+  if (email.assigned_to && email.assigned_to === currentUser.id) {
+    return true
+  }
+
+  const role = currentUser.role
+  const userGroups = normalizeStringArray(currentUser.service_groups)
+  const userDepts = normalizeStringArray(currentUser.departments)
+
+  // Gerente ou Gestor Comercial geral sem grupos específicos e sem departamentos tem visão irrestrita
+  if (
+    userGroups.length === 0 &&
+    userDepts.length === 0 &&
+    (role === 'Gerente' || role === 'Gestor Comercial')
+  ) {
+    return true
+  }
+
+  // 1. Validação do Núcleo
+  if (userGroups.length > 0) {
+    if (email.service_group && !userGroups.includes(email.service_group)) {
+      return false
+    }
+  }
+
+  // 2. Validação da Equipe (Internacional / Nacional)
+  if (userDepts.length > 0) {
+    if (email.team && !userDepts.includes(email.team)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+export function filterControlTowerEmailsByAccess<
+  T extends { service_group?: string; team?: string; assigned_to?: string },
+>(emails: T[] | undefined | null, currentUser: UserRecord | null | undefined): T[] {
+  if (!Array.isArray(emails)) return []
+  if (!currentUser) return []
+  if (isMasterUser(currentUser)) return emails.filter(Boolean)
+
+  return emails.filter((e) => e && canAccessControlTowerEmail(e, currentUser))
+}
