@@ -77,6 +77,13 @@ function tryDecodeByteArray(arr: number[]): string | null {
 }
 
 /**
+ * Verifica se uma string representa apenas dígitos numéricos de byte (ex.: "91", " 34 ", "195").
+ */
+export function isNumericByteString(val: string): boolean {
+  return /^\s*\d{1,3}\s*$/.test(val)
+}
+
+/**
  * Converte qualquer formato recebido no campo `detected_signals` em uma lista
  * limpa e defensiva de strings sem caracteres de controle ou entradas vazias.
  */
@@ -243,26 +250,28 @@ export function normalizeSignals(raw: unknown): string[] {
  */
 export function getAnalyzedSignals(raw: unknown): NormalizedSignal[] {
   const strings = normalizeSignals(raw)
-  return strings.map((sig) => {
-    const label = typeof sig === 'string' ? sig : String(sig ?? '')
-    const lower = label.toLowerCase()
+  return strings
+    .filter((sig) => typeof sig === 'string' && sig.trim().length > 0 && !isNumericByteString(sig))
+    .map((sig) => {
+      const label = sig.trim()
+      const lower = label.toLowerCase()
 
-    const isRed =
-      lower.includes('24h') ||
-      lower.includes('formal') ||
-      lower.includes('vip') ||
-      lower.includes('urgente')
+      const isRed =
+        lower.includes('24h') ||
+        lower.includes('formal') ||
+        lower.includes('vip') ||
+        lower.includes('urgente')
 
-    const isPersistent =
-      lower.includes('insistente') ||
-      lower.includes('reincidente') ||
-      lower.includes('msgs') ||
-      lower.includes('mensagens')
+      const isPersistent =
+        lower.includes('insistente') ||
+        lower.includes('reincidente') ||
+        lower.includes('msgs') ||
+        lower.includes('mensagens')
 
-    return {
-      label,
-      isRed,
-      isPersistent,
-    }
-  })
+      return {
+        label,
+        isRed,
+        isPersistent,
+      }
+    })
 }

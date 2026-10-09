@@ -114,12 +114,18 @@ export function ControlTowerDetailModal({
             ? 'bg-rose-50 text-rose-700 border-rose-200'
             : 'bg-emerald-50 text-emerald-700 border-emerald-200'
 
-  const analyzedSignals = getAnalyzedSignals(email.detected_signals)
-  const dates = Array.isArray(email.detected_dates)
-    ? email.detected_dates.filter((d): d is string => typeof d === 'string' && d.trim().length > 0)
-    : typeof email.detected_dates === 'string'
-      ? normalizeSignals(email.detected_dates)
-      : []
+  const analyzedSignals = getAnalyzedSignals(email.detected_signals).filter((sig) =>
+    Boolean(sig?.label && !/^\d{1,3}$/.test(sig.label.trim())),
+  )
+  const dates = (
+    Array.isArray(email.detected_dates)
+      ? email.detected_dates
+      : typeof email.detected_dates === 'string'
+        ? normalizeSignals(email.detected_dates)
+        : []
+  ).filter(
+    (d): d is string => typeof d === 'string' && d.trim().length > 0 && !/^\d{1,3}$/.test(d.trim()),
+  )
   const isAssignedToMe = Boolean(email.assigned_to && email.assigned_to === currentUserId)
   const totalThreadCount = Math.max(email.message_count || 1, threadMessages.length || 1)
 
@@ -337,7 +343,9 @@ export function ControlTowerDetailModal({
                 {threadMessages.map((msg, index) => {
                   const isExpanded = expandedMsgIds[msg.id] ?? true
                   const isRoot = !msg.is_thread_child
-                  const msgSigs = getAnalyzedSignals(msg.detected_signals)
+                  const msgSigs = getAnalyzedSignals(msg.detected_signals).filter((sig) =>
+                    Boolean(sig?.label && !/^\d{1,3}$/.test(sig.label.trim())),
+                  )
 
                   return (
                     <div

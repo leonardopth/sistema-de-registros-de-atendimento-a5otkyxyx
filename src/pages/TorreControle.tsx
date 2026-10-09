@@ -960,28 +960,32 @@ export default function TorreControle() {
                         {/* Sinais em Chips */}
                         <TableCell className="align-middle">
                           <div className="flex flex-wrap gap-1 max-w-[240px]">
-                            {analyzedSignals.map((sigObj, sIdx) => {
-                              return (
-                                <span
-                                  key={sIdx}
-                                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                                    sigObj.isPersistent
-                                      ? 'bg-purple-100 text-purple-800 border-purple-300'
-                                      : sigObj.isRed
-                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                        : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                  }`}
-                                >
-                                  {sigObj.isPersistent && (
-                                    <Flame className="h-3 w-3 text-purple-600" />
-                                  )}
-                                  {sigObj.label}
-                                </span>
+                            {analyzedSignals
+                              .filter((sig) =>
+                                Boolean(sig?.label && !/^\d{1,3}$/.test(sig.label.trim())),
                               )
-                            })}
-                            {analyzedSignals.length === 0 && (
-                              <span className="text-[11px] text-slate-400">—</span>
-                            )}
+                              .map((sigObj, sIdx) => {
+                                return (
+                                  <span
+                                    key={sIdx}
+                                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                      sigObj.isPersistent
+                                        ? 'bg-purple-100 text-purple-800 border-purple-300'
+                                        : sigObj.isRed
+                                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                          : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                    }`}
+                                  >
+                                    {sigObj.isPersistent && (
+                                      <Flame className="h-3 w-3 text-purple-600" />
+                                    )}
+                                    {sigObj.label}
+                                  </span>
+                                )
+                              })}
+                            {analyzedSignals.filter((sig) =>
+                              Boolean(sig?.label && !/^\d{1,3}$/.test(sig.label.trim())),
+                            ).length === 0 && <span className="text-[11px] text-slate-400">—</span>}
                           </div>
                         </TableCell>
 
