@@ -17,6 +17,7 @@ export const DEFAULT_CONTROL_TOWER_CONFIG: Omit<
   weight_promised_deadline: 20,
   weight_formal_complaint: 40,
   weight_repeat_contact: 15,
+  weight_persistent_client: 20,
   score_threshold_p1: 60,
   score_threshold_p2: 30,
   business_hours_start: '08:00',
@@ -27,16 +28,55 @@ export const DEFAULT_CONTROL_TOWER_CONFIG: Omit<
   target_sla_p3_hours: 8,
 }
 
-export async function getControlTowerEmails(): Promise<ControlTowerEmailRecord[]> {
+export async function getControlTowerEmails(onlyRoots = false): Promise<ControlTowerEmailRecord[]> {
   try {
+    const filter = onlyRoots ? 'is_thread_child != true' : ''
     const list = await pb.collection('control_tower_emails').getFullList<ControlTowerEmailRecord>({
-      sort: '-score,-received_at',
-      expand: 'client,assigned_to',
+      filter: filter || undefined,
+      sort: '-score,-last_message_at,-received_at',
+      expand: 'client,assigned_to,thread_root',
     })
     return Array.isArray(list) ? list : []
   } catch (error) {
     console.error('Error fetching control tower emails:', error)
     return []
+  }
+}
+
+export async function getThreadMessages(threadId: string): Promise<ControlTowerEmailRecord[]> {
+  try {
+    if (!threadId) return []
+    const res = await pb.send<{
+      thread_id: string
+      count: number
+      messages: ControlTowerEmailRecord[]
+    }>(`/backend/v1/control-tower/threads/${encodeURIComponent(threadId)}`, { method: 'GET' })
+    if (res && Array.isArray(res.messages)) {
+      return res.messages
+    }
+    // Fallback caso a rota retorne vazio: busca direta via PocketBase SDK
+    const fallbackList = await pb
+      .collection('control_tower_emails')
+      .getFullList<ControlTowerEmailRecord>({
+        filter: `thread_id = '${threadId}' || id = '${threadId}'`,
+        sort: 'received_at,created',
+        expand: 'client,assigned_to',
+      })
+    return Array.isArray(fallbackList) ? fallbackList : []
+  } catch (error) {
+    console.error(`Error fetching thread messages for ${threadId}:`, error)
+    try {
+      const fallbackList = await pb
+        .collection('control_tower_emails')
+        .getFullList<ControlTowerEmailRecord>({
+          filter: `thread_id = '${threadId}' || id = '${threadId}'`,
+          sort: 'received_at,created',
+          expand: 'client,assigned_to',
+        })
+      return Array.isArray(fallbackList) ? fallbackList : []
+    } catch (_) {
+      return []
+    }
   }
 }
 

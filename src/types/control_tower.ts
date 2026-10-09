@@ -19,6 +19,7 @@ export interface ControlTowerConfigRecord {
   weight_promised_deadline: number
   weight_formal_complaint: number
   weight_repeat_contact: number
+  weight_persistent_client?: number
   score_threshold_p1: number
   score_threshold_p2: number
   business_hours_start: string
@@ -63,11 +64,17 @@ export interface ControlTowerEmailRecord {
   escalated_at?: string
   escalation_alert_sent?: boolean
   escalated_reason?: string
+  thread_id?: string
+  thread_root?: string
+  message_count?: number
+  is_thread_child?: boolean
+  last_message_at?: string
   created: string
   updated: string
   expand?: {
     client?: ClientRecord
     assigned_to?: UserRecord
+    thread_root?: ControlTowerEmailRecord
   }
 }
 

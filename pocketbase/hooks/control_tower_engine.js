@@ -1,9 +1,11 @@
-// Motor de Priorização, Gestão e Escalação por SLA da Torre de Controle (Skip Cloud / PocketBase pb_hooks)
+// Motor de Priorização, Gestão, Escalação por SLA e THREADING da Torre de Controle (Skip Cloud / PocketBase pb_hooks)
 // CRÍTICO: Todas as funções auxiliares devem ficar DENTRO de cada callback/rota para evitar o erro de scoping do PocketBase JSVM pool.
 
-// CRON JOB: a cada 15 minutos, recalcula itens abertos, calcula SLA deadlines e executa motor de escalação
+// CRON JOB: a cada 15 minutos, recalcula itens abertos na fila (apenas roots / não child), calcula SLA deadlines e executa motor de escalação
 cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
-  $app.logger().info('[Torre de Controle] Iniciando cron de recálculo e escalação de SLA...')
+  $app
+    .logger()
+    .info('[Torre de Controle] Iniciando cron de recálculo e escalação de SLA com Threading...')
 
   function getCfg() {
     var def = {
@@ -15,6 +17,7 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
       weight_promised_deadline: 20,
       weight_formal_complaint: 40,
       weight_repeat_contact: 15,
+      weight_persistent_client: 20,
       score_threshold_p1: 60,
       score_threshold_p2: 30,
       business_hours_start: '08:00',
@@ -41,6 +44,8 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
             r[0].getFloat('weight_formal_complaint') || def.weight_formal_complaint,
           weight_repeat_contact:
             r[0].getFloat('weight_repeat_contact') || def.weight_repeat_contact,
+          weight_persistent_client:
+            r[0].getFloat('weight_persistent_client') || def.weight_persistent_client,
           score_threshold_p1: r[0].getFloat('score_threshold_p1') || def.score_threshold_p1,
           score_threshold_p2: r[0].getFloat('score_threshold_p2') || def.score_threshold_p2,
           business_hours_start: r[0].getString('business_hours_start') || def.business_hours_start,
@@ -163,7 +168,7 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
     return cur.toISOString()
   }
 
-  function scoreCalc(signals, bizHours, cfg) {
+  function scoreCalc(signals, bizHours, cfg, messageCount) {
     var score = 0
     if (signals.indexOf('Embarque <24h') !== -1) score += cfg.weight_departure_24h || 50
     else if (signals.indexOf('Embarque <48h') !== -1) score += cfg.weight_departure_48h || 30
@@ -172,6 +177,21 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
     if (signals.indexOf('Reclamação Formal') !== -1) score += cfg.weight_formal_complaint || 40
     if (signals.indexOf('Prazo Prometido') !== -1) score += cfg.weight_promised_deadline || 20
     if (signals.indexOf('Reincidente') !== -1) score += cfg.weight_repeat_contact || 15
+
+    // Persistência na mesma thread (mensagens adicionais somam ao score)
+    var mCount = messageCount || 1
+    var hasPersistentSignal = false
+    for (var s = 0; s < signals.length; s++) {
+      if (signals[s].indexOf('Cliente insistente') !== -1) {
+        hasPersistentSignal = true
+        break
+      }
+    }
+    if (mCount > 1 || hasPersistentSignal) {
+      // Bônus configurável de cliente insistente
+      score += (cfg.weight_persistent_client || 20) * Math.min(3, mCount - 1)
+    }
+
     if (bizHours > 0)
       score += Math.min(100, Math.floor(bizHours * (cfg.weight_per_hour_inbox || 5)))
 
@@ -214,11 +234,7 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
       var senderEmail = emailRec.getString('sender_email') || ''
       var senderDisplayName = emailRec.getString('sender_name') || senderEmail
       var priority = emailRec.getString('priority') || 'P1'
-      var signalsList = []
-      try {
-        var rawSig = emailRec.get('detected_signals')
-        if (Array.isArray(rawSig)) signalsList = rawSig
-      } catch (_) {}
+      var signalsList = parseStringList(emailRec.get('detected_signals'))
       var signalsStr =
         signalsList.length > 0 ? signalsList.join(', ') : 'Nenhum sinal crítico detectado'
 
@@ -231,7 +247,6 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
         } catch (_) {}
       }
 
-      // Buscar todos os usuários supervisores/gerentes/líderes para direcionamento estrito de núcleo+equipe
       var supervisors = $app.findRecordsByFilter(
         'users',
         "role = 'Supervisor' || role = 'Gerente' || role = 'Líder' || role = 'Gestor Comercial' || role = 'Master' || master_access = true",
@@ -241,7 +256,6 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
       )
 
       var targetRecipients = {}
-
       for (var s = 0; s < supervisors.length; s++) {
         var sup = supervisors[s]
         var isMaster = sup.getString('role') === 'Master' || sup.getBool('master_access') === true
@@ -249,11 +263,9 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
           targetRecipients[sup.id] = sup
           continue
         }
-
         var supGroups = parseStringList(sup.get('service_groups'))
         var supDepts = parseStringList(sup.get('departments'))
 
-        // Gerente geral sem grupos e departamentos recebe tudo
         if (
           supGroups.length === 0 &&
           supDepts.length === 0 &&
@@ -263,24 +275,17 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
           continue
         }
 
-        // Validação de Núcleo (service_group)
         if (supGroups.length > 0 && emailServiceGroup) {
-          if (supGroups.indexOf(emailServiceGroup) === -1) {
-            continue
-          }
+          if (supGroups.indexOf(emailServiceGroup) === -1) continue
         }
 
-        // Validação de Equipe (team / departments)
         if (supDepts.length > 0 && emailTeam) {
-          if (supDepts.indexOf(emailTeam) === -1) {
-            continue
-          }
+          if (supDepts.indexOf(emailTeam) === -1) continue
         }
 
         targetRecipients[sup.id] = sup
       }
 
-      // Se já tem owner, alertar também o owner
       if (ownerUser && !targetRecipients[ownerUser.id]) {
         targetRecipients[ownerUser.id] = ownerUser
       }
@@ -298,64 +303,10 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
 
       var linkUrl = '/torre-controle'
 
-      var htmlEmailBody =
-        '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 24px; color: #1e293b;">' +
-        '<div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">' +
-        '<div style="background-color: #dc2626; padding: 18px 24px; color: #ffffff;">' +
-        '<h2 style="margin: 0; font-size: 18px; font-weight: bold;">🚨 Torre de Controle — Escalação Automática de SLA</h2>' +
-        '<p style="margin: 4px 0 0; font-size: 12px; opacity: 0.9;">O prazo de atendimento para este e-mail foi estourado em horário útil.</p>' +
-        '</div>' +
-        '<div style="padding: 24px;">' +
-        '<div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 16px; margin-bottom: 20px; border-radius: 4px;">' +
-        '<p style="margin: 0; font-size: 13px; color: #991b1b; font-weight: bold;">Motivo da Escalação: ' +
-        reasonText +
-        '</p>' +
-        '</div>' +
-        '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">' +
-        '<tr><td style="padding: 6px 0; color: #64748b; width: 140px;"><strong>Assunto:</strong></td><td style="padding: 6px 0; font-weight: 600; color: #0f172a;">' +
-        subjectText +
-        '</td></tr>' +
-        '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Remetente:</strong></td><td style="padding: 6px 0;">' +
-        senderDisplayName +
-        ' (' +
-        senderEmail +
-        ')</td></tr>' +
-        '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Prioridade:</strong></td><td style="padding: 6px 0;"><span style="background-color: #fee2e2; color: #b91c1c; padding: 2px 8px; border-radius: 4px; font-weight: bold;">' +
-        priority +
-        '</span></td></tr>' +
-        '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Núcleo / Equipe:</strong></td><td style="padding: 6px 0;">' +
-        (emailServiceGroup || 'Geral') +
-        ' • ' +
-        (emailTeam || 'Nacional') +
-        '</td></tr>' +
-        '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Tempo na Caixa:</strong></td><td style="padding: 6px 0; color: #dc2626; font-weight: bold;">' +
-        waitHours +
-        ' horas úteis</td></tr>' +
-        '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Sinais Detectados:</strong></td><td style="padding: 6px 0;">' +
-        signalsStr +
-        '</td></tr>' +
-        '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Responsável:</strong></td><td style="padding: 6px 0; font-weight: ' +
-        (assignedUserId ? 'normal' : 'bold; color: #b91c1c') +
-        ';">' +
-        ownerName +
-        '</td></tr>' +
-        '</table>' +
-        '<div style="text-align: center; margin-top: 24px;">' +
-        '<a href="' +
-        linkUrl +
-        '" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 10px 22px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px;">Acessar Torre de Controle</a>' +
-        '</div>' +
-        '</div>' +
-        '<div style="background-color: #f1f5f9; padding: 12px 24px; font-size: 11px; color: #64748b; text-align: center;">' +
-        'Este é um alerta automático gerado pela Torre de Controle da RexturAdvance.' +
-        '</div></div></body></html>'
-
-      // Iterar destinatários autorizados
       for (var uId in targetRecipients) {
         if (!targetRecipients.hasOwnProperty(uId)) continue
         var recipientUser = targetRecipients[uId]
 
-        // 1. Sino in-app (notificação na coleção notifications)
         try {
           var notif = new Record(notifCol)
           notif.set('user_id', uId)
@@ -365,19 +316,8 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
           notif.set('read', false)
           notif.set('link', linkUrl)
           $app.save(notif)
-        } catch (nErr) {
-          $app
-            .logger()
-            .error(
-              'Erro ao criar notificação no sino da torre:',
-              'user',
-              uId,
-              'error',
-              String(nErr),
-            )
-        }
+        } catch (_) {}
 
-        // 2. E-mail transacional (respeitando email_notifications !== false)
         var uEmail = recipientUser.getString('email')
         var uNotifEnabled = recipientUser.get('email_notifications')
         if (uNotifEnabled !== false && uEmail && uEmail.indexOf('@') !== -1) {
@@ -386,26 +326,28 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
               from: { address: senderAddress, name: senderName },
               to: [{ address: uEmail, name: recipientUser.getString('name') }],
               subject: notifTitle,
-              html: htmlEmailBody,
+              html:
+                '<h3>Alerta de SLA Torre de Controle: ' +
+                priority +
+                '</h3><p>' +
+                notifMsg +
+                '</p><p>Motivo: ' +
+                reasonText +
+                '</p>',
             })
             $app.newMailClient().send(mail)
-          } catch (mErr) {
-            $app
-              .logger()
-              .error('Erro ao enviar e-mail de escalação:', 'to', uEmail, 'error', String(mErr))
-          }
+          } catch (_) {}
         }
       }
-    } catch (sendErr) {
-      $app.logger().error('Falha geral no envio de alertas de escalação:', String(sendErr))
-    }
+    } catch (_) {}
   }
 
   try {
     var cfg = getCfg()
+    // Apenas itens raiz ou sem parent entram no cálculo da fila visível
     var records = $app.findRecordsByFilter(
       'control_tower_emails',
-      "status = 'Novo' || status = 'Em tratamento' || status = 'Escalado'",
+      "(status = 'Novo' || status = 'Em tratamento' || status = 'Escalado') && is_thread_child != true",
       '',
       300,
       0,
@@ -418,17 +360,13 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
       var r = records[i]
       var recAt = r.getString('received_at') || r.getString('created')
       var waiting = calcBizHours(recAt, nowIso, cfg)
-      var sigs = []
-      try {
-        var rawSigs = r.get('detected_signals')
-        if (Array.isArray(rawSigs)) sigs = rawSigs
-      } catch (_) {}
-      var res = scoreCalc(sigs, waiting, cfg)
+      var sigs = parseStringList(r.get('detected_signals'))
+      var msgCount = r.getInt('message_count') || 1
+      var res = scoreCalc(sigs, waiting, cfg, msgCount)
       r.set('business_hours_waiting', waiting)
       r.set('score', res.score)
       r.set('priority', res.priority)
 
-      // Garantir deadline de SLA com base na prioridade se ainda não estiver preenchido
       var currentDeadline = r.getString('sla_deadline')
       var targetHours =
         res.priority === 'P1'
@@ -442,8 +380,6 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
         r.set('sla_deadline', currentDeadline)
       }
 
-      // Verificação de Escalação automática por SLA:
-      // Se deadline vencido e status é ativo ('Novo' ou 'Em tratamento')
       var currentStatus = r.getString('status')
       var deadlineDate = new Date(currentDeadline)
       var isDeadlineBreached = deadlineDate.getTime() < now.getTime()
@@ -475,14 +411,6 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
         $app.logger().error('Erro ao atualizar e-mail na torre: ' + saveErr)
       }
     }
-    $app
-      .logger()
-      .info(
-        '[Torre de Controle] Recálculo automático concluído: ' +
-          records.length +
-          ' processados. Escalados nesta rodada: ' +
-          escalatedCount,
-      )
   } catch (err) {
     $app.logger().error('[Torre de Controle] Erro no cron: ' + err)
   }
@@ -505,6 +433,7 @@ routerAdd(
         weight_promised_deadline: 20,
         weight_formal_complaint: 40,
         weight_repeat_contact: 15,
+        weight_persistent_client: 20,
         score_threshold_p1: 60,
         score_threshold_p2: 30,
         business_hours_start: '08:00',
@@ -531,6 +460,8 @@ routerAdd(
               r[0].getFloat('weight_formal_complaint') || def.weight_formal_complaint,
             weight_repeat_contact:
               r[0].getFloat('weight_repeat_contact') || def.weight_repeat_contact,
+            weight_persistent_client:
+              r[0].getFloat('weight_persistent_client') || def.weight_persistent_client,
             score_threshold_p1: r[0].getFloat('score_threshold_p1') || def.score_threshold_p1,
             score_threshold_p2: r[0].getFloat('score_threshold_p2') || def.score_threshold_p2,
             business_hours_start:
@@ -671,24 +602,6 @@ routerAdd(
       return cur.toISOString()
     }
 
-    function scoreCalc(signals, bizHours, cfg) {
-      var score = 0
-      if (signals.indexOf('Embarque <24h') !== -1) score += cfg.weight_departure_24h || 50
-      else if (signals.indexOf('Embarque <48h') !== -1) score += cfg.weight_departure_48h || 30
-      if (signals.indexOf('Cancelamento/Remarcação') !== -1) score += cfg.weight_cancellation || 35
-      if (signals.indexOf('Cliente VIP') !== -1) score += cfg.weight_priority_client || 25
-      if (signals.indexOf('Reclamação Formal') !== -1) score += cfg.weight_formal_complaint || 40
-      if (signals.indexOf('Prazo Prometido') !== -1) score += cfg.weight_promised_deadline || 20
-      if (signals.indexOf('Reincidente') !== -1) score += cfg.weight_repeat_contact || 15
-      if (bizHours > 0)
-        score += Math.min(100, Math.floor(bizHours * (cfg.weight_per_hour_inbox || 5)))
-
-      var prio = 'P3'
-      if (score >= (cfg.score_threshold_p1 || 60)) prio = 'P1'
-      else if (score >= (cfg.score_threshold_p2 || 30)) prio = 'P2'
-      return { score: score, priority: prio }
-    }
-
     function parseStringList(val) {
       if (!val) return []
       if (Array.isArray(val)) return val
@@ -702,181 +615,35 @@ routerAdd(
       return []
     }
 
-    function sendEscalationAlerts(emailRec, reasonText, waitHours) {
-      try {
-        var notifCol = $app.findCollectionByNameOrId('notifications')
-        var senderAddress = 'atendimento@rexturadvance.com.br'
-        var senderName = 'Torre de Controle - RexturAdvance'
-        try {
-          var appSettings = $app.settings()
-          if (appSettings && appSettings.meta && appSettings.meta.senderAddress) {
-            senderAddress = appSettings.meta.senderAddress
-            senderName = appSettings.meta.senderName || senderName
-          }
-        } catch (_) {}
+    function scoreCalc(signals, bizHours, cfg, messageCount) {
+      var score = 0
+      if (signals.indexOf('Embarque <24h') !== -1) score += cfg.weight_departure_24h || 50
+      else if (signals.indexOf('Embarque <48h') !== -1) score += cfg.weight_departure_48h || 30
+      if (signals.indexOf('Cancelamento/Remarcação') !== -1) score += cfg.weight_cancellation || 35
+      if (signals.indexOf('Cliente VIP') !== -1) score += cfg.weight_priority_client || 25
+      if (signals.indexOf('Reclamação Formal') !== -1) score += cfg.weight_formal_complaint || 40
+      if (signals.indexOf('Prazo Prometido') !== -1) score += cfg.weight_promised_deadline || 20
+      if (signals.indexOf('Reincidente') !== -1) score += cfg.weight_repeat_contact || 15
 
-        var emailServiceGroup = emailRec.getString('service_group')
-        var emailTeam = emailRec.getString('team')
-        var assignedUserId = emailRec.getString('assigned_to')
-        var subjectText = emailRec.getString('subject') || '(Sem assunto)'
-        var senderEmail = emailRec.getString('sender_email') || ''
-        var senderDisplayName = emailRec.getString('sender_name') || senderEmail
-        var priority = emailRec.getString('priority') || 'P1'
-        var signalsList = []
-        try {
-          var rawSig = emailRec.get('detected_signals')
-          if (Array.isArray(rawSig)) signalsList = rawSig
-        } catch (_) {}
-        var signalsStr =
-          signalsList.length > 0 ? signalsList.join(', ') : 'Nenhum sinal crítico detectado'
-
-        var ownerUser = null
-        var ownerName = 'Nenhum (fila aberta — requer atribuição urgente)'
-        if (assignedUserId) {
-          try {
-            ownerUser = $app.findFirstRecordByData('users', 'id', assignedUserId)
-            if (ownerUser) ownerName = ownerUser.getString('name')
-          } catch (_) {}
+      var mCount = messageCount || 1
+      var hasPersistentSignal = false
+      for (var s = 0; s < signals.length; s++) {
+        if (signals[s].indexOf('Cliente insistente') !== -1) {
+          hasPersistentSignal = true
+          break
         }
+      }
+      if (mCount > 1 || hasPersistentSignal) {
+        score += (cfg.weight_persistent_client || 20) * Math.min(3, mCount - 1)
+      }
 
-        var supervisors = $app.findRecordsByFilter(
-          'users',
-          "role = 'Supervisor' || role = 'Gerente' || role = 'Líder' || role = 'Gestor Comercial' || role = 'Master' || master_access = true",
-          '',
-          100,
-          0,
-        )
+      if (bizHours > 0)
+        score += Math.min(100, Math.floor(bizHours * (cfg.weight_per_hour_inbox || 5)))
 
-        var targetRecipients = {}
-        for (var s = 0; s < supervisors.length; s++) {
-          var sup = supervisors[s]
-          var isMaster = sup.getString('role') === 'Master' || sup.getBool('master_access') === true
-          if (isMaster) {
-            targetRecipients[sup.id] = sup
-            continue
-          }
-
-          var supGroups = parseStringList(sup.get('service_groups'))
-          var supDepts = parseStringList(sup.get('departments'))
-
-          if (
-            supGroups.length === 0 &&
-            supDepts.length === 0 &&
-            (sup.getString('role') === 'Gerente' || sup.getString('role') === 'Gestor Comercial')
-          ) {
-            targetRecipients[sup.id] = sup
-            continue
-          }
-
-          if (supGroups.length > 0 && emailServiceGroup) {
-            if (supGroups.indexOf(emailServiceGroup) === -1) continue
-          }
-
-          if (supDepts.length > 0 && emailTeam) {
-            if (supDepts.indexOf(emailTeam) === -1) continue
-          }
-
-          targetRecipients[sup.id] = sup
-        }
-
-        if (ownerUser && !targetRecipients[ownerUser.id]) {
-          targetRecipients[ownerUser.id] = ownerUser
-        }
-
-        var notifTitle = '🚨 [Torre de Controle] SLA Vencido — E-mail Escalado: ' + priority
-        var notifMsg =
-          'E-mail "' +
-          subjectText +
-          '" (' +
-          senderDisplayName +
-          ') estourou o prazo de SLA (' +
-          waitHours +
-          'h úteis na caixa). ' +
-          (assignedUserId
-            ? 'Responsável atual: ' + ownerName
-            : 'ATENÇÃO: Sem responsável atribuído!')
-
-        var linkUrl = '/torre-controle'
-
-        var htmlEmailBody =
-          '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 24px; color: #1e293b;">' +
-          '<div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">' +
-          '<div style="background-color: #dc2626; padding: 18px 24px; color: #ffffff;">' +
-          '<h2 style="margin: 0; font-size: 18px; font-weight: bold;">🚨 Torre de Controle — Escalação Automática de SLA</h2>' +
-          '<p style="margin: 4px 0 0; font-size: 12px; opacity: 0.9;">O prazo de atendimento para este e-mail foi estourado em horário útil.</p>' +
-          '</div>' +
-          '<div style="padding: 24px;">' +
-          '<div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 16px; margin-bottom: 20px; border-radius: 4px;">' +
-          '<p style="margin: 0; font-size: 13px; color: #991b1b; font-weight: bold;">Motivo da Escalação: ' +
-          reasonText +
-          '</p>' +
-          '</div>' +
-          '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">' +
-          '<tr><td style="padding: 6px 0; color: #64748b; width: 140px;"><strong>Assunto:</strong></td><td style="padding: 6px 0; font-weight: 600; color: #0f172a;">' +
-          subjectText +
-          '</td></tr>' +
-          '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Remetente:</strong></td><td style="padding: 6px 0;">' +
-          senderDisplayName +
-          ' (' +
-          senderEmail +
-          ')</td></tr>' +
-          '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Prioridade:</strong></td><td style="padding: 6px 0;"><span style="background-color: #fee2e2; color: #b91c1c; padding: 2px 8px; border-radius: 4px; font-weight: bold;">' +
-          priority +
-          '</span></td></tr>' +
-          '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Núcleo / Equipe:</strong></td><td style="padding: 6px 0;">' +
-          (emailServiceGroup || 'Geral') +
-          ' • ' +
-          (emailTeam || 'Nacional') +
-          '</td></tr>' +
-          '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Tempo na Caixa:</strong></td><td style="padding: 6px 0; color: #dc2626; font-weight: bold;">' +
-          waitHours +
-          ' horas úteis</td></tr>' +
-          '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Sinais Detectados:</strong></td><td style="padding: 6px 0;">' +
-          signalsStr +
-          '</td></tr>' +
-          '<tr><td style="padding: 6px 0; color: #64748b;"><strong>Responsável:</strong></td><td style="padding: 6px 0; font-weight: ' +
-          (assignedUserId ? 'normal' : 'bold; color: #b91c1c') +
-          ';">' +
-          ownerName +
-          '</td></tr>' +
-          '</table>' +
-          '<div style="text-align: center; margin-top: 24px;">' +
-          '<a href="' +
-          linkUrl +
-          '" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 10px 22px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px;">Acessar Torre de Controle</a>' +
-          '</div>' +
-          '</div></div></body></html>'
-
-        for (var uId in targetRecipients) {
-          if (!targetRecipients.hasOwnProperty(uId)) continue
-          var recipientUser = targetRecipients[uId]
-
-          try {
-            var notif = new Record(notifCol)
-            notif.set('user_id', uId)
-            notif.set('title', notifTitle)
-            notif.set('message', notifMsg)
-            notif.set('type', 'alert')
-            notif.set('read', false)
-            notif.set('link', linkUrl)
-            $app.save(notif)
-          } catch (_) {}
-
-          var uEmail = recipientUser.getString('email')
-          var uNotifEnabled = recipientUser.get('email_notifications')
-          if (uNotifEnabled !== false && uEmail && uEmail.indexOf('@') !== -1) {
-            try {
-              var mail = new MailerMessage({
-                from: { address: senderAddress, name: senderName },
-                to: [{ address: uEmail, name: recipientUser.getString('name') }],
-                subject: notifTitle,
-                html: htmlEmailBody,
-              })
-              $app.newMailClient().send(mail)
-            } catch (_) {}
-          }
-        }
-      } catch (_) {}
+      var prio = 'P3'
+      if (score >= (cfg.score_threshold_p1 || 60)) prio = 'P1'
+      else if (score >= (cfg.score_threshold_p2 || 30)) prio = 'P2'
+      return { score: score, priority: prio }
     }
 
     var cfg = getCfg()
@@ -885,7 +652,7 @@ routerAdd(
     try {
       var records = $app.findRecordsByFilter(
         'control_tower_emails',
-        "status = 'Novo' || status = 'Em tratamento' || status = 'Escalado'",
+        "(status = 'Novo' || status = 'Em tratamento' || status = 'Escalado') && is_thread_child != true",
         '',
         300,
         0,
@@ -896,12 +663,9 @@ routerAdd(
         var r = records[i]
         var recAt = r.getString('received_at') || r.getString('created')
         var waiting = calcBizHours(recAt, nowIso, cfg)
-        var sigs = []
-        try {
-          var rawSigs = r.get('detected_signals')
-          if (Array.isArray(rawSigs)) sigs = rawSigs
-        } catch (_) {}
-        var res = scoreCalc(sigs, waiting, cfg)
+        var sigs = parseStringList(r.get('detected_signals'))
+        var msgCount = r.getInt('message_count') || 1
+        var res = scoreCalc(sigs, waiting, cfg, msgCount)
         r.set('business_hours_waiting', waiting)
         r.set('score', res.score)
         r.set('priority', res.priority)
@@ -922,7 +686,6 @@ routerAdd(
         var currentStatus = r.getString('status')
         var deadlineDate = new Date(currentDeadline)
         var isDeadlineBreached = deadlineDate.getTime() < now.getTime()
-        var alertSent = r.getBool('escalation_alert_sent')
 
         if (isDeadlineBreached && (currentStatus === 'Novo' || currentStatus === 'Em tratamento')) {
           r.set('status', 'Escalado')
@@ -936,11 +699,6 @@ routerAdd(
             waiting +
             'h úteis).'
           r.set('escalated_reason', reasonMsg)
-
-          if (!alertSent) {
-            r.set('escalation_alert_sent', true)
-            sendEscalationAlerts(r, reasonMsg, waiting)
-          }
           escalatedCount++
         }
 
@@ -955,13 +713,121 @@ routerAdd(
       success: true,
       updated_count: updated,
       escalated_count: escalatedCount,
-      message: 'Scores, prazos de SLA e escalação processados com sucesso.',
+      message: 'Scores, threads e prazos de SLA processados com sucesso.',
     })
   },
   $apis.requireAuth(),
 )
 
-// 2. Endpoint para ingerir e-mails existentes da coleção de logs
+// 2. Endpoint para obter todas as mensagens de uma thread
+routerAdd(
+  'GET',
+  '/backend/v1/control-tower/threads/{threadId}',
+  (e) => {
+    var threadId = (e.request.pathValue('threadId') || '').trim()
+    if (!threadId) {
+      return e.badRequestError('threadId é obrigatório')
+    }
+
+    try {
+      var messages = $app.findRecordsByFilter(
+        'control_tower_emails',
+        "thread_id = '" + threadId + "' || id = '" + threadId + "'",
+        'received_at, created',
+        100,
+        0,
+      )
+
+      var result = []
+      for (var i = 0; i < messages.length; i++) {
+        var m = messages[i]
+        var clientId = m.getString('client')
+        var assignedId = m.getString('assigned_to')
+        var clientObj = null
+        var assignedObj = null
+
+        if (clientId) {
+          try {
+            var cRec = $app.findFirstRecordByData('clients', 'id', clientId)
+            if (cRec) {
+              clientObj = {
+                id: cRec.id,
+                name: cRec.getString('name'),
+                company: cRec.getString('company'),
+                priority_client: cRec.getBool('priority_client'),
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (assignedId) {
+          try {
+            var uRec = $app.findFirstRecordByData('users', 'id', assignedId)
+            if (uRec) {
+              assignedObj = {
+                id: uRec.id,
+                name: uRec.getString('name'),
+                email: uRec.getString('email'),
+              }
+            }
+          } catch (_) {}
+        }
+
+        var sigs = []
+        var rawSig = m.get('detected_signals')
+        if (Array.isArray(rawSig)) sigs = rawSig
+        else if (typeof rawSig === 'string') {
+          try {
+            sigs = JSON.parse(rawSig)
+          } catch (_) {}
+        }
+
+        result.push({
+          id: m.id,
+          subject: m.getString('subject'),
+          sender_email: m.getString('sender_email'),
+          sender_name: m.getString('sender_name'),
+          recipient_email: m.getString('recipient_email'),
+          body_snippet: m.getString('body_snippet'),
+          received_at: m.getString('received_at'),
+          service_group: m.getString('service_group'),
+          team: m.getString('team'),
+          inbox_address: m.getString('inbox_address'),
+          client: clientId,
+          reservation_number: m.getString('reservation_number'),
+          detected_signals: sigs,
+          score: m.getFloat('score'),
+          priority: m.getString('priority'),
+          status: m.getString('status'),
+          assigned_to: assignedId,
+          is_noise: m.getBool('is_noise'),
+          external_message_id: m.getString('external_message_id'),
+          thread_id: m.getString('thread_id'),
+          thread_root: m.getString('thread_root'),
+          is_thread_child: m.getBool('is_thread_child'),
+          message_count: m.getInt('message_count') || 1,
+          last_message_at: m.getString('last_message_at'),
+          created: m.getString('created'),
+          expand: {
+            client: clientObj,
+            assigned_to: assignedObj,
+          },
+        })
+      }
+
+      return e.json(200, {
+        thread_id: threadId,
+        count: result.length,
+        messages: result,
+      })
+    } catch (err) {
+      return e.badRequestError('Erro ao buscar mensagens da thread: ' + err)
+    }
+  },
+  $apis.requireAuth(),
+)
+
+// 3. Endpoint para ingerir e-mails existentes da coleção de logs com suporte completo a THREADING
 routerAdd(
   'POST',
   '/backend/v1/control-tower/ingest-from-logs',
@@ -976,6 +842,7 @@ routerAdd(
         weight_promised_deadline: 20,
         weight_formal_complaint: 40,
         weight_repeat_contact: 15,
+        weight_persistent_client: 20,
         score_threshold_p1: 60,
         score_threshold_p2: 30,
         business_hours_start: '08:00',
@@ -1002,6 +869,8 @@ routerAdd(
               r[0].getFloat('weight_formal_complaint') || def.weight_formal_complaint,
             weight_repeat_contact:
               r[0].getFloat('weight_repeat_contact') || def.weight_repeat_contact,
+            weight_persistent_client:
+              r[0].getFloat('weight_persistent_client') || def.weight_persistent_client,
             score_threshold_p1: r[0].getFloat('score_threshold_p1') || def.score_threshold_p1,
             score_threshold_p2: r[0].getFloat('score_threshold_p2') || def.score_threshold_p2,
             business_hours_start:
@@ -1034,6 +903,16 @@ routerAdd(
       }
       if (su.indexOf('undeliverable') !== -1 || su.indexOf('delivery status') !== -1) return true
       return false
+    }
+
+    function normalizeSubject(subj) {
+      if (!subj) return ''
+      var s = subj.trim()
+      var regex = /^\s*(re\s*:\s*|fwd\s*:\s*|enc\s*:\s*|res\s*:\s*|rv\s*:\s*)+/i
+      while (regex.test(s)) {
+        s = s.replace(regex, '').trim()
+      }
+      return s.toLowerCase().replace(/\s+/g, ' ')
     }
 
     function calcBizHours(startDate, endDate, cfg) {
@@ -1262,7 +1141,7 @@ routerAdd(
       }
     }
 
-    function scoreCalc(signals, bizHours, cfg) {
+    function scoreCalc(signals, bizHours, cfg, messageCount) {
       var score = 0
       if (signals.indexOf('Embarque <24h') !== -1) score += cfg.weight_departure_24h || 50
       else if (signals.indexOf('Embarque <48h') !== -1) score += cfg.weight_departure_48h || 30
@@ -1271,6 +1150,19 @@ routerAdd(
       if (signals.indexOf('Reclamação Formal') !== -1) score += cfg.weight_formal_complaint || 40
       if (signals.indexOf('Prazo Prometido') !== -1) score += cfg.weight_promised_deadline || 20
       if (signals.indexOf('Reincidente') !== -1) score += cfg.weight_repeat_contact || 15
+
+      var mCount = messageCount || 1
+      var hasPersistentSignal = false
+      for (var s = 0; s < signals.length; s++) {
+        if (signals[s].indexOf('Cliente insistente') !== -1) {
+          hasPersistentSignal = true
+          break
+        }
+      }
+      if (mCount > 1 || hasPersistentSignal) {
+        score += (cfg.weight_persistent_client || 20) * Math.min(3, mCount - 1)
+      }
+
       if (bizHours > 0)
         score += Math.min(100, Math.floor(bizHours * (cfg.weight_per_hour_inbox || 5)))
 
@@ -1293,14 +1185,15 @@ routerAdd(
 
     var processed = 0
     var skipped = 0
+    var mergedToThread = 0
     var nowIso = new Date().toISOString()
 
     for (var i = 0; i < logs.length; i++) {
       var log = logs[i]
       var logId = log.id
-      var sEmail = log.getString('sender_email')
-      var subj = log.getString('subject')
-      var bodySnip = log.getString('body_snippet')
+      var sEmail = (log.getString('sender_email') || '').trim().toLowerCase()
+      var subj = log.getString('subject') || ''
+      var bodySnip = log.getString('body_snippet') || ''
       var rAt = log.getString('received_at') || log.getString('created') || nowIso
       var extId = log.getString('outlook_message_id') || 'log_' + logId
 
@@ -1358,7 +1251,6 @@ routerAdd(
 
       var sigRes = parseSignals(subj, bodySnip, rAt, isVip, isRepeat)
       var bizHours = calcBizHours(rAt, nowIso, cfg)
-      var scRes = scoreCalc(sigRes.signals, bizHours, cfg)
 
       var team = 'Nacional'
       var fullLower = ((subj || '') + ' ' + (bodySnip || '')).toLowerCase()
@@ -1372,59 +1264,206 @@ routerAdd(
         team = 'Internacional'
       }
 
-      var targetHours =
-        scRes.priority === 'P1'
-          ? cfg.target_sla_p1_hours
-          : scRes.priority === 'P2'
-            ? cfg.target_sla_p2_hours
-            : cfg.target_sla_p3_hours
-      var deadline = addBizHours(rAt, targetHours, cfg)
-
       var chosenGroup = sGroup || 'SAO'
       var inboxAddress = 'atendimento.' + chosenGroup.toLowerCase() + '@rexturadvance.com.br'
 
-      try {
-        var rec = new Record(emailsCol)
-        rec.set('subject', subj)
-        rec.set('sender_email', sEmail)
-        rec.set('sender_name', log.getString('sender_name'))
-        rec.set('recipient_email', log.getString('recipient_email'))
-        rec.set('body_snippet', bodySnip)
-        rec.set('received_at', rAt)
-        rec.set('service_group', chosenGroup)
-        rec.set('team', team)
-        rec.set('inbox_address', inboxAddress)
-        if (clientId) rec.set('client', clientId)
-        if (sigRes.reservationNumber) rec.set('reservation_number', sigRes.reservationNumber)
-        rec.set('detected_dates', sigRes.detectedDates)
-        rec.set('detected_signals', sigRes.signals)
-        rec.set('score', scRes.score)
-        rec.set('priority', scRes.priority)
-        rec.set('status', isNoise ? 'Resolvido' : 'Novo')
-        rec.set('is_noise', isNoise)
-        rec.set('external_message_id', extId)
-        rec.set('email_analysis_log', logId)
-        rec.set('business_hours_waiting', bizHours)
-        rec.set('sla_deadline', deadline)
+      // ============================================
+      // DETECÇÃO DE THREADING DETERMINÍSTICO
+      // ============================================
+      var normSubj = normalizeSubject(subj)
+      var foundThreadRoot = null
 
-        $app.save(rec)
+      try {
+        // Janela de 7 dias para conversas ativas dentro da mesma caixa compartilhada
+        var sevenDaysAgo = new Date(new Date(rAt).getTime() - 7 * 86400000).toISOString()
+        var candidateRoots = $app.findRecordsByFilter(
+          'control_tower_emails',
+          "sender_email = '" +
+            sEmail +
+            "' && inbox_address = '" +
+            inboxAddress +
+            "' && is_thread_child != true && status != 'Resolvido' && received_at >= '" +
+            sevenDaysAgo +
+            "'",
+          '-received_at',
+          10,
+          0,
+        )
+
+        for (var cIdx = 0; cIdx < candidateRoots.length; cIdx++) {
+          var cand = candidateRoots[cIdx]
+          var candNorm = normalizeSubject(cand.getString('subject'))
+          if (candNorm && normSubj && candNorm === normSubj) {
+            foundThreadRoot = cand
+            break
+          }
+        }
+      } catch (_) {}
+
+      // Se achou uma thread raiz ativa na mesma caixa compartilhada:
+      if (foundThreadRoot) {
+        var currentCount = foundThreadRoot.getInt('message_count') || 1
+        var newCount = currentCount + 1
+        var threadId = foundThreadRoot.getString('thread_id') || 'th_' + foundThreadRoot.id
+
+        // Mesclar sinais da nova mensagem na thread raiz
+        var rootSigs = []
+        var rawRootSig = foundThreadRoot.get('detected_signals')
+        if (Array.isArray(rawRootSig)) rootSigs = rawRootSig
+        else if (typeof rawRootSig === 'string') {
+          try {
+            rootSigs = JSON.parse(rawRootSig)
+          } catch (_) {}
+        }
+
+        for (var s = 0; s < sigRes.signals.length; s++) {
+          if (rootSigs.indexOf(sigRes.signals[s]) === -1) {
+            rootSigs.push(sigRes.signals[s])
+          }
+        }
+
+        // Adicionar / atualizar sinal de cliente insistente
+        var persistSignal = 'Cliente insistente (' + newCount + ' msgs)'
+        // Remover sinal de insistência anterior se houver
+        var filteredSigs = []
+        for (var f = 0; f < rootSigs.length; f++) {
+          if (rootSigs[f].indexOf('Cliente insistente') === -1) {
+            filteredSigs.push(rootSigs[f])
+          }
+        }
+        filteredSigs.push(persistSignal)
+
+        // Recalcular score e prioridade da thread com o bônus de persistência
+        var rootRecAt =
+          foundThreadRoot.getString('received_at') || foundThreadRoot.getString('created')
+        var rootBizWaiting = calcBizHours(rootRecAt, nowIso, cfg)
+        var newRootScRes = scoreCalc(filteredSigs, rootBizWaiting, cfg, newCount)
+
+        // A thread herda o MELHOR score e prioridade
+        var finalScore = Math.max(foundThreadRoot.getFloat('score') || 0, newRootScRes.score)
+        var finalPriority = foundThreadRoot.getString('priority') || 'P3'
+        if (newRootScRes.priority === 'P1' || finalPriority === 'P1') {
+          finalPriority = 'P1'
+        } else if (newRootScRes.priority === 'P2' || finalPriority === 'P2') {
+          finalPriority = 'P2'
+        }
+
+        // Se thread estava Aguardando cliente, a resposta do cliente reabre para Em tratamento / Novo
+        var rootStatus = foundThreadRoot.getString('status')
+        if (rootStatus === 'Aguardando cliente') {
+          rootStatus = foundThreadRoot.getString('assigned_to') ? 'Em tratamento' : 'Novo'
+        }
+
+        foundThreadRoot.set('message_count', newCount)
+        foundThreadRoot.set('detected_signals', filteredSigs)
+        foundThreadRoot.set('score', finalScore)
+        foundThreadRoot.set('priority', finalPriority)
+        foundThreadRoot.set('last_message_at', rAt)
+        foundThreadRoot.set('status', rootStatus)
+
+        // Se nova mensagem trouxer reserva/PNR que a thread ainda não tinha
+        if (!foundThreadRoot.getString('reservation_number') && sigRes.reservationNumber) {
+          foundThreadRoot.set('reservation_number', sigRes.reservationNumber)
+        }
+
+        $app.save(foundThreadRoot)
+
+        // Criar registro filho da mensagem dentro da thread
+        var childScRes = scoreCalc(sigRes.signals, bizHours, cfg, 1)
+        var childRec = new Record(emailsCol)
+        childRec.set('subject', subj)
+        childRec.set('sender_email', sEmail)
+        childRec.set('sender_name', log.getString('sender_name'))
+        childRec.set('recipient_email', log.getString('recipient_email'))
+        childRec.set('body_snippet', bodySnip)
+        childRec.set('received_at', rAt)
+        childRec.set('service_group', chosenGroup)
+        childRec.set('team', team)
+        childRec.set('inbox_address', inboxAddress)
+        if (clientId) childRec.set('client', clientId)
+        if (sigRes.reservationNumber) childRec.set('reservation_number', sigRes.reservationNumber)
+        childRec.set('detected_dates', sigRes.detectedDates)
+        childRec.set('detected_signals', sigRes.signals)
+        childRec.set('score', childScRes.score)
+        childRec.set('priority', childScRes.priority)
+        childRec.set('status', rootStatus)
+        childRec.set('is_noise', isNoise)
+        childRec.set('external_message_id', extId)
+        childRec.set('email_analysis_log', logId)
+        childRec.set('thread_id', threadId)
+        childRec.set('thread_root', foundThreadRoot.id)
+        childRec.set('is_thread_child', true)
+        childRec.set('message_count', 1)
+        $app.save(childRec)
+
+        mergedToThread++
         processed++
-      } catch (saveErr) {
-        $app.logger().error('Erro ao salvar item na Torre: ' + saveErr)
+      } else {
+        // Não é continuação de thread existente — criar novo Root de conversa
+        var scRes = scoreCalc(sigRes.signals, bizHours, cfg, 1)
+        var targetHours =
+          scRes.priority === 'P1'
+            ? cfg.target_sla_p1_hours
+            : scRes.priority === 'P2'
+              ? cfg.target_sla_p2_hours
+              : cfg.target_sla_p3_hours
+        var deadline = addBizHours(rAt, targetHours, cfg)
+
+        var newRec = new Record(emailsCol)
+        newRec.set('subject', subj)
+        newRec.set('sender_email', sEmail)
+        newRec.set('sender_name', log.getString('sender_name'))
+        newRec.set('recipient_email', log.getString('recipient_email'))
+        newRec.set('body_snippet', bodySnip)
+        newRec.set('received_at', rAt)
+        newRec.set('service_group', chosenGroup)
+        newRec.set('team', team)
+        newRec.set('inbox_address', inboxAddress)
+        if (clientId) newRec.set('client', clientId)
+        if (sigRes.reservationNumber) newRec.set('reservation_number', sigRes.reservationNumber)
+        newRec.set('detected_dates', sigRes.detectedDates)
+        newRec.set('detected_signals', sigRes.signals)
+        newRec.set('score', scRes.score)
+        newRec.set('priority', scRes.priority)
+        newRec.set('status', isNoise ? 'Resolvido' : 'Novo')
+        newRec.set('is_noise', isNoise)
+        newRec.set('external_message_id', extId)
+        newRec.set('email_analysis_log', logId)
+        newRec.set('business_hours_waiting', bizHours)
+        newRec.set('sla_deadline', deadline)
+
+        // Thread fields
+        newRec.set('message_count', 1)
+        newRec.set('is_thread_child', false)
+        newRec.set('last_message_at', rAt)
+
+        $app.save(newRec)
+
+        // Definir thread_id após salvar para usar seu próprio ID
+        newRec.set('thread_id', 'th_' + newRec.id)
+        $app.save(newRec)
+
+        processed++
       }
     }
 
     return e.json(200, {
       success: true,
       processed: processed,
+      merged_to_thread: mergedToThread,
       skipped: skipped,
-      message: 'Ingestão e processamento da caixa de entrada concluídos.',
+      message:
+        'Ingestão da caixa concluída: ' +
+        processed +
+        ' mensagens processadas (' +
+        mergedToThread +
+        ' agrupadas em threads existentes).',
     })
   },
   $apis.requireAuth(),
 )
 
-// 3. Endpoint para assumir ou atribuir ownership
+// 4. Endpoint para assumir ou atribuir ownership (aplicado à thread inteira)
 routerAdd(
   'POST',
   '/backend/v1/control-tower/assign',
@@ -1551,8 +1590,6 @@ routerAdd(
       record.set('assigned_at', targetUserId ? new Date().toISOString() : null)
 
       var curStatus = record.getString('status')
-      // Ao ser assumido/tratado depois de escalado ou novo:
-      // Status volta a fluir para "Em tratamento" e novo deadline em horas úteis é concedido
       if (targetUserId && (curStatus === 'Novo' || curStatus === 'Escalado')) {
         record.set('status', 'Em tratamento')
         var cfg = getCfg()
@@ -1568,6 +1605,32 @@ routerAdd(
       }
 
       $app.save(record)
+
+      // Se este record tiver thread_id, atualizar também as mensagens filhas da mesma thread
+      var threadId = record.getString('thread_id')
+      if (threadId) {
+        try {
+          var children = $app.findRecordsByFilter(
+            'control_tower_emails',
+            "thread_id = '" + threadId + "' && id != '" + record.id + "'",
+            '',
+            100,
+            0,
+          )
+          for (var c = 0; c < children.length; c++) {
+            var ch = children[c]
+            ch.set('assigned_to', targetUserId || null)
+            ch.set('assigned_at', targetUserId ? new Date().toISOString() : null)
+            if (
+              targetUserId &&
+              (ch.getString('status') === 'Novo' || ch.getString('status') === 'Escalado')
+            ) {
+              ch.set('status', 'Em tratamento')
+            }
+            $app.save(ch)
+          }
+        } catch (_) {}
+      }
 
       return e.json(200, {
         success: true,

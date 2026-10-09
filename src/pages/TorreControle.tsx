@@ -56,6 +56,8 @@ import {
   CheckCircle2,
   Inbox,
   ShieldAlert,
+  MessagesSquare,
+  MessageSquareText,
 } from 'lucide-react'
 
 export default function TorreControle() {
@@ -74,9 +76,11 @@ export default function TorreControle() {
   const [filterStatus, setFilterStatus] = useState<string>('Ativos') // 'Ativos' | 'Todos' | 'Estourados/Escalados' | Status específico
   const [filterGroup, setFilterGroup] = useState<string>('Todos')
   const [filterTeam, setFilterTeam] = useState<string>('Todas')
+  const [onlyMultipleMessages, setOnlyMultipleMessages] = useState<boolean>(false)
   const [onlyMine, setOnlyMine] = useState(false)
   const [hideNoise, setHideNoise] = useState(true)
   const [filterAssignedUserId, setFilterAssignedUserId] = useState<string>('')
+  const [sortBy, setSortBy] = useState<'score' | 'sla' | 'recent' | 'messages'>('score')
 
   // Modais
   const [configModalOpen, setConfigModalOpen] = useState(false)
@@ -95,7 +99,7 @@ export default function TorreControle() {
   const loadData = async () => {
     try {
       const [emailData, configData, userData] = await Promise.all([
-        getControlTowerEmails(),
+        getControlTowerEmails(true), // Exibe 1 item por conversa (apenas raízes da thread)
         getControlTowerConfig(),
         getUsers(),
       ])
@@ -260,63 +264,89 @@ export default function TorreControle() {
 
   // 3. Aplicar filtros de tela
   const filteredEmails = useMemo(() => {
-    return accessibleEmails.filter((em) => {
-      // Ruído
-      if (hideNoise && em.is_noise) return false
+    return accessibleEmails
+      .filter((em) => {
+        // Ruído
+        if (hideNoise && em.is_noise) return false
 
-      // Busca por assunto, remetente, empresa cliente ou reserva
-      if (search.trim()) {
-        const q = search.toLowerCase()
-        const matchSubject = (em.subject || '').toLowerCase().includes(q)
-        const matchSender =
-          (em.sender_email || '').toLowerCase().includes(q) ||
-          (em.sender_name || '').toLowerCase().includes(q)
-        const matchClient =
-          (em.expand?.client?.company || '').toLowerCase().includes(q) ||
-          (em.expand?.client?.name || '').toLowerCase().includes(q)
-        const matchReservation = (em.reservation_number || '').toLowerCase().includes(q)
-        if (!matchSubject && !matchSender && !matchClient && !matchReservation) {
+        // Busca por assunto, remetente, empresa cliente ou reserva
+        if (search.trim()) {
+          const q = search.toLowerCase()
+          const matchSubject = (em.subject || '').toLowerCase().includes(q)
+          const matchSender =
+            (em.sender_email || '').toLowerCase().includes(q) ||
+            (em.sender_name || '').toLowerCase().includes(q)
+          const matchClient =
+            (em.expand?.client?.company || '').toLowerCase().includes(q) ||
+            (em.expand?.client?.name || '').toLowerCase().includes(q)
+          const matchReservation = (em.reservation_number || '').toLowerCase().includes(q)
+          if (!matchSubject && !matchSender && !matchClient && !matchReservation) {
+            return false
+          }
+        }
+
+        // Prioridade
+        if (filterPriority !== 'Todas' && em.priority !== filterPriority) {
           return false
         }
-      }
 
-      // Prioridade
-      if (filterPriority !== 'Todas' && em.priority !== filterPriority) {
-        return false
-      }
+        // Status
+        if (filterStatus === 'Ativos') {
+          if (em.status === 'Resolvido') return false
+        } else if (filterStatus === 'Estourados/Escalados') {
+          const sla = computeSlaStatus(em.sla_deadline, em.status)
+          if (!sla.isBreached && em.status !== 'Escalado') return false
+        } else if (filterStatus !== 'Todos') {
+          if (em.status !== filterStatus) return false
+        }
 
-      // Status
-      if (filterStatus === 'Ativos') {
-        if (em.status === 'Resolvido') return false
-      } else if (filterStatus === 'Estourados/Escalados') {
-        const sla = computeSlaStatus(em.sla_deadline, em.status)
-        if (!sla.isBreached && em.status !== 'Escalado') return false
-      } else if (filterStatus !== 'Todos') {
-        if (em.status !== filterStatus) return false
-      }
+        // Núcleo
+        if (filterGroup !== 'Todos') {
+          if (em.service_group !== filterGroup) return false
+        }
 
-      // Núcleo
-      if (filterGroup !== 'Todos') {
-        if (em.service_group !== filterGroup) return false
-      }
+        // Equipe (INTER / NAC)
+        if (filterTeam !== 'Todas') {
+          if (em.team !== filterTeam) return false
+        }
 
-      // Equipe (INTER / NAC)
-      if (filterTeam !== 'Todas') {
-        if (em.team !== filterTeam) return false
-      }
+        // Somente meus atribuídos
+        if (onlyMine && user) {
+          if (em.assigned_to !== user.id) return false
+        }
 
-      // Somente meus atribuídos
-      if (onlyMine && user) {
-        if (em.assigned_to !== user.id) return false
-      }
+        // Filtro de Múltiplas Mensagens (Threading)
+        if (onlyMultipleMessages) {
+          if ((em.message_count || 1) <= 1) return false
+        }
 
-      // Filtro específico clicado no card de carga
-      if (filterAssignedUserId) {
-        if (em.assigned_to !== filterAssignedUserId) return false
-      }
+        // Filtro específico clicado no card de carga
+        if (filterAssignedUserId) {
+          if (em.assigned_to !== filterAssignedUserId) return false
+        }
 
-      return true
-    })
+        return true
+      })
+      .sort((a, b) => {
+        if (sortBy === 'messages') {
+          const ma = a.message_count || 1
+          const mb = b.message_count || 1
+          if (mb !== ma) return mb - ma
+          return b.score - a.score
+        }
+        if (sortBy === 'sla') {
+          if (!a.sla_deadline && !b.sla_deadline) return 0
+          if (!a.sla_deadline) return 1
+          if (!b.sla_deadline) return -1
+          return new Date(a.sla_deadline).getTime() - new Date(b.sla_deadline).getTime()
+        }
+        if (sortBy === 'recent') {
+          const da = new Date(a.last_message_at || a.received_at || a.created).getTime()
+          const db = new Date(b.last_message_at || b.received_at || b.created).getTime()
+          return db - da
+        }
+        return b.score - a.score
+      })
   }, [
     accessibleEmails,
     search,
@@ -324,9 +354,11 @@ export default function TorreControle() {
     filterStatus,
     filterGroup,
     filterTeam,
+    onlyMultipleMessages,
     onlyMine,
     hideNoise,
     filterAssignedUserId,
+    sortBy,
     user,
   ])
 
@@ -349,7 +381,10 @@ export default function TorreControle() {
     const myActive = accessibleEmails.filter(
       (e) => e.assigned_to === user?.id && e.status !== 'Resolvido',
     ).length
-    return { totalActive, p1Active, p2Active, escalatedOrBreached, myActive }
+    const multiMessageActive = accessibleEmails.filter(
+      (e) => (e.message_count || 1) > 1 && e.status !== 'Resolvido' && !e.is_noise,
+    ).length
+    return { totalActive, p1Active, p2Active, escalatedOrBreached, myActive, multiMessageActive }
   }, [accessibleEmails, user])
 
   const clearFilters = () => {
@@ -358,9 +393,11 @@ export default function TorreControle() {
     setFilterStatus('Ativos')
     setFilterGroup('Todos')
     setFilterTeam('Todas')
+    setOnlyMultipleMessages(false)
     setOnlyMine(false)
     setHideNoise(true)
     setFilterAssignedUserId('')
+    setSortBy('score')
   }
 
   const hasActiveFilters =
@@ -369,9 +406,11 @@ export default function TorreControle() {
     filterStatus !== 'Ativos' ||
     filterGroup !== 'Todos' ||
     filterTeam !== 'Todas' ||
+    onlyMultipleMessages ||
     onlyMine ||
     !hideNoise ||
-    filterAssignedUserId
+    filterAssignedUserId ||
+    sortBy !== 'score'
 
   return (
     <div className="space-y-4 max-w-full overflow-x-hidden">
@@ -387,12 +426,12 @@ export default function TorreControle() {
               variant="outline"
               className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-bold"
             >
-              Etapa 2 — Escalação por SLA
+              Etapa 3 — Threading & Persistência
             </Badge>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Fila de e-mails compartilhados por núcleo e equipe INTER/NAC com escalação automática
-            por SLA em horas úteis
+            Fila agrupada por conversa (1 item por thread) com escalação por SLA e detecção de
+            cliente insistente
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -436,7 +475,7 @@ export default function TorreControle() {
       </div>
 
       {/* KPI Cards Rápidos */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         <Card className="p-3 border-slate-200 bg-white">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
             Total Ativos
@@ -501,6 +540,30 @@ export default function TorreControle() {
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-extrabold text-indigo-900">{counts.myActive}</span>
             <span className="text-[11px] text-indigo-700 font-semibold">sob meu cuidado</span>
+          </div>
+        </Card>
+
+        {/* Card de Conversas com Múltiplas Mensagens */}
+        <Card
+          className={`p-3 border-purple-200 transition-all cursor-pointer ${
+            onlyMultipleMessages
+              ? 'bg-purple-100 ring-2 ring-purple-500'
+              : 'bg-purple-50/50 hover:bg-purple-100/60'
+          }`}
+          onClick={() => setOnlyMultipleMessages((prev) => !prev)}
+          title="Clique para alternar filtro de threads com múltiplas mensagens"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 block">
+              Threads Reincidentes
+            </span>
+            <MessagesSquare className="h-4 w-4 text-purple-600" />
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-2xl font-extrabold text-purple-900">
+              {counts.multiMessageActive}
+            </span>
+            <span className="text-[11px] text-purple-700 font-semibold">≥2 msgs</span>
           </div>
         </Card>
       </div>
@@ -594,7 +657,7 @@ export default function TorreControle() {
         {/* Linha secundária de filtros rápidos */}
         <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs flex-wrap gap-2">
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium">
+            <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium select-none">
               <input
                 type="checkbox"
                 checked={onlyMine}
@@ -604,7 +667,20 @@ export default function TorreControle() {
               <span>Somente meus atribuídos</span>
             </label>
 
-            <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium">
+            <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium select-none">
+              <input
+                type="checkbox"
+                checked={onlyMultipleMessages}
+                onChange={(e) => setOnlyMultipleMessages(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+              />
+              <span className="text-purple-800 font-semibold flex items-center gap-1">
+                <MessagesSquare className="h-3.5 w-3.5 text-purple-600" />
+                Somente conversas com múltiplas mensagens
+              </span>
+            </label>
+
+            <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium select-none">
               <input
                 type="checkbox"
                 checked={hideNoise}
@@ -632,9 +708,21 @@ export default function TorreControle() {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 mr-2">
+              <span className="text-[11px] text-slate-500">Ordenar:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="h-6 text-[11px] border border-slate-200 rounded px-1.5 bg-white text-slate-700"
+              >
+                <option value="score">Maior Score</option>
+                <option value="messages">Mais Mensagens (Thread)</option>
+                <option value="sla">Menor SLA</option>
+                <option value="recent">Mais Recentes</option>
+              </select>
+            </div>
             <span className="text-[11px] text-slate-500">
-              {filteredEmails.length} e-mail{filteredEmails.length === 1 ? '' : 's'} exibido
-              {filteredEmails.length === 1 ? '' : 's'}
+              {filteredEmails.length} conversa{filteredEmails.length === 1 ? '' : 's'} na fila
             </span>
             {hasActiveFilters && (
               <Button
@@ -658,7 +746,10 @@ export default function TorreControle() {
               <TableRow className="bg-slate-50 hover:bg-slate-50">
                 <TableHead className="text-xs font-bold text-slate-700 w-24">Prioridade</TableHead>
                 <TableHead className="text-xs font-bold text-slate-700 min-w-[240px]">
-                  E-mail & Assunto
+                  Conversa & Assunto
+                </TableHead>
+                <TableHead className="text-xs font-bold text-slate-700 w-24 text-center">
+                  Mensagens
                 </TableHead>
                 <TableHead className="text-xs font-bold text-slate-700 min-w-[180px]">
                   Sinais Detectados
@@ -666,7 +757,7 @@ export default function TorreControle() {
                 <TableHead className="text-xs font-bold text-slate-700 min-w-[130px]">
                   Cliente / Agência
                 </TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 min-w-[150px]">
+                <TableHead className="text-xs font-bold text-slate-700 min-w-[140px]">
                   Caixa / Núcleo
                 </TableHead>
                 <TableHead className="text-xs font-bold text-slate-700 w-36">
@@ -674,7 +765,7 @@ export default function TorreControle() {
                 </TableHead>
                 <TableHead className="text-xs font-bold text-slate-700 w-32">Responsável</TableHead>
                 <TableHead className="text-xs font-bold text-slate-700 w-28">Status</TableHead>
-                <TableHead className="text-xs font-bold text-slate-700 text-right w-44">
+                <TableHead className="text-xs font-bold text-slate-700 text-right w-40">
                   Ações
                 </TableHead>
               </TableRow>
@@ -727,19 +818,51 @@ export default function TorreControle() {
                     {/* Assunto e Remetente */}
                     <TableCell className="align-middle">
                       <div className="min-w-0 space-y-0.5">
-                        <p className="font-semibold text-xs text-slate-900 truncate max-w-[280px]">
-                          {item.subject || '(Sem assunto)'}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-semibold text-xs text-slate-900 truncate max-w-[280px]">
+                            {(item.subject || '(Sem assunto)')
+                              .replace(
+                                /^\s*(re\s*:\s*|fwd\s*:\s*|enc\s*:\s*|res\s*:\s*|rv\s*:\s*)+/gi,
+                                '',
+                              )
+                              .trim()}
+                          </p>
+                        </div>
                         <p className="text-[11px] text-slate-500 truncate max-w-[280px]">
                           {item.sender_name ? `${item.sender_name} • ` : ''}
                           {item.sender_email}
                         </p>
-                        {item.reservation_number && (
-                          <span className="inline-block px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 text-[10px] font-mono font-bold">
-                            PNR: {item.reservation_number}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {item.reservation_number && (
+                            <span className="inline-block px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 text-[10px] font-mono font-bold">
+                              PNR: {item.reservation_number}
+                            </span>
+                          )}
+                          {item.last_message_at && (
+                            <span className="text-[10px] text-slate-400">
+                              Última:{' '}
+                              {new Date(item.last_message_at).toLocaleTimeString('pt-BR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                    </TableCell>
+
+                    {/* Contador de Mensagens (Threading) */}
+                    <TableCell className="align-middle text-center">
+                      {(item.message_count || 1) > 1 ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300 shadow-xs">
+                          <MessagesSquare className="h-3 w-3 text-indigo-600" />x
+                          {item.message_count}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-slate-500 bg-slate-100">
+                          <Mail className="h-3 w-3 text-slate-400" />1
+                        </span>
+                      )}
                     </TableCell>
 
                     {/* Sinais em Chips */}
@@ -748,15 +871,19 @@ export default function TorreControle() {
                         {signals.map((sig, sIdx) => {
                           const isRed =
                             sig.includes('24h') || sig.includes('Formal') || sig.includes('VIP')
+                          const isPersistent = sig.includes('insistente')
                           return (
                             <span
                               key={sIdx}
-                              className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                                isRed
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                  : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                isPersistent
+                                  ? 'bg-purple-100 text-purple-800 border-purple-300'
+                                  : isRed
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                               }`}
                             >
+                              {isPersistent && <Flame className="h-3 w-3 text-purple-600" />}
                               {sig}
                             </span>
                           )
@@ -888,16 +1015,16 @@ export default function TorreControle() {
 
               {filteredEmails.length === 0 && !loading && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-10 text-xs text-slate-400">
-                    Nenhum e-mail encontrado na Torre de Controle com os filtros selecionados.
+                  <TableCell colSpan={10} className="text-center py-10 text-xs text-slate-400">
+                    Nenhuma conversa encontrada na Torre de Controle com os filtros selecionados.
                   </TableCell>
                 </TableRow>
               )}
 
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-10 text-xs text-slate-400">
-                    Carregando fila da Torre de Controle...
+                  <TableCell colSpan={10} className="text-center py-10 text-xs text-slate-400">
+                    Carregando conversas da Torre de Controle...
                   </TableCell>
                 </TableRow>
               )}

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-09T17:24:51.056Z",
+  "generatedAt": "2026-10-09T17:43:34.175Z",
   "collections": [
     {
       "name": "users",
@@ -2798,6 +2798,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "weight_persistent_client",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -2989,6 +2995,37 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "thread_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "thread_root",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "control_tower_emails"
+        },
+        {
+          "name": "message_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_thread_child",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "last_message_at",
+          "type": "date",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -2997,7 +3034,9 @@
         "CREATE INDEX idx_cte_assigned ON control_tower_emails (assigned_to)",
         "CREATE INDEX idx_cte_external_msg ON control_tower_emails (external_message_id)",
         "CREATE INDEX idx_cte_received ON control_tower_emails (received_at DESC)",
-        "CREATE INDEX `idx_cte_status_deadline` ON `control_tower_emails` (status, sla_deadline)"
+        "CREATE INDEX `idx_cte_status_deadline` ON `control_tower_emails` (status, sla_deadline)",
+        "CREATE INDEX `idx_cte_thread_id` ON `control_tower_emails` (thread_id)",
+        "CREATE INDEX `idx_cte_thread_root` ON `control_tower_emails` (thread_root)"
       ]
     }
   ]

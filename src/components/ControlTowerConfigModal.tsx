@@ -40,6 +40,7 @@ export function ControlTowerConfigModal({
   const [wDeadline, setWDeadline] = useState(20)
   const [wComplaint, setWComplaint] = useState(40)
   const [wRepeat, setWRepeat] = useState(15)
+  const [wPersistent, setWPersistent] = useState(20)
 
   // Thresholds
   const [thP1, setThP1] = useState(60)
@@ -65,6 +66,7 @@ export function ControlTowerConfigModal({
       setWDeadline(config.weight_promised_deadline ?? 20)
       setWComplaint(config.weight_formal_complaint ?? 40)
       setWRepeat(config.weight_repeat_contact ?? 15)
+      setWPersistent(config.weight_persistent_client ?? 20)
       setThP1(config.score_threshold_p1 ?? 60)
       setThP2(config.score_threshold_p2 ?? 30)
       setHoursStart(config.business_hours_start || '08:00')
@@ -101,6 +103,7 @@ export function ControlTowerConfigModal({
         weight_promised_deadline: Number(wDeadline),
         weight_formal_complaint: Number(wComplaint),
         weight_repeat_contact: Number(wRepeat),
+        weight_persistent_client: Number(wPersistent),
         score_threshold_p1: Number(thP1),
         score_threshold_p2: Number(thP2),
         business_hours_start: hoursStart.trim(),
@@ -257,6 +260,24 @@ export function ControlTowerConfigModal({
                   onChange={(e) => setWHourInbox(Number(e.target.value))}
                   className="h-8 text-xs mt-1"
                 />
+              </div>
+              <div className="sm:col-span-2">
+                <Label className="text-[11px] text-indigo-700 font-bold">
+                  Cliente Insistente / Thread com Múltiplas Mensagens (+ pontos por reincidência na
+                  mesma conversa)
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={wPersistent}
+                  onChange={(e) => setWPersistent(Number(e.target.value))}
+                  className="h-8 text-xs mt-1 border-indigo-300"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Adiciona bônus ao score quando o cliente envia mensagens de cobrança/follow-up na
+                  mesma thread ativa.
+                </p>
               </div>
             </div>
           </div>
