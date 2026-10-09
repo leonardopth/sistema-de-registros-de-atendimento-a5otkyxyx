@@ -203,13 +203,68 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
 
   function parseStringList(val) {
     if (!val) return []
-    if (Array.isArray(val)) return val
+    // Caso especial: array de números (bytes UTF-8 numéricos de JSON)
+    if (Array.isArray(val)) {
+      if (val.length === 0) return []
+      if (typeof val[0] === 'number') {
+        var nonZero = []
+        for (var n = 0; n < val.length; n++) {
+          if (val[n] !== 0) nonZero.push(val[n])
+        }
+        try {
+          var str = ''
+          for (var b = 0; b < nonZero.length; b++) {
+            str += String.fromCharCode(nonZero[b])
+          }
+          if (str) return parseStringList(str)
+        } catch (_) {}
+      }
+      var cleanArr = []
+      for (var a = 0; a < val.length; a++) {
+        var item = val[a]
+        if (typeof item === 'string') {
+          var trimmedItem = item.replace(/[\u0000-\u001F\u007F-\u009F]/g, '').trim()
+          if (trimmedItem) {
+            if (
+              trimmedItem.indexOf('[') === 0 &&
+              trimmedItem.lastIndexOf(']') === trimmedItem.length - 1
+            ) {
+              try {
+                var inner = JSON.parse(trimmedItem)
+                var sub = parseStringList(inner)
+                for (var s = 0; s < sub.length; s++) {
+                  if (cleanArr.indexOf(sub[s]) === -1) cleanArr.push(sub[s])
+                }
+                continue
+              } catch (_) {}
+            }
+            if (cleanArr.indexOf(trimmedItem) === -1) cleanArr.push(trimmedItem)
+          }
+        } else if (item && typeof item === 'object') {
+          var lbl =
+            item.label ||
+            item.name ||
+            item.type ||
+            item.signal ||
+            item.title ||
+            item.detail ||
+            item.text
+          if (lbl && typeof lbl === 'string') {
+            var cLbl = lbl.replace(/[\u0000-\u001F\u007F-\u009F]/g, '').trim()
+            if (cLbl && cleanArr.indexOf(cLbl) === -1) cleanArr.push(cLbl)
+          }
+        }
+      }
+      return cleanArr
+    }
     if (typeof val === 'string') {
+      var cleanedStr = val.replace(/[\u0000-\u001F\u007F-\u009F]/g, '').trim()
+      if (!cleanedStr) return []
       try {
-        var parsed = JSON.parse(val)
-        if (Array.isArray(parsed)) return parsed
+        var parsed = JSON.parse(cleanedStr)
+        if (Array.isArray(parsed)) return parseStringList(parsed)
       } catch (_) {}
-      return [val.trim()]
+      return [cleanedStr]
     }
     return []
   }
@@ -625,13 +680,67 @@ routerAdd(
 
     function parseStringList(val) {
       if (!val) return []
-      if (Array.isArray(val)) return val
+      if (Array.isArray(val)) {
+        if (val.length === 0) return []
+        if (typeof val[0] === 'number') {
+          var nonZero = []
+          for (var n = 0; n < val.length; n++) {
+            if (val[n] !== 0) nonZero.push(val[n])
+          }
+          try {
+            var str = ''
+            for (var b = 0; b < nonZero.length; b++) {
+              str += String.fromCharCode(nonZero[b])
+            }
+            if (str) return parseStringList(str)
+          } catch (_) {}
+        }
+        var cleanArr = []
+        for (var a = 0; a < val.length; a++) {
+          var item = val[a]
+          if (typeof item === 'string') {
+            var trimmedItem = item.replace(/[\u0000-\u001F\u007F-\u009F]/g, '').trim()
+            if (trimmedItem) {
+              if (
+                trimmedItem.indexOf('[') === 0 &&
+                trimmedItem.lastIndexOf(']') === trimmedItem.length - 1
+              ) {
+                try {
+                  var inner = JSON.parse(trimmedItem)
+                  var sub = parseStringList(inner)
+                  for (var s = 0; s < sub.length; s++) {
+                    if (cleanArr.indexOf(sub[s]) === -1) cleanArr.push(sub[s])
+                  }
+                  continue
+                } catch (_) {}
+              }
+              if (cleanArr.indexOf(trimmedItem) === -1) cleanArr.push(trimmedItem)
+            }
+          } else if (item && typeof item === 'object') {
+            var lbl =
+              item.label ||
+              item.name ||
+              item.type ||
+              item.signal ||
+              item.title ||
+              item.detail ||
+              item.text
+            if (lbl && typeof lbl === 'string') {
+              var cLbl = lbl.replace(/[\u0000-\u001F\u007F-\u009F]/g, '').trim()
+              if (cLbl && cleanArr.indexOf(cLbl) === -1) cleanArr.push(cLbl)
+            }
+          }
+        }
+        return cleanArr
+      }
       if (typeof val === 'string') {
+        var cleanedStr = val.replace(/[\u0000-\u001F\u007F-\u009F]/g, '').trim()
+        if (!cleanedStr) return []
         try {
-          var parsed = JSON.parse(val)
-          if (Array.isArray(parsed)) return parsed
+          var parsed = JSON.parse(cleanedStr)
+          if (Array.isArray(parsed)) return parseStringList(parsed)
         } catch (_) {}
-        return [val.trim()]
+        return [cleanedStr]
       }
       return []
     }
@@ -794,14 +903,7 @@ routerAdd(
           } catch (_) {}
         }
 
-        var sigs = []
-        var rawSig = m.get('detected_signals')
-        if (Array.isArray(rawSig)) sigs = rawSig
-        else if (typeof rawSig === 'string') {
-          try {
-            sigs = JSON.parse(rawSig)
-          } catch (_) {}
-        }
+        var sigs = parseStringList(m.get('detected_signals'))
 
         result.push({
           id: m.id,
@@ -1328,14 +1430,7 @@ routerAdd(
         var threadId = foundThreadRoot.getString('thread_id') || 'th_' + foundThreadRoot.id
 
         // Mesclar sinais da nova mensagem na thread raiz
-        var rootSigs = []
-        var rawRootSig = foundThreadRoot.get('detected_signals')
-        if (Array.isArray(rawRootSig)) rootSigs = rawRootSig
-        else if (typeof rawRootSig === 'string') {
-          try {
-            rootSigs = JSON.parse(rawRootSig)
-          } catch (_) {}
-        }
+        var rootSigs = parseStringList(foundThreadRoot.get('detected_signals'))
 
         for (var s = 0; s < sigRes.signals.length; s++) {
           if (rootSigs.indexOf(sigRes.signals[s]) === -1) {

@@ -115,7 +115,11 @@ export function ControlTowerDetailModal({
             : 'bg-emerald-50 text-emerald-700 border-emerald-200'
 
   const analyzedSignals = getAnalyzedSignals(email.detected_signals)
-  const dates = Array.isArray(email.detected_dates) ? email.detected_dates : []
+  const dates = Array.isArray(email.detected_dates)
+    ? email.detected_dates.filter((d): d is string => typeof d === 'string' && d.trim().length > 0)
+    : typeof email.detected_dates === 'string'
+      ? normalizeSignals(email.detected_dates)
+      : []
   const isAssignedToMe = Boolean(email.assigned_to && email.assigned_to === currentUserId)
   const totalThreadCount = Math.max(email.message_count || 1, threadMessages.length || 1)
 
@@ -333,7 +337,7 @@ export function ControlTowerDetailModal({
                 {threadMessages.map((msg, index) => {
                   const isExpanded = expandedMsgIds[msg.id] ?? true
                   const isRoot = !msg.is_thread_child
-                  const msgSigs = normalizeSignals(msg.detected_signals)
+                  const msgSigs = getAnalyzedSignals(msg.detected_signals)
 
                   return (
                     <div
@@ -388,13 +392,39 @@ export function ControlTowerDetailModal({
 
                       {/* Corpo expandido da mensagem */}
                       {isExpanded && (
-                        <div className="p-3 text-slate-800 text-xs font-mono whitespace-pre-wrap leading-relaxed bg-white">
+                        <div className="p-3 text-slate-800 text-xs font-mono whitespace-pre-wrap leading-relaxed bg-white space-y-2">
                           <p className="font-sans font-semibold text-[11px] text-slate-600 mb-1">
                             Assunto original: {msg.subject || '(Sem assunto)'}
                           </p>
                           <div className="p-2 bg-slate-50 rounded border border-slate-100 text-slate-800">
                             {msg.body_snippet || '(Sem conteúdo disponível)'}
                           </div>
+
+                          {/* Chips de sinais detectados na mensagem individual */}
+                          {msgSigs.length > 0 && (
+                            <div className="pt-1.5 flex flex-wrap gap-1 items-center font-sans">
+                              <span className="text-[10px] text-slate-400 font-semibold mr-1">
+                                Sinais:
+                              </span>
+                              {msgSigs.map((sig, sIdx) => (
+                                <span
+                                  key={sIdx}
+                                  className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                    sig.isPersistent
+                                      ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                      : sig.isRed
+                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                        : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                  }`}
+                                >
+                                  {sig.isPersistent && (
+                                    <Flame className="h-3 w-3 text-purple-600" />
+                                  )}
+                                  {sig.label}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
