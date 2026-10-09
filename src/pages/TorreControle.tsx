@@ -38,6 +38,7 @@ import { ControlTowerDetailModal } from '@/components/ControlTowerDetailModal'
 import { ControlTowerAssignModal } from '@/components/ControlTowerAssignModal'
 import { ControlTowerAgentLoadCard } from '@/components/ControlTowerAgentLoadCard'
 import { SlaCountdownBadge, computeSlaStatus } from '@/components/SlaCountdownBadge'
+import { getAnalyzedSignals } from '@/lib/control-tower-signals'
 import {
   SlidersHorizontal,
   RefreshCw,
@@ -779,7 +780,7 @@ export default function TorreControle() {
                       ? 'bg-amber-50 text-amber-700 border-amber-300'
                       : 'bg-emerald-50 text-emerald-700 border-emerald-300'
 
-                const signals = Array.isArray(item.detected_signals) ? item.detected_signals : []
+                const analyzedSignals = getAnalyzedSignals(item.detected_signals)
                 const isAssignedToMe = Boolean(item.assigned_to && item.assigned_to === user?.id)
                 const isEscalated = item.status === 'Escalado'
                 const slaInfo = computeSlaStatus(item.sla_deadline, item.status)
@@ -868,27 +869,24 @@ export default function TorreControle() {
                     {/* Sinais em Chips */}
                     <TableCell className="align-middle">
                       <div className="flex flex-wrap gap-1 max-w-[240px]">
-                        {signals.map((sig, sIdx) => {
-                          const isRed =
-                            sig.includes('24h') || sig.includes('Formal') || sig.includes('VIP')
-                          const isPersistent = sig.includes('insistente')
+                        {analyzedSignals.map((sigObj, sIdx) => {
                           return (
                             <span
                               key={sIdx}
                               className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                                isPersistent
+                                sigObj.isPersistent
                                   ? 'bg-purple-100 text-purple-800 border-purple-300'
-                                  : isRed
+                                  : sigObj.isRed
                                     ? 'bg-rose-50 text-rose-700 border-rose-200'
                                     : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                               }`}
                             >
-                              {isPersistent && <Flame className="h-3 w-3 text-purple-600" />}
-                              {sig}
+                              {sigObj.isPersistent && <Flame className="h-3 w-3 text-purple-600" />}
+                              {sigObj.label}
                             </span>
                           )
                         })}
-                        {signals.length === 0 && (
+                        {analyzedSignals.length === 0 && (
                           <span className="text-[11px] text-slate-400">—</span>
                         )}
                       </div>

@@ -50,7 +50,7 @@ export interface ControlTowerEmailRecord {
   client?: string
   reservation_number?: string
   detected_dates?: string[]
-  detected_signals?: string[]
+  detected_signals?: unknown
   score: number
   priority: ControlTowerPriority
   status: ControlTowerStatus

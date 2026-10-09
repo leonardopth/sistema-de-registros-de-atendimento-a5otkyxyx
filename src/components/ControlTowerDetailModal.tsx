@@ -12,6 +12,7 @@ import { ControlTowerEmailRecord, ControlTowerStatus } from '@/types/control_tow
 import { formatGMT3DateTime } from '@/lib/timezone'
 import { SlaCountdownBadge } from '@/components/SlaCountdownBadge'
 import { getServiceGroupLabel } from '@/lib/service-groups'
+import { getAnalyzedSignals, normalizeSignals } from '@/lib/control-tower-signals'
 import { getThreadMessages } from '@/services/control_tower'
 import {
   Mail,
@@ -113,7 +114,7 @@ export function ControlTowerDetailModal({
             ? 'bg-rose-50 text-rose-700 border-rose-200'
             : 'bg-emerald-50 text-emerald-700 border-emerald-200'
 
-  const signals = Array.isArray(email.detected_signals) ? email.detected_signals : []
+  const analyzedSignals = getAnalyzedSignals(email.detected_signals)
   const dates = Array.isArray(email.detected_dates) ? email.detected_dates : []
   const isAssignedToMe = Boolean(email.assigned_to && email.assigned_to === currentUserId)
   const totalThreadCount = Math.max(email.message_count || 1, threadMessages.length || 1)
@@ -265,24 +266,19 @@ export function ControlTowerDetailModal({
               Sinais e Regras Detectadas na Conversa
             </span>
             <div className="flex flex-wrap gap-1.5">
-              {signals.length > 0 ? (
-                signals.map((sig, idx) => {
-                  const isCritical =
-                    sig.includes('24h') ||
-                    sig.includes('Formal') ||
-                    sig.includes('VIP') ||
-                    sig.includes('insistente')
+              {analyzedSignals.length > 0 ? (
+                analyzedSignals.map((sigObj, idx) => {
                   return (
                     <span
                       key={idx}
                       className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                        isCritical
+                        sigObj.isRed || sigObj.isPersistent
                           ? 'bg-rose-50 text-rose-700 border-rose-200'
                           : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                       }`}
                     >
-                      {sig.includes('insistente') && <Flame className="h-3 w-3 text-rose-500" />}
-                      {sig}
+                      {sigObj.isPersistent && <Flame className="h-3 w-3 text-rose-500" />}
+                      {sigObj.label}
                     </span>
                   )
                 })
@@ -337,7 +333,7 @@ export function ControlTowerDetailModal({
                 {threadMessages.map((msg, index) => {
                   const isExpanded = expandedMsgIds[msg.id] ?? true
                   const isRoot = !msg.is_thread_child
-                  const msgSigs = Array.isArray(msg.detected_signals) ? msg.detected_signals : []
+                  const msgSigs = normalizeSignals(msg.detected_signals)
 
                   return (
                     <div
