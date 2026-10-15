@@ -64,7 +64,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Atendimentos & Colaboradores',
     items: [
       { label: 'Dashboard', to: '/', icon: LayoutDashboard, visible: () => true },
-      { label: 'Novo Atendimento', to: '/novo-atendimento', icon: Headset, visible: () => true },
       { label: 'Atendimentos', to: '/atendimentos', icon: ClipboardList, visible: () => true },
       {
         label: 'Fila & Backlog',
