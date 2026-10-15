@@ -4,11 +4,11 @@
 // 3. Rota POST /backend/v1/gamification/close-month e Cron de início de mês
 
 routerAdd('POST', '/backend/v1/gamification/close-month', (c) => {
-  var info = c.requestInfo()
-  var authRecord = info.authRecord
+  var authRecord = c.auth
   if (!authRecord) {
     return c.json(401, { error: 'Não autenticado' })
   }
+  var info = c.requestInfo()
 
   var data = {}
   try {

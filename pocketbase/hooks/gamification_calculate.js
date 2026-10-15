@@ -1186,11 +1186,11 @@ onRecordAfterUpdateSuccess((e) => {
 
 // Rota POST para recalcular gamificação
 routerAdd('POST', '/backend/v1/gamification/recalculate', (c) => {
-  var info = c.requestInfo()
-  var authRecord = info.authRecord
+  var authRecord = c.auth
   if (!authRecord) {
     return c.json(401, { error: 'Não autenticado' })
   }
+  var info = c.requestInfo()
 
   function getLevelForXp(xp) {
     if (xp >= 2000) return 'Master'

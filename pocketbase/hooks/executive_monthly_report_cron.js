@@ -724,11 +724,12 @@ routerAdd(
   'POST',
   '/backend/v1/reports/executive-monthly-send',
   function (c) {
-    var info = c.requestInfo()
-    var authRecord = info.authRecord
+    var authRecord = c.auth
     if (!authRecord) {
       return c.json(401, { error: 'Não autenticado' })
     }
+
+    var info = c.requestInfo()
 
     var role = authRecord.getString('role') || ''
     var masterAccess = authRecord.getBool('master_access')
@@ -1490,11 +1491,12 @@ routerAdd(
   'GET',
   '/backend/v1/reports/executive-monthly-data',
   function (c) {
-    var info = c.requestInfo()
-    var authRecord = info.authRecord
+    var authRecord = c.auth
     if (!authRecord) {
       return c.json(401, { error: 'Não autenticado' })
     }
+
+    var info = c.requestInfo()
 
     var role = authRecord.getString('role') || ''
     var masterAccess = authRecord.getBool('master_access')
