@@ -592,14 +592,6 @@ export default function Index() {
             >
               <Zap className="h-4 w-4 mr-1.5" /> Registro Expresso
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/novo-atendimento')}
-              className="h-9"
-            >
-              <PlusCircle className="h-4 w-4 mr-1.5" /> Novo Atendimento
-            </Button>
           </div>
         </div>
 

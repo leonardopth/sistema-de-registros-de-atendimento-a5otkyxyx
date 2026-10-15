@@ -15,7 +15,7 @@ import { SlaCountdownBadge } from '@/components/SlaCountdownBadge'
 import { getServiceGroupLabel } from '@/lib/service-groups'
 import { getAnalyzedSignals, normalizeSignals } from '@/lib/control-tower-signals'
 import { getThreadMessages } from '@/services/control_tower'
-import { pb } from '@/lib/pocketbase/client'
+import pb from '@/lib/pocketbase/client'
 import {
   Mail,
   Clock,
