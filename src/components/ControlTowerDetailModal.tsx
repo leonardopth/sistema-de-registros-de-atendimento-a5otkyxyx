@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import { SlaCountdownBadge } from '@/components/SlaCountdownBadge'
 import { getServiceGroupLabel } from '@/lib/service-groups'
 import { getAnalyzedSignals, normalizeSignals } from '@/lib/control-tower-signals'
 import { getThreadMessages } from '@/services/control_tower'
+import { pb } from '@/lib/pocketbase/client'
 import {
   Mail,
   Clock,
@@ -30,6 +32,8 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
+  Headphones,
 } from 'lucide-react'
 
 interface ControlTowerDetailModalProps {
@@ -55,18 +59,23 @@ export function ControlTowerDetailModal({
   onAssignToMe,
   currentUserId,
 }: ControlTowerDetailModalProps) {
+  const navigate = useNavigate()
   const [threadMessages, setThreadMessages] = useState<ControlTowerEmailRecord[]>([])
   const [loadingThread, setLoadingThread] = useState(false)
   const [expandedMsgIds, setExpandedMsgIds] = useState<Record<string, boolean>>({})
+  const [linkedServiceRecordId, setLinkedServiceRecordId] = useState<string | null>(null)
+  const [checkingAttendance, setCheckingAttendance] = useState(false)
 
   useEffect(() => {
     if (!email || !open) {
       setThreadMessages([])
+      setLinkedServiceRecordId(null)
       return
     }
 
     const tId = email.thread_id || email.id
     setLoadingThread(true)
+    setCheckingAttendance(true)
 
     getThreadMessages(tId)
       .then((msgs) => {
@@ -92,6 +101,34 @@ export function ControlTowerDetailModal({
       .finally(() => {
         setLoadingThread(false)
       })
+
+    // Checar vínculo com Atendimento existente
+    const checkLink = async () => {
+      try {
+        if (email.service_record) {
+          setLinkedServiceRecordId(email.service_record)
+          return
+        }
+        const filterStr = email.thread_id
+          ? `thread_id = '${email.thread_id}' || control_tower_email = '${email.id}'`
+          : `control_tower_email = '${email.id}'`
+
+        const list = await pb.collection('service_records').getList(1, 1, {
+          filter: filterStr,
+          sort: '-created',
+        })
+        if (list.items && list.items.length > 0) {
+          setLinkedServiceRecordId(list.items[0].id)
+        } else {
+          setLinkedServiceRecordId(null)
+        }
+      } catch (_) {
+        setLinkedServiceRecordId(null)
+      } finally {
+        setCheckingAttendance(false)
+      }
+    }
+    checkLink()
   }, [email, open])
 
   if (!email) return null
@@ -181,6 +218,55 @@ export function ControlTowerDetailModal({
         </DialogHeader>
 
         <div className="space-y-4 py-2 text-xs">
+          {/* Vínculo com Atendimento (Porta de Entrada da Operação) */}
+          <div className="p-3 bg-gradient-to-r from-indigo-50/80 via-white to-blue-50/80 border border-indigo-200 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-indigo-600 text-white rounded-md shrink-0">
+                <Headphones className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-indigo-700 tracking-wider block">
+                  Operação Integrada • Atendimento Vinculado
+                </span>
+                {checkingAttendance ? (
+                  <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
+                    Verificando vínculo com Atendimentos...
+                  </p>
+                ) : linkedServiceRecordId ? (
+                  <p className="text-xs font-semibold text-slate-800 mt-0.5 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    Atendimento{' '}
+                    <span className="font-mono text-indigo-700">
+                      #{linkedServiceRecordId.substring(0, 8)}
+                    </span>{' '}
+                    gerado via Torre
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Ao assumir esta conversa, o atendimento será{' '}
+                    <strong>criado automaticamente</strong> em Atendimentos com a origem{' '}
+                    <em>"E-mail (Torre)"</em>.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {linkedServiceRecordId && (
+              <Button
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-7 text-xs shrink-0 shadow-xs"
+                onClick={() => {
+                  onOpenChange(false)
+                  navigate(`/atendimentos?id=${linkedServiceRecordId}`)
+                }}
+              >
+                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                Abrir Atendimento
+              </Button>
+            )}
+          </div>
+
           {/* Metadados da Conversa e Caixa Compartilhada */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
             <div>
@@ -494,13 +580,13 @@ export function ControlTowerDetailModal({
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">
-          <div>
+          <div className="flex items-center gap-2">
             {!isAssignedToMe ? (
               <Button
                 size="sm"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs"
-                onClick={() => {
-                  onAssignToMe(email.id)
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs shadow-xs"
+                onClick={async () => {
+                  await onAssignToMe(email.id)
                   onOpenChange(false)
                 }}
               >
@@ -512,8 +598,28 @@ export function ControlTowerDetailModal({
                 <CheckCircle2 className="h-4 w-4" /> Atribuído a você
               </span>
             )}
+
+            {linkedServiceRecordId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs font-semibold text-indigo-700 border-indigo-300 hover:bg-indigo-50"
+                onClick={() => {
+                  onOpenChange(false)
+                  navigate(`/atendimentos?id=${linkedServiceRecordId}`)
+                }}
+              >
+                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                Ver Atendimento
+              </Button>
+            )}
           </div>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => onOpenChange(false)}
+          >
             Fechar
           </Button>
         </DialogFooter>

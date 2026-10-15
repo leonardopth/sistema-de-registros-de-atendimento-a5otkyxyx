@@ -104,7 +104,13 @@ export async function updateControlTowerEmailStatus(
 export async function assignControlTowerEmail(
   emailId: string,
   userId?: string,
-): Promise<{ success: boolean; record_id: string; assigned_to: string; status: string }> {
+): Promise<{
+  success: boolean
+  record_id: string
+  assigned_to: string
+  status: string
+  service_record_id?: string | null
+}> {
   return await pb.send('/backend/v1/control-tower/assign', {
     method: 'POST',
     body: JSON.stringify({ email_id: emailId, user_id: userId }),

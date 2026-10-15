@@ -71,15 +71,16 @@ export interface ControlTowerEmailRecord {
   message_count?: number
   is_thread_child?: boolean
   last_message_at?: string
+  service_record?: string
   created: string
   updated: string
   expand?: {
     client?: ClientRecord
     assigned_to?: UserRecord
-    thread_root?: ControlTowerEmailRecord
+    email_analysis_log?: Record<string, unknown>
+    service_record?: Record<string, unknown>
   }
 }
-
 export interface ControlTowerFilters {
   search?: string
   priority?: ControlTowerPriority | 'Todas'

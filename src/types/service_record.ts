@@ -13,6 +13,8 @@ export type { ContactReason } from '@/constants/contactReasons'
 
 export type ServiceChannel = 'Telefone' | 'e-mail' | 'whatsapp' | 'comercial' | 'outros'
 
+export type ServiceOrigin = 'Manual' | 'E-mail (Torre)'
+
 export type ServicePriority = 'Baixa' | 'Média' | 'Alta'
 
 export type ServiceStatus = 'Aberto' | 'Em Andamento' | 'Concluído' | 'Cancelado'
@@ -109,12 +111,17 @@ export interface ServiceRecord {
   backlog_alert_2h_sent?: boolean
   backlog_alert_24h_sent?: boolean
   tfr_alert_sent?: boolean
+  origin?: ServiceOrigin | string
+  control_tower_email?: string
+  thread_id?: string
+  control_tower_inbox?: string
   expand?: {
     account_executive?: AccountExecutiveRecord
     client?: ClientRecord
     agent?: AgentRecord
     assigned_user?: UserRecord
     user_id?: UserRecord
+    control_tower_email?: Record<string, unknown>
   }
 }
 

@@ -1579,6 +1579,111 @@ routerAdd(
   $apis.requireAuth(),
 )
 
+// 4.1 Hook para sincronizar status de service_records e control_tower_emails bidirecionalmente
+onRecordAfterUpdateSuccess((e) => {
+  e.next()
+  var rec = e.record
+  var newStatus = rec.getString('status')
+  var oldStatus = ''
+  try {
+    oldStatus = rec.original().getString('status')
+  } catch (_) {}
+
+  // Quando um atendimento vinculado é Concluído, resolver os e-mails da Torre correspondentes
+  if (newStatus === 'Concluído' && oldStatus !== 'Concluído') {
+    try {
+      var cteId = rec.getString('control_tower_email')
+      var thId = rec.getString('thread_id')
+      var nowIso = new Date().toISOString()
+
+      if (thId) {
+        var threadEmails = $app.findRecordsByFilter(
+          'control_tower_emails',
+          "thread_id = '" + thId + "' && status != 'Resolvido'",
+          '',
+          100,
+          0,
+        )
+        for (var i = 0; i < threadEmails.length; i++) {
+          var te = threadEmails[i]
+          te.set('status', 'Resolvido')
+          if (!te.getString('resolved_at')) te.set('resolved_at', nowIso)
+          $app.save(te)
+        }
+      } else if (cteId) {
+        try {
+          var emRec = $app.findRecordById('control_tower_emails', cteId)
+          if (emRec.getString('status') !== 'Resolvido') {
+            emRec.set('status', 'Resolvido')
+            if (!emRec.getString('resolved_at')) emRec.set('resolved_at', nowIso)
+            $app.save(emRec)
+          }
+        } catch (_) {}
+      }
+    } catch (syncErr) {
+      $app
+        .logger()
+        .error(
+          'Erro ao sincronizar resolução de service_record -> control_tower_emails: ' +
+            String(syncErr),
+        )
+    }
+  }
+}, 'service_records')
+
+// Quando um e-mail da torre é atualizado para 'Resolvido', se tiver atendimento vinculado em andamento/aberto, concluí-lo
+onRecordAfterUpdateSuccess((e) => {
+  e.next()
+  var rec = e.record
+  var newStatus = rec.getString('status')
+  var oldStatus = ''
+  try {
+    oldStatus = rec.original().getString('status')
+  } catch (_) {}
+
+  if (newStatus === 'Resolvido' && oldStatus !== 'Resolvido') {
+    try {
+      var srId = rec.getString('service_record')
+      var thId = rec.getString('thread_id')
+      var nowIso = new Date().toISOString()
+
+      var targetSr = null
+      if (srId) {
+        try {
+          targetSr = $app.findRecordById('service_records', srId)
+        } catch (_) {}
+      }
+      if (!targetSr && thId) {
+        try {
+          var srs = $app.findRecordsByFilter(
+            'service_records',
+            "thread_id = '" + thId + "'",
+            '-created',
+            1,
+            0,
+          )
+          if (srs && srs.length > 0) targetSr = srs[0]
+        } catch (_) {}
+      }
+
+      if (targetSr && targetSr.getString('status') !== 'Concluído') {
+        targetSr.set('status', 'Concluído')
+        if (!targetSr.getString('end_time')) {
+          targetSr.set('end_time', nowIso)
+        }
+        $app.save(targetSr)
+      }
+    } catch (syncSrErr) {
+      $app
+        .logger()
+        .error(
+          'Erro ao sincronizar resolução de control_tower_emails -> service_records: ' +
+            String(syncSrErr),
+        )
+    }
+  }
+}, 'control_tower_emails')
+
 // 4. Endpoint para assumir ou atribuir ownership (aplicado à thread inteira)
 routerAdd(
   'POST',
@@ -1729,7 +1834,7 @@ routerAdd(
       $app.save(record)
 
       // Se este record tiver thread_id, atualizar também as mensagens filhas da mesma thread
-      var threadId = record.getString('thread_id')
+      var threadId = record.getString('thread_id') || 'th_' + record.id
       if (threadId) {
         try {
           var children = $app.findRecordsByFilter(
@@ -1757,12 +1862,190 @@ routerAdd(
         } catch (_) {}
       }
 
+      // -------------------------------------------------------------
+      // VÍNCULO AUTOMÁTICO COM REGISTRO DE ATENDIMENTO (PORTA DE ENTRADA)
+      // Se houver targetUserId e não houver atendimento vinculado à conversa,
+      // cria automaticamente um novo atendimento com origem "E-mail (Torre)".
+      // Se já houver vínculo (por service_record no e-mail ou por thread_id), reutiliza (idempotente).
+      // -------------------------------------------------------------
+      var linkedServiceRecordId = record.getString('service_record')
+      var srRecord = null
+      var srCol = $app.findCollectionByNameOrId('service_records')
+
+      if (targetUserId) {
+        // 1. Tentar encontrar atendimento existente vinculado
+        if (linkedServiceRecordId) {
+          try {
+            srRecord = $app.findRecordById('service_records', linkedServiceRecordId)
+          } catch (_) {
+            linkedServiceRecordId = ''
+          }
+        }
+
+        if (!srRecord && threadId) {
+          try {
+            var existingSrs = $app.findRecordsByFilter(
+              'service_records',
+              "thread_id = '" + threadId + "'",
+              '-created',
+              1,
+              0,
+            )
+            if (existingSrs && existingSrs.length > 0) {
+              srRecord = existingSrs[0]
+              linkedServiceRecordId = srRecord.id
+            }
+          } catch (_) {}
+        }
+
+        if (!srRecord) {
+          try {
+            var existingByEmail = $app.findRecordsByFilter(
+              'service_records',
+              "control_tower_email = '" + record.id + "'",
+              '-created',
+              1,
+              0,
+            )
+            if (existingByEmail && existingByEmail.length > 0) {
+              srRecord = existingByEmail[0]
+              linkedServiceRecordId = srRecord.id
+            }
+          } catch (_) {}
+        }
+
+        // 2. Se não existir, criar um novo atendimento pré-preenchido
+        if (!srRecord) {
+          try {
+            srRecord = new Record(srCol)
+
+            // Buscar dados do usuário atribuído para preencher assigned_agent e user_id
+            var assignedUserName = ''
+            try {
+              var uRec = $app.findRecordById('users', targetUserId)
+              assignedUserName = uRec.getString('name') || uRec.getString('email') || ''
+            } catch (_) {}
+
+            // Buscar dados da empresa/cliente se vinculado
+            var clientId = record.getString('client')
+            var clientName = record.getString('sender_name') || ''
+            var clientCompany = ''
+            var clientEmail = record.getString('sender_email') || ''
+            if (clientId) {
+              try {
+                var clRec = $app.findRecordById('clients', clientId)
+                if (!clientName) clientName = clRec.getString('name')
+                clientCompany = clRec.getString('company') || ''
+                if (!clientEmail) clientEmail = clRec.getString('email')
+              } catch (_) {}
+            }
+            if (!clientName) {
+              clientName = clientEmail ? clientEmail.split('@')[0] : 'Contato via Torre'
+            }
+
+            // Mapear equipe para travel_type (Nacional / Internacional)
+            var teamVal = record.getString('team') || 'Nacional'
+            var travelTypeVal = teamVal === 'Internacional' ? 'Internacional' : 'Nacional'
+
+            // Mapear prioridade
+            var pVal = record.getString('priority')
+            var srPriority = pVal === 'P1' ? 'Alta' : pVal === 'P2' ? 'Média' : 'Baixa'
+
+            // Montar descrição com assunto e corpo da mensagem
+            var desc =
+              'E-mail recebido via Torre de Controle:\n' +
+              'Assunto: ' +
+              (record.getString('subject') || '(Sem assunto)') +
+              '\nDe: ' +
+              (record.getString('sender_name')
+                ? record.getString('sender_name') + ' <' + record.getString('sender_email') + '>'
+                : record.getString('sender_email')) +
+              '\nCaixa: ' +
+              (record.getString('inbox_address') || record.getString('service_group') || '') +
+              '\nNúcleo: ' +
+              (record.getString('service_group') || '') +
+              ' | Equipe: ' +
+              teamVal +
+              '\n\nMensagem:\n' +
+              (record.getString('body_snippet') || '(sem conteúdo textual)')
+
+            srRecord.set('user_id', targetUserId)
+            srRecord.set('assigned_user', targetUserId)
+            srRecord.set('assigned_agent', assignedUserName)
+            srRecord.set('origin', 'E-mail (Torre)')
+            srRecord.set('channel', 'e-mail')
+            srRecord.set('status', 'Em Andamento')
+            srRecord.set('priority', srPriority)
+            srRecord.set('travel_type', travelTypeVal)
+            srRecord.set('contact_reason', 'Outros')
+            srRecord.set('client', clientId || null)
+            srRecord.set('client_name', clientName)
+            srRecord.set('client_company', clientCompany)
+            srRecord.set('client_email', clientEmail)
+            srRecord.set('description', desc)
+            srRecord.set('control_tower_email', record.id)
+            srRecord.set('thread_id', threadId)
+            srRecord.set('control_tower_inbox', record.getString('inbox_address') || '')
+            srRecord.set('start_time', nowIso)
+
+            $app.save(srRecord)
+            linkedServiceRecordId = srRecord.id
+          } catch (createErr) {
+            $app
+              .logger()
+              .error(
+                'Falha ao criar service_record vinculado ao e-mail ' +
+                  record.id +
+                  ': ' +
+                  String(createErr),
+              )
+          }
+        } else {
+          // Atualizar o atendente se já existia
+          try {
+            if (srRecord.getString('assigned_user') !== targetUserId) {
+              srRecord.set('assigned_user', targetUserId)
+              var uRec2 = $app.findRecordById('users', targetUserId)
+              var uName2 = uRec2.getString('name') || uRec2.getString('email') || ''
+              if (uName2) srRecord.set('assigned_agent', uName2)
+              $app.save(srRecord)
+            }
+          } catch (_) {}
+        }
+
+        // 3. Salvar vínculo no registro de e-mail e nos irmãos da thread
+        if (linkedServiceRecordId) {
+          try {
+            record.set('service_record', linkedServiceRecordId)
+            $app.save(record)
+
+            if (threadId) {
+              var allThreadEmails = $app.findRecordsByFilter(
+                'control_tower_emails',
+                "thread_id = '" + threadId + "'",
+                '',
+                100,
+                0,
+              )
+              for (var t = 0; t < allThreadEmails.length; t++) {
+                var te = allThreadEmails[t]
+                if (te.getString('service_record') !== linkedServiceRecordId) {
+                  te.set('service_record', linkedServiceRecordId)
+                  $app.save(te)
+                }
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
       return e.json(200, {
         success: true,
         record_id: record.id,
         assigned_to: targetUserId,
         status: record.getString('status'),
         sla_deadline: record.getString('sla_deadline'),
+        service_record_id: linkedServiceRecordId || null,
       })
     } catch (err) {
       return e.badRequestError('Erro ao atribuir e-mail: ' + err)

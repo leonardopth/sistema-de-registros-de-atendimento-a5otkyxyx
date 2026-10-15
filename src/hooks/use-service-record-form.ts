@@ -572,6 +572,7 @@ export function useServiceRecordForm(
         contact_reason: contactReason as ContactReason,
         travel_type: travelType as TravelType,
         channel: channel || undefined,
+        origin: 'Manual',
         description: description.trim(),
         priority,
         status: overrideStatus || status,

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-09T19:02:50.146Z",
+  "generatedAt": "2026-10-15T17:08:35.616Z",
   "collections": [
     {
       "name": "users",
@@ -544,6 +544,32 @@
           "type": "bool",
           "required": false,
           "system": false
+        },
+        {
+          "name": "origin",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Manual", "E-mail (Torre)"]
+        },
+        {
+          "name": "control_tower_email",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "control_tower_emails"
+        },
+        {
+          "name": "thread_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "control_tower_inbox",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -555,7 +581,10 @@
         "CREATE INDEX `idx_sr_assigned_user` ON `service_records` (assigned_user)",
         "CREATE INDEX `idx_sr_exec` ON `service_records` (account_executive)",
         "CREATE INDEX `idx_sr_client` ON `service_records` (client)",
-        "CREATE INDEX `idx_sr_agent` ON `service_records` (agent)"
+        "CREATE INDEX `idx_sr_agent` ON `service_records` (agent)",
+        "CREATE INDEX `idx_sr_origin` ON `service_records` (origin)",
+        "CREATE INDEX `idx_sr_cte` ON `service_records` (control_tower_email)",
+        "CREATE INDEX `idx_sr_thread_id` ON `service_records` (thread_id)"
       ]
     },
     {
@@ -3038,6 +3067,13 @@
           "type": "date",
           "required": false,
           "system": false
+        },
+        {
+          "name": "service_record",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "service_records"
         }
       ],
       "indexes": [
@@ -3048,7 +3084,8 @@
         "CREATE INDEX idx_cte_received ON control_tower_emails (received_at DESC)",
         "CREATE INDEX `idx_cte_status_deadline` ON `control_tower_emails` (status, sla_deadline)",
         "CREATE INDEX `idx_cte_thread_id` ON `control_tower_emails` (thread_id)",
-        "CREATE INDEX `idx_cte_thread_root` ON `control_tower_emails` (thread_root)"
+        "CREATE INDEX `idx_cte_thread_root` ON `control_tower_emails` (thread_root)",
+        "CREATE INDEX `idx_cte_sr` ON `control_tower_emails` (service_record)"
       ]
     }
   ]
