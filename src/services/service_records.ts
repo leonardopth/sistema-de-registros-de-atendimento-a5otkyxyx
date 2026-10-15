@@ -368,7 +368,11 @@ export const getServiceRecord = async (id: string): Promise<ServiceRecord | null
 }
 
 export const createServiceRecord = async (data: Partial<ServiceRecord>): Promise<ServiceRecord> => {
-  return await pb.collection('service_records').create<ServiceRecord>(data)
+  const payload: Partial<ServiceRecord> = {
+    origin: 'Manual',
+    ...data,
+  }
+  return await pb.collection('service_records').create<ServiceRecord>(payload)
 }
 
 export const updateServiceRecord = async (
