@@ -602,7 +602,7 @@ cronAdd('executive_monthly_report_cron', '0 11 * * 1-5', function () {
       '<a href="' +
       panelLink +
       '" style="display:inline-block;padding:12px 28px;background:#4338ca;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;border-radius:6px;">Acessar Painel de Metas & Desempenho</a></div>' +
-      '<div style="border-top:1px solid #e2e8f0;padding-top:18px;text-align:center;font-size:11px;color:#94a3b8;">Sistema de Registros de Atendimento — Exportação automática mensal (Frente B4).</div>' +
+      '<div style="border-top:1px solid #e2e8f0;padding-top:18px;text-align:center;font-size:11px;color:#94a3b8;">HUB AI — Gestão de Atendimento &amp; Operação (Exportação automática mensal).</div>' +
       '</div></div></body></html>'
 
     var leadershipUsers = $app.findRecordsByFilter(
@@ -627,7 +627,7 @@ cronAdd('executive_monthly_report_cron', '0 11 * * 1-5', function () {
     }
 
     var senderAddress = 'noreply@rexturadvance.com.br'
-    var senderName = 'Sistema de Registros de Atendimento'
+    var senderName = 'HUB AI'
     try {
       if ($app.settings() && $app.settings().meta && $app.settings().meta.senderAddress) {
         senderAddress = $app.settings().meta.senderAddress
@@ -1328,7 +1328,7 @@ routerAdd(
       '<a href="' +
       panelLink +
       '" style="display:inline-block;padding:12px 28px;background:#4338ca;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;border-radius:6px;">Acessar Painel de Metas & Desempenho</a></div>' +
-      '<div style="border-top:1px solid #e2e8f0;padding-top:18px;text-align:center;font-size:11px;color:#94a3b8;">Sistema de Registros de Atendimento — Exportação automática mensal (Frente B4).</div>' +
+      '<div style="border-top:1px solid #e2e8f0;padding-top:18px;text-align:center;font-size:11px;color:#94a3b8;">HUB AI — Gestão de Atendimento &amp; Operação (Exportação automática mensal).</div>' +
       '</div></div></body></html>'
 
     var leadershipUsers = $app.findRecordsByFilter(
@@ -1362,7 +1362,7 @@ routerAdd(
     }
 
     var senderAddress = 'noreply@rexturadvance.com.br'
-    var senderName = 'Sistema de Registros de Atendimento'
+    var senderName = 'HUB AI'
     try {
       if ($app.settings() && $app.settings().meta && $app.settings().meta.senderAddress) {
         senderAddress = $app.settings().meta.senderAddress

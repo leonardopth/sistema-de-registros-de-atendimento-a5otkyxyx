@@ -132,7 +132,7 @@ onRecordAfterCreateSuccess((e) => {
         if (notifEnabled !== false && email && email.indexOf('@') > 0) {
           try {
             var senderAddress = 'noreply@rexturadvance.com.br'
-            var senderName = 'Sistema de Registros de Atendimento'
+            var senderName = 'HUB AI'
             try {
               if ($app.settings() && $app.settings().meta && $app.settings().meta.senderAddress) {
                 senderAddress = $app.settings().meta.senderAddress
@@ -222,7 +222,7 @@ onRecordAfterUpdateSuccess((e) => {
       if (notifEnabled !== false && email && email.indexOf('@') > 0) {
         try {
           var senderAddress = 'noreply@rexturadvance.com.br'
-          var senderName = 'Sistema de Registros de Atendimento'
+          var senderName = 'HUB AI'
           try {
             if ($app.settings() && $app.settings().meta && $app.settings().meta.senderAddress) {
               senderAddress = $app.settings().meta.senderAddress
@@ -249,7 +249,7 @@ onRecordAfterUpdateSuccess((e) => {
             '<div style="margin-top: 24px; text-align: center;">' +
             '<a href="' +
             link +
-            '" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; font-size: 13px; display: inline-block;">Ver Detalhes no Sistema</a>' +
+            '" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; font-size: 13px; display: inline-block;">Ver Detalhes no HUB AI</a>' +
             '</div>' +
             '</div></div></body></html>'
 

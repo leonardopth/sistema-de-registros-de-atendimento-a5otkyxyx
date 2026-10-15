@@ -33,7 +33,7 @@ interface TourStep {
 
 const TOUR_STEPS: TourStep[] = [
   {
-    title: 'Bem-vindo ao Sistema de Atendimentos!',
+    title: 'Bem-vindo ao HUB AI!',
     subtitle: 'Visão Geral & Dashboard',
     description:
       'A página inicial traz os indicadores-chave em tempo real: atendimentos do dia, alertas operacionais, fila de backlog, tendências e o mural de conquistas da equipe.',

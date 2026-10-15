@@ -48,7 +48,7 @@ onRecordAfterCreateSuccess((e) => {
       $app
         .mails()
         .send(
-          { address: 'noreply@rexturadvance.com.br', name: 'Sistema de Registros de Atendimento' },
+          { address: 'noreply@rexturadvance.com.br', name: 'HUB AI' },
           [{ address: masterEmail }],
           subject,
           htmlBody,

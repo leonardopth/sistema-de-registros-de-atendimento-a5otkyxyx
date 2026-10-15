@@ -262,8 +262,8 @@ export default function PublicCsat() {
 
       {/* Rodapé institucional */}
       <footer className="mt-8 text-center text-xs text-slate-400">
-        © {new Date().getFullYear()} Sistema de Atendimento. Todas as avaliações são sigilosas e
-        usadas para controle de qualidade.
+        © {new Date().getFullYear()} HUB AI. Todas as avaliações são sigilosas e usadas para
+        controle de qualidade.
       </footer>
     </div>
   )

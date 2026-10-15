@@ -68,7 +68,7 @@ routerAdd(
       $app
         .mails()
         .send(
-          { address: 'noreply@rexturadvance.com.br', name: 'Sistema de Registros' },
+          { address: 'noreply@rexturadvance.com.br', name: 'HUB AI' },
           [{ address: emailAddr }],
           'Relatorio de Atendimentos',
           htmlBody,

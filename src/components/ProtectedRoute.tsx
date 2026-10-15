@@ -31,7 +31,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
           <h2 className="text-lg font-bold text-slate-100">Cadastro Aguardando Aprovação</h2>
           <p className="text-xs text-slate-400 leading-relaxed">
             Sua conta de usuário foi registrada com sucesso, porém ainda requer a aprovação do
-            gestor do sistema. Você receberá acesso completo assim que for aprovado.
+            gestor do HUB AI. Você receberá acesso completo assim que for aprovado.
           </p>
           <Button
             onClick={() => signOut()}

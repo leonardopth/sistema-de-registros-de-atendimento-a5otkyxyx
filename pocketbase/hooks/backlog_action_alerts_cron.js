@@ -152,7 +152,7 @@ cronAdd('backlog_queue_action_alerts', '*/15 * * * *', function () {
         // Enviar E-MAIL para gerentes e supervisores com email_notifications !== false
         try {
           var senderAddress = 'noreply@rexturadvance.com.br'
-          var senderName = 'Sistema de Registros de Atendimento'
+          var senderName = 'HUB AI'
           try {
             if ($app.settings() && $app.settings().meta && $app.settings().meta.senderAddress) {
               senderAddress = $app.settings().meta.senderAddress

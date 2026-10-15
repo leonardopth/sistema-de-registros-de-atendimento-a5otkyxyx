@@ -306,11 +306,16 @@ export default function Layout() {
         >
           <div className="flex items-center gap-2 overflow-hidden">
             <Headset className="h-6 w-6 text-indigo-600 shrink-0" />
-            {!isCollapsed && (
-              <span className="text-sm font-bold text-slate-900 truncate">
-                Sistema de Atendimentos
-              </span>
-            )}
+            {!isCollapsed ? (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-base font-black tracking-tight text-slate-900 truncate">
+                  HUB AI
+                </span>
+                <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded px-1 py-0.2 shrink-0">
+                  OPS
+                </span>
+              </div>
+            ) : null}
           </div>
           <Button
             variant="ghost"
@@ -416,7 +421,10 @@ export default function Layout() {
               <SheetTitle className="sr-only">Navegação</SheetTitle>
               <div className="flex h-16 items-center gap-2 border-b border-slate-200 px-6">
                 <Headset className="h-6 w-6 text-indigo-600" />
-                <span className="text-sm font-bold text-slate-900">Sistema de Atendimentos</span>
+                <span className="text-base font-black tracking-tight text-slate-900">HUB AI</span>
+                <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5">
+                  OPS
+                </span>
               </div>
               <div className="p-3">{renderNav(false)}</div>
             </SheetContent>
@@ -428,7 +436,7 @@ export default function Layout() {
               size="sm"
               onClick={() => window.dispatchEvent(new CustomEvent('restart-tour'))}
               className="hidden sm:flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 hover:text-indigo-900 border border-indigo-200/60 h-8"
-              title="Iniciar tour guiado pelo sistema"
+              title="Iniciar tour guiado pelo HUB AI"
             >
               <Compass className="h-3.5 w-3.5 text-indigo-600" />
               <span>Tour</span>

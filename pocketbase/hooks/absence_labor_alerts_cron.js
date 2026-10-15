@@ -181,7 +181,7 @@ cronAdd('absence_and_labor_alerts_daily', '30 7 * * *', function () {
       if (notifEnabled !== false && email && email.indexOf('@') > 0) {
         try {
           var senderAddress = 'noreply@rexturadvance.com.br'
-          var senderName = 'Sistema de Registros de Atendimento'
+          var senderName = 'HUB AI'
           try {
             if ($app.settings() && $app.settings().meta && $app.settings().meta.senderAddress) {
               senderAddress = $app.settings().meta.senderAddress

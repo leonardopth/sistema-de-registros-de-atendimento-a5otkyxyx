@@ -246,7 +246,7 @@ cronAdd('performance_critical_alerts_daily', '0 8 * * *', function () {
 
     // Processar entrega de cada alerta de projeção < 70%
     var senderAddress = 'noreply@rexturadvance.com.br'
-    var senderName = 'Sistema de Registros de Atendimento'
+    var senderName = 'HUB AI'
     try {
       if ($app.settings() && $app.settings().meta && $app.settings().meta.senderAddress) {
         senderAddress = $app.settings().meta.senderAddress

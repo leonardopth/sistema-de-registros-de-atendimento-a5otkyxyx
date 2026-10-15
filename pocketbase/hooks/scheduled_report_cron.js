@@ -245,12 +245,12 @@ cronAdd('scheduled_reports_runner', '0 11 * * 1-5', function () {
         '</pre>' +
         '</div>' +
         '<p style="font-size: 11px; color: #94a3b8; text-align: center; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">' +
-        'Sistema de Registros de Atendimento — Exportação automatizada.' +
+        'HUB AI — Gestão de Atendimento &amp; Operação (Exportação automatizada).' +
         '</p>' +
         '</div></div></body></html>'
 
       var senderAddress = 'noreply@rexturadvance.com.br'
-      var senderName = 'Sistema de Registros de Atendimento'
+      var senderName = 'HUB AI'
       try {
         if ($app.settings() && $app.settings().meta && $app.settings().meta.senderAddress) {
           senderAddress = $app.settings().meta.senderAddress

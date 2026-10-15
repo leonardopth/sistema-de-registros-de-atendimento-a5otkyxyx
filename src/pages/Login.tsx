@@ -90,7 +90,7 @@ export default function Login() {
         })
       } else if (approvalStatus === 'Rejeitado') {
         const rejectedMsg =
-          'Seu cadastro foi rejeitado. Entre em contato com o gestor do sistema para mais informações.'
+          'Seu cadastro foi rejeitado. Entre em contato com o gestor do HUB AI para mais informações.'
         setLoginMessage({
           type: 'rejected',
           text: rejectedMsg,
@@ -115,7 +115,7 @@ export default function Login() {
       } else {
         localStorage.removeItem(REMEMBER_EMAIL_KEY)
       }
-      toast({ title: 'Bem-vindo ao Sistema', description: 'Login realizado com sucesso.' })
+      toast({ title: 'Bem-vindo ao HUB AI', description: 'Login realizado com sucesso.' })
       navigate('/', { replace: true })
     }
   }
@@ -218,7 +218,7 @@ export default function Login() {
             </div>
             <h3 className="text-lg font-bold text-slate-100">Cadastro Enviado!</h3>
             <p className="text-sm text-slate-400">
-              Seu registro foi enviado para aprovação do gestor. Você receberá acesso ao sistema
+              Seu registro foi enviado para aprovação do gestor. Você receberá acesso ao HUB AI
               assim que sua conta for aprovada.
             </p>
             <Button
@@ -243,9 +243,14 @@ export default function Login() {
           <div className="mx-auto flex items-center justify-center py-2">
             <img src={logoImg} alt="RexturAdvance Logo" className="h-11 object-contain" />
           </div>
-          <p className="text-xs text-slate-400 mt-2 font-medium">
-            Sistema de Registros e Gestão de Atendimento
-          </p>
+          <div className="mt-2 flex flex-col items-center">
+            <span className="text-base font-black tracking-wider text-slate-100 bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+              HUB AI
+            </span>
+            <p className="text-xs text-slate-400 font-medium">
+              Gestão de Atendimento &amp; Operação
+            </p>
+          </div>
         </div>
 
         <CardContent className="p-6 space-y-4">

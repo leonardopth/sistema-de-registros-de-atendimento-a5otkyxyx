@@ -148,7 +148,7 @@ export default function Ajuda() {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">Central de Ajuda</h1>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Glossário completo de métricas, guias rápidos operacionais e atalhos do sistema.
+            Glossário completo de métricas, guias rápidos operacionais e atalhos do HUB AI.
           </p>
         </div>
         <Button
@@ -278,8 +278,8 @@ export default function Ajuda() {
               </CardTitle>
               <p className="text-xs text-slate-500 mt-1">
                 Entenda o que cada métrica representa e a fórmula exata usada pelo motor de cálculo
-                do sistema.
-              </p>
+                do HUB AI.
+              </p>{' '}
             </div>
             {/* Filtros por categoria */}
             <div className="flex flex-wrap items-center gap-1.5">
@@ -329,7 +329,7 @@ export default function Ajuda() {
                   <p className="text-xs text-slate-600 mb-3">{item.shortDesc}</p>
                   <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-700 mb-2">
                     <span className="font-semibold text-slate-900 block mb-1">
-                      Como é calculado no sistema:
+                      Como é calculado no HUB AI:
                     </span>
                     <code className="text-[11px] font-sans text-indigo-900 block">
                       {item.calculation}
