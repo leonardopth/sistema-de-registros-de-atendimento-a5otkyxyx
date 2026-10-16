@@ -12,6 +12,7 @@ import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { QuickLog } from '@/components/QuickLog'
 import { GuidedTourModal } from '@/components/GuidedTourModal'
 import { ConsultantAIWidget } from '@/components/ConsultantAIWidget'
+import hubAiLogo from '@/assets/icone-hub-ai-neon-com-headset-e-chat-fe7bd.png'
 import {
   LayoutDashboard,
   Headset,
@@ -305,8 +306,12 @@ export default function Layout() {
             isCollapsed ? 'justify-center px-2' : 'justify-between px-4',
           )}
         >
-          <div className="flex items-center gap-2 overflow-hidden">
-            <Headset className="h-6 w-6 text-indigo-600 shrink-0" />
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <img
+              src={hubAiLogo}
+              alt="HUB AI"
+              className="h-8 w-8 rounded-lg shadow-sm shrink-0 object-contain ring-1 ring-slate-900/10"
+            />
             {!isCollapsed ? (
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="text-base font-black tracking-tight text-slate-900 truncate">
@@ -375,7 +380,7 @@ export default function Layout() {
               </Button>
               <div className="text-center pt-1">
                 <span className="text-[10px] text-slate-400 font-mono tracking-tight">
-                  v0.0.270
+                  v0.0.271
                 </span>
               </div>
             </>
@@ -410,7 +415,7 @@ export default function Layout() {
                   Sair
                 </TooltipContent>
               </Tooltip>
-              <span className="text-[9px] text-slate-400 font-mono text-center">v270</span>
+              <span className="text-[9px] text-slate-400 font-mono text-center">v271</span>
             </div>
           )}
         </div>
@@ -426,8 +431,12 @@ export default function Layout() {
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
               <SheetTitle className="sr-only">Navegação</SheetTitle>
-              <div className="flex h-16 items-center gap-2 border-b border-slate-200 px-6">
-                <Headset className="h-6 w-6 text-indigo-600" />
+              <div className="flex h-16 items-center gap-2.5 border-b border-slate-200 px-6">
+                <img
+                  src={hubAiLogo}
+                  alt="HUB AI"
+                  className="h-8 w-8 rounded-lg shadow-sm shrink-0 object-contain ring-1 ring-slate-900/10"
+                />
                 <span className="text-base font-black tracking-tight text-slate-900">HUB AI</span>
                 <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5">
                   OPS

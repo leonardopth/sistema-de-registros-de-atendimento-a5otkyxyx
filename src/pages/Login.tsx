@@ -31,7 +31,7 @@ import { UserRole } from '@/types/service_record'
 import { PasswordRecoveryForm } from '@/components/PasswordRecoveryForm'
 import { SERVICE_GROUP_OPTIONS } from '@/lib/service-groups'
 import { COMMERCIAL_BASE_OPTIONS } from '@/lib/commercial-bases'
-import logoImg from '../assets/image-b4a05.png'
+import hubAiLogo from '@/assets/icone-hub-ai-neon-com-headset-e-chat-fe7bd.png'
 
 const REMEMBER_EMAIL_KEY = 'rememberEmail'
 
@@ -209,7 +209,19 @@ export default function Login() {
         <Card className="w-full max-w-md shadow-2xl border-slate-800 bg-slate-900/90 backdrop-blur-xl text-slate-100">
           <div className="p-6 bg-slate-950 border-b border-slate-800/80 text-center">
             <div className="mx-auto flex items-center justify-center py-2">
-              <img src={logoImg} alt="RexturAdvance Logo" className="h-11 object-contain" />
+              <img
+                src={hubAiLogo}
+                alt="HUB AI"
+                className="w-16 h-16 rounded-2xl shadow-lg shadow-indigo-950/50 object-contain ring-1 ring-white/10"
+              />
+            </div>
+            <div className="mt-3 flex flex-col items-center">
+              <span className="text-lg font-black tracking-wider text-slate-100 bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+                HUB AI
+              </span>
+              <p className="text-xs text-slate-400 font-medium">
+                Gestão de Atendimento &amp; Operação
+              </p>
             </div>
           </div>
           <CardContent className="p-6 text-center space-y-4">
@@ -241,13 +253,17 @@ export default function Login() {
       <Card className="w-full max-w-md shadow-2xl border-slate-800 bg-slate-900/90 backdrop-blur-xl text-slate-100 overflow-hidden">
         <div className="p-6 bg-slate-950 border-b border-slate-800/80 text-center relative">
           <div className="mx-auto flex items-center justify-center py-2">
-            <img src={logoImg} alt="RexturAdvance Logo" className="h-11 object-contain" />
+            <img
+              src={hubAiLogo}
+              alt="HUB AI"
+              className="w-20 h-20 rounded-2xl shadow-xl shadow-indigo-950/60 object-contain ring-1 ring-white/10"
+            />
           </div>
-          <div className="mt-2 flex flex-col items-center">
-            <span className="text-base font-black tracking-wider text-slate-100 bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+          <div className="mt-3 flex flex-col items-center">
+            <span className="text-xl font-black tracking-wider text-slate-100 bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
               HUB AI
             </span>
-            <p className="text-xs text-slate-400 font-medium">
+            <p className="text-xs text-slate-400 font-medium mt-0.5">
               Gestão de Atendimento &amp; Operação
             </p>
           </div>
