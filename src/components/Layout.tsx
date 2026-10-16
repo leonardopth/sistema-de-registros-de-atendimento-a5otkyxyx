@@ -373,6 +373,11 @@ export default function Layout() {
                 <LogOut className="h-3.5 w-3.5 mr-2" />
                 Sair
               </Button>
+              <div className="text-center pt-1">
+                <span className="text-[10px] text-slate-400 font-mono tracking-tight">
+                  v0.0.268
+                </span>
+              </div>
             </>
           ) : (
             <div className="flex flex-col items-center gap-2">
@@ -405,6 +410,7 @@ export default function Layout() {
                   Sair
                 </TooltipContent>
               </Tooltip>
+              <span className="text-[9px] text-slate-400 font-mono text-center">v268</span>
             </div>
           )}
         </div>
