@@ -324,6 +324,46 @@ export function ControlTowerPerformancePanel({
         </Card>
       </div>
 
+      {/* Indicador Discreto de Sentimento HUB AI */}
+      <div className="p-3 bg-gradient-to-r from-amber-50/60 via-white to-slate-50 border border-amber-200/80 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 bg-amber-500/10 text-amber-700 rounded-md font-bold text-sm shrink-0">
+            😠
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-900">
+                HUB AI • Análise de Sentimento ({windowDays} dias)
+              </span>
+              <Badge
+                variant="outline"
+                className="text-[10px] font-bold bg-amber-100 text-amber-800 border-amber-300"
+              >
+                {stats.sentimentStats.negativePct}% negativas
+              </Badge>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {stats.sentimentStats.negativeCount} de {stats.totalReceived} conversa(s) no período
+              apresentaram tom de frustração ou termos críticos, subindo na priorização.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 text-[11px] font-semibold text-slate-600 self-end sm:self-auto">
+          <span className="flex items-center gap-1 text-amber-700">
+            <span>😠</span> {stats.sentimentStats.negativeCount} Frustradas
+          </span>
+          <span className="text-slate-300">•</span>
+          <span className="flex items-center gap-1 text-slate-600">
+            <span>😐</span> {stats.sentimentStats.neutralCount} Neutras
+          </span>
+          <span className="text-slate-300">•</span>
+          <span className="flex items-center gap-1 text-emerald-700">
+            <span>😊</span> {stats.sentimentStats.positiveCount} Positivas
+          </span>
+        </div>
+      </div>
+
       {/* Grid Central: Desempenho de SLA por Prioridade + Aging do Backlog */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Bloco 1: % de E-mails Dentro do SLA & Tempo de 1ª Resposta por Prioridade */}

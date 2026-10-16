@@ -18,6 +18,7 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
       weight_formal_complaint: 40,
       weight_repeat_contact: 15,
       weight_persistent_client: 20,
+      weight_frustrated_client: 20,
       score_threshold_p1: 60,
       score_threshold_p2: 30,
       business_hours_start: '08:00',
@@ -46,6 +47,8 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
             r[0].getFloat('weight_repeat_contact') || def.weight_repeat_contact,
           weight_persistent_client:
             r[0].getFloat('weight_persistent_client') || def.weight_persistent_client,
+          weight_frustrated_client:
+            r[0].getFloat('weight_frustrated_client') || def.weight_frustrated_client,
           score_threshold_p1: r[0].getFloat('score_threshold_p1') || def.score_threshold_p1,
           score_threshold_p2: r[0].getFloat('score_threshold_p2') || def.score_threshold_p2,
           business_hours_start: r[0].getString('business_hours_start') || def.business_hours_start,
@@ -168,7 +171,172 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
     return cur.toISOString()
   }
 
-  function scoreCalc(signals, bizHours, cfg, messageCount) {
+  function analyzeSentiment(subj, snippet) {
+    var text = ((subj || '') + ' ' + (snippet || '')).toLowerCase()
+    if (!text.trim()) {
+      return { score: 0, label: 'Neutro', intensity: 'Leve', reasons: [] }
+    }
+
+    var criticalTerms = [
+      'procon',
+      'processo judicial',
+      'advogado',
+      'ação judicial',
+      'juizado especial',
+      'danos morais',
+      'reclame aqui',
+      'ministério público',
+      'polícia',
+      'estelionato',
+      'golpe',
+      'fraude',
+      'vou processar',
+    ]
+
+    var strongTerms = [
+      'absurdo',
+      'inadmissível',
+      'inadmissivel',
+      'vergonha',
+      'falta de respeito',
+      'desrespeito',
+      'palhaçada',
+      'palhacada',
+      'humilhação',
+      'humilhacao',
+      'ridículo',
+      'ridiculo',
+      'descaso total',
+      'prejuízo enorme',
+      'prejuizo enorme',
+      'incompetência',
+      'incompetencia',
+      'nunca mais',
+      'terceira vez',
+      'quarta vez',
+      'ninguém resolve',
+      'ninguem resolve',
+      'quero cancelar',
+      'quero meu dinheiro de volta',
+      'estorno imediato',
+      'não aguento mais',
+      'nao aguento mais',
+    ]
+
+    var moderateTerms = [
+      'insatisfação',
+      'insatisfacao',
+      'insatisfeito',
+      'insatisfeita',
+      'indignado',
+      'indignada',
+      'revoltado',
+      'revoltada',
+      'decepcionado',
+      'decepcionada',
+      'estou esperando há dias',
+      'segunda vez',
+      'novamente com problema',
+      'não tive retorno',
+      'nao tive retorno',
+      'sem resposta',
+      'demora excessiva',
+      'urgência descumprida',
+      'urgencia descumprida',
+      'atraso inaceitável',
+      'atraso inaceitavel',
+    ]
+
+    var positiveTerms = [
+      'muito obrigado',
+      'excelente atendimento',
+      'parabéns',
+      'parabens',
+      'perfeito',
+      'ótimo',
+      'otimo',
+      'maravilhoso',
+      'sensacional',
+      'rápido e eficiente',
+      'rapido e eficiente',
+      'super recomendo',
+      'tudo certo',
+      'resolvido com sucesso',
+      'agradeço a atenção',
+      'agradeco a atencao',
+    ]
+
+    var score = 0
+    var reasons = []
+
+    for (var c = 0; c < criticalTerms.length; c++) {
+      if (text.indexOf(criticalTerms[c]) !== -1) {
+        score -= 50
+        reasons.push(criticalTerms[c])
+      }
+    }
+    for (var s = 0; s < strongTerms.length; s++) {
+      if (text.indexOf(strongTerms[s]) !== -1) {
+        score -= 30
+        reasons.push(strongTerms[s])
+      }
+    }
+    for (var m = 0; m < moderateTerms.length; m++) {
+      if (text.indexOf(moderateTerms[m]) !== -1) {
+        score -= 15
+        reasons.push(moderateTerms[m])
+      }
+    }
+
+    var rawText = (subj || '') + ' ' + (snippet || '')
+    var exclMatch = rawText.match(/!{2,}/g)
+    if (exclMatch) {
+      score -= 10
+      reasons.push('pontos de exclamação múltiplos')
+    }
+
+    var capsMatch = rawText.match(/\b[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{4,}\b/g)
+    if (capsMatch && capsMatch.length >= 2) {
+      score -= 10
+      reasons.push('palavras em maiúsculas excessivas')
+    }
+
+    for (var p = 0; p < positiveTerms.length; p++) {
+      if (text.indexOf(positiveTerms[p]) !== -1) {
+        score += 25
+        reasons.push(positiveTerms[p])
+      }
+    }
+
+    if (score < -100) score = -100
+    if (score > 100) score = 100
+
+    var label = 'Neutro'
+    var intensity = 'Leve'
+
+    if (score <= -60) {
+      label = 'Crítico'
+      intensity = 'Forte'
+    } else if (score <= -25) {
+      label = 'Frustrado'
+      intensity = score <= -40 ? 'Forte' : 'Moderado'
+    } else if (score < -5) {
+      label = 'Frustrado'
+      intensity = 'Leve'
+    } else if (score >= 20) {
+      label = 'Positivo'
+      intensity = score >= 50 ? 'Forte' : 'Moderado'
+    }
+
+    return {
+      score: score,
+      label: label,
+      intensity: intensity,
+      reasons: reasons.slice(0, 5),
+    }
+  }
+
+  function scoreCalc(signals, bizHours, cfg, messageCount, sentimentLabel, sentimentIntensity) {
     var score = 0
     if (signals.indexOf('Embarque <24h') !== -1) score += cfg.weight_departure_24h || 50
     else if (signals.indexOf('Embarque <48h') !== -1) score += cfg.weight_departure_48h || 30
@@ -177,6 +345,30 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
     if (signals.indexOf('Reclamação Formal') !== -1) score += cfg.weight_formal_complaint || 40
     if (signals.indexOf('Prazo Prometido') !== -1) score += cfg.weight_promised_deadline || 20
     if (signals.indexOf('Reincidente') !== -1) score += cfg.weight_repeat_contact || 15
+
+    // Análise de Sentimento: cliente frustrado / crítico sobe na fila com graduação
+    var hasFrustratedSignal = false
+    for (var si = 0; si < signals.length; si++) {
+      if (signals[si].indexOf('Cliente Frustrado') !== -1) {
+        hasFrustratedSignal = true
+        break
+      }
+    }
+
+    var baseFrustWeight = cfg.weight_frustrated_client || 20
+    if (sentimentLabel === 'Crítico') {
+      score += Math.round(baseFrustWeight * 1.5)
+    } else if (sentimentLabel === 'Frustrado') {
+      if (sentimentIntensity === 'Forte') {
+        score += Math.round(baseFrustWeight * 1.25)
+      } else if (sentimentIntensity === 'Moderado') {
+        score += baseFrustWeight
+      } else {
+        score += Math.round(baseFrustWeight * 0.75)
+      }
+    } else if (hasFrustratedSignal) {
+      score += baseFrustWeight
+    }
 
     // Persistência na mesma thread (mensagens adicionais somam ao score)
     var mCount = messageCount || 1
@@ -417,7 +609,28 @@ cronAdd('control_tower_recalculate', '*/15 * * * *', () => {
       var waiting = calcBizHours(recAt, nowIso, cfg)
       var sigs = parseStringList(r.get('detected_signals'))
       var msgCount = r.getInt('message_count') || 1
-      var res = scoreCalc(sigs, waiting, cfg, msgCount)
+
+      // Sentimento atual ou análise sob demanda se não preenchido
+      var sLabel = r.getString('sentiment_label')
+      var sIntensity = r.getString('sentiment_intensity')
+      if (!sLabel) {
+        var sRes = analyzeSentiment(r.getString('subject'), r.getString('body_snippet'))
+        sLabel = sRes.label
+        sIntensity = sRes.intensity
+        r.set('sentiment_score', sRes.score)
+        r.set('sentiment_label', sLabel)
+        r.set('sentiment_intensity', sIntensity)
+        r.set('sentiment_reasons', sRes.reasons)
+        if (
+          (sLabel === 'Frustrado' || sLabel === 'Crítico') &&
+          sigs.indexOf('Cliente Frustrado') === -1
+        ) {
+          sigs.push('Cliente Frustrado')
+          r.set('detected_signals', sigs)
+        }
+      }
+
+      var res = scoreCalc(sigs, waiting, cfg, msgCount, sLabel, sIntensity)
       r.set('business_hours_waiting', waiting)
       r.set('score', res.score)
       r.set('priority', res.priority)
@@ -538,6 +751,8 @@ routerAdd(
               r[0].getFloat('weight_repeat_contact') || def.weight_repeat_contact,
             weight_persistent_client:
               r[0].getFloat('weight_persistent_client') || def.weight_persistent_client,
+            weight_frustrated_client:
+              r[0].getFloat('weight_frustrated_client') || def.weight_frustrated_client || 20,
             score_threshold_p1: r[0].getFloat('score_threshold_p1') || def.score_threshold_p1,
             score_threshold_p2: r[0].getFloat('score_threshold_p2') || def.score_threshold_p2,
             business_hours_start:
@@ -745,7 +960,172 @@ routerAdd(
       return []
     }
 
-    function scoreCalc(signals, bizHours, cfg, messageCount) {
+    function analyzeSentiment(subj, snippet) {
+      var text = ((subj || '') + ' ' + (snippet || '')).toLowerCase()
+      if (!text.trim()) {
+        return { score: 0, label: 'Neutro', intensity: 'Leve', reasons: [] }
+      }
+
+      var criticalTerms = [
+        'procon',
+        'processo judicial',
+        'advogado',
+        'ação judicial',
+        'juizado especial',
+        'danos morais',
+        'reclame aqui',
+        'ministério público',
+        'polícia',
+        'estelionato',
+        'golpe',
+        'fraude',
+        'vou processar',
+      ]
+
+      var strongTerms = [
+        'absurdo',
+        'inadmissível',
+        'inadmissivel',
+        'vergonha',
+        'falta de respeito',
+        'desrespeito',
+        'palhaçada',
+        'palhacada',
+        'humilhação',
+        'humilhacao',
+        'ridículo',
+        'ridiculo',
+        'descaso total',
+        'prejuízo enorme',
+        'prejuizo enorme',
+        'incompetência',
+        'incompetencia',
+        'nunca mais',
+        'terceira vez',
+        'quarta vez',
+        'ninguém resolve',
+        'ninguem resolve',
+        'quero cancelar',
+        'quero meu dinheiro de volta',
+        'estorno imediato',
+        'não aguento mais',
+        'nao aguento mais',
+      ]
+
+      var moderateTerms = [
+        'insatisfação',
+        'insatisfacao',
+        'insatisfeito',
+        'insatisfeita',
+        'indignado',
+        'indignada',
+        'revoltado',
+        'revoltada',
+        'decepcionado',
+        'decepcionada',
+        'estou esperando há dias',
+        'segunda vez',
+        'novamente com problema',
+        'não tive retorno',
+        'nao tive retorno',
+        'sem resposta',
+        'demora excessiva',
+        'urgência descumprida',
+        'urgencia descumprida',
+        'atraso inaceitável',
+        'atraso inaceitavel',
+      ]
+
+      var positiveTerms = [
+        'muito obrigado',
+        'excelente atendimento',
+        'parabéns',
+        'parabens',
+        'perfeito',
+        'ótimo',
+        'otimo',
+        'maravilhoso',
+        'sensacional',
+        'rápido e eficiente',
+        'rapido e eficiente',
+        'super recomendo',
+        'tudo certo',
+        'resolvido com sucesso',
+        'agradeço a atenção',
+        'agradeco a atencao',
+      ]
+
+      var score = 0
+      var reasons = []
+
+      for (var c = 0; c < criticalTerms.length; c++) {
+        if (text.indexOf(criticalTerms[c]) !== -1) {
+          score -= 50
+          reasons.push(criticalTerms[c])
+        }
+      }
+      for (var s = 0; s < strongTerms.length; s++) {
+        if (text.indexOf(strongTerms[s]) !== -1) {
+          score -= 30
+          reasons.push(strongTerms[s])
+        }
+      }
+      for (var m = 0; m < moderateTerms.length; m++) {
+        if (text.indexOf(moderateTerms[m]) !== -1) {
+          score -= 15
+          reasons.push(moderateTerms[m])
+        }
+      }
+
+      var rawText = (subj || '') + ' ' + (snippet || '')
+      var exclMatch = rawText.match(/!{2,}/g)
+      if (exclMatch) {
+        score -= 10
+        reasons.push('pontos de exclamação múltiplos')
+      }
+
+      var capsMatch = rawText.match(/\b[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{4,}\b/g)
+      if (capsMatch && capsMatch.length >= 2) {
+        score -= 10
+        reasons.push('palavras em maiúsculas excessivas')
+      }
+
+      for (var p = 0; p < positiveTerms.length; p++) {
+        if (text.indexOf(positiveTerms[p]) !== -1) {
+          score += 25
+          reasons.push(positiveTerms[p])
+        }
+      }
+
+      if (score < -100) score = -100
+      if (score > 100) score = 100
+
+      var label = 'Neutro'
+      var intensity = 'Leve'
+
+      if (score <= -60) {
+        label = 'Crítico'
+        intensity = 'Forte'
+      } else if (score <= -25) {
+        label = 'Frustrado'
+        intensity = score <= -40 ? 'Forte' : 'Moderado'
+      } else if (score < -5) {
+        label = 'Frustrado'
+        intensity = 'Leve'
+      } else if (score >= 20) {
+        label = 'Positivo'
+        intensity = score >= 50 ? 'Forte' : 'Moderado'
+      }
+
+      return {
+        score: score,
+        label: label,
+        intensity: intensity,
+        reasons: reasons.slice(0, 5),
+      }
+    }
+
+    function scoreCalc(signals, bizHours, cfg, messageCount, sentimentLabel, sentimentIntensity) {
       var score = 0
       if (signals.indexOf('Embarque <24h') !== -1) score += cfg.weight_departure_24h || 50
       else if (signals.indexOf('Embarque <48h') !== -1) score += cfg.weight_departure_48h || 30
@@ -754,6 +1134,30 @@ routerAdd(
       if (signals.indexOf('Reclamação Formal') !== -1) score += cfg.weight_formal_complaint || 40
       if (signals.indexOf('Prazo Prometido') !== -1) score += cfg.weight_promised_deadline || 20
       if (signals.indexOf('Reincidente') !== -1) score += cfg.weight_repeat_contact || 15
+
+      // Bônus de sentimento negativo / cliente frustrado
+      var hasFrustratedSignal = false
+      for (var si = 0; si < signals.length; si++) {
+        if (signals[si].indexOf('Cliente Frustrado') !== -1) {
+          hasFrustratedSignal = true
+          break
+        }
+      }
+
+      var baseFrustWeight = cfg.weight_frustrated_client || 20
+      if (sentimentLabel === 'Crítico') {
+        score += Math.round(baseFrustWeight * 1.5)
+      } else if (sentimentLabel === 'Frustrado') {
+        if (sentimentIntensity === 'Forte') {
+          score += Math.round(baseFrustWeight * 1.25)
+        } else if (sentimentIntensity === 'Moderado') {
+          score += baseFrustWeight
+        } else {
+          score += Math.round(baseFrustWeight * 0.75)
+        }
+      } else if (hasFrustratedSignal) {
+        score += baseFrustWeight
+      }
 
       var mCount = messageCount || 1
       var hasPersistentSignal = false
@@ -795,7 +1199,27 @@ routerAdd(
         var waiting = calcBizHours(recAt, nowIso, cfg)
         var sigs = parseStringList(r.get('detected_signals'))
         var msgCount = r.getInt('message_count') || 1
-        var res = scoreCalc(sigs, waiting, cfg, msgCount)
+
+        var sLabel = r.getString('sentiment_label')
+        var sIntensity = r.getString('sentiment_intensity')
+        if (!sLabel) {
+          var sRes = analyzeSentiment(r.getString('subject'), r.getString('body_snippet'))
+          sLabel = sRes.label
+          sIntensity = sRes.intensity
+          r.set('sentiment_score', sRes.score)
+          r.set('sentiment_label', sLabel)
+          r.set('sentiment_intensity', sIntensity)
+          r.set('sentiment_reasons', sRes.reasons)
+          if (
+            (sLabel === 'Frustrado' || sLabel === 'Crítico') &&
+            sigs.indexOf('Cliente Frustrado') === -1
+          ) {
+            sigs.push('Cliente Frustrado')
+            r.set('detected_signals', sigs)
+          }
+        }
+
+        var res = scoreCalc(sigs, waiting, cfg, msgCount, sLabel, sIntensity)
         r.set('business_hours_waiting', waiting)
         r.set('score', res.score)
         r.set('priority', res.priority)
@@ -919,6 +1343,10 @@ routerAdd(
           client: clientId,
           reservation_number: m.getString('reservation_number'),
           detected_signals: sigs,
+          sentiment_score: m.getFloat('sentiment_score'),
+          sentiment_label: m.getString('sentiment_label'),
+          sentiment_intensity: m.getString('sentiment_intensity'),
+          sentiment_reasons: m.get('sentiment_reasons'),
           score: m.getFloat('score'),
           priority: m.getString('priority'),
           status: m.getString('status'),
@@ -994,6 +1422,8 @@ routerAdd(
               r[0].getFloat('weight_repeat_contact') || def.weight_repeat_contact,
             weight_persistent_client:
               r[0].getFloat('weight_persistent_client') || def.weight_persistent_client,
+            weight_frustrated_client:
+              r[0].getFloat('weight_frustrated_client') || def.weight_frustrated_client || 20,
             score_threshold_p1: r[0].getFloat('score_threshold_p1') || def.score_threshold_p1,
             score_threshold_p2: r[0].getFloat('score_threshold_p2') || def.score_threshold_p2,
             business_hours_start:
@@ -1264,7 +1694,172 @@ routerAdd(
       }
     }
 
-    function scoreCalc(signals, bizHours, cfg, messageCount) {
+    function analyzeSentiment(subj, snippet) {
+      var text = ((subj || '') + ' ' + (snippet || '')).toLowerCase()
+      if (!text.trim()) {
+        return { score: 0, label: 'Neutro', intensity: 'Leve', reasons: [] }
+      }
+
+      var criticalTerms = [
+        'procon',
+        'processo judicial',
+        'advogado',
+        'ação judicial',
+        'juizado especial',
+        'danos morais',
+        'reclame aqui',
+        'ministério público',
+        'polícia',
+        'estelionato',
+        'golpe',
+        'fraude',
+        'vou processar',
+      ]
+
+      var strongTerms = [
+        'absurdo',
+        'inadmissível',
+        'inadmissivel',
+        'vergonha',
+        'falta de respeito',
+        'desrespeito',
+        'palhaçada',
+        'palhacada',
+        'humilhação',
+        'humilhacao',
+        'ridículo',
+        'ridiculo',
+        'descaso total',
+        'prejuízo enorme',
+        'prejuizo enorme',
+        'incompetência',
+        'incompetencia',
+        'nunca mais',
+        'terceira vez',
+        'quarta vez',
+        'ninguém resolve',
+        'ninguem resolve',
+        'quero cancelar',
+        'quero meu dinheiro de volta',
+        'estorno imediato',
+        'não aguento mais',
+        'nao aguento mais',
+      ]
+
+      var moderateTerms = [
+        'insatisfação',
+        'insatisfacao',
+        'insatisfeito',
+        'insatisfeita',
+        'indignado',
+        'indignada',
+        'revoltado',
+        'revoltada',
+        'decepcionado',
+        'decepcionada',
+        'estou esperando há dias',
+        'segunda vez',
+        'novamente com problema',
+        'não tive retorno',
+        'nao tive retorno',
+        'sem resposta',
+        'demora excessiva',
+        'urgência descumprida',
+        'urgencia descumprida',
+        'atraso inaceitável',
+        'atraso inaceitavel',
+      ]
+
+      var positiveTerms = [
+        'muito obrigado',
+        'excelente atendimento',
+        'parabéns',
+        'parabens',
+        'perfeito',
+        'ótimo',
+        'otimo',
+        'maravilhoso',
+        'sensacional',
+        'rápido e eficiente',
+        'rapido e eficiente',
+        'super recomendo',
+        'tudo certo',
+        'resolvido com sucesso',
+        'agradeço a atenção',
+        'agradeco a atencao',
+      ]
+
+      var score = 0
+      var reasons = []
+
+      for (var c = 0; c < criticalTerms.length; c++) {
+        if (text.indexOf(criticalTerms[c]) !== -1) {
+          score -= 50
+          reasons.push(criticalTerms[c])
+        }
+      }
+      for (var s = 0; s < strongTerms.length; s++) {
+        if (text.indexOf(strongTerms[s]) !== -1) {
+          score -= 30
+          reasons.push(strongTerms[s])
+        }
+      }
+      for (var m = 0; m < moderateTerms.length; m++) {
+        if (text.indexOf(moderateTerms[m]) !== -1) {
+          score -= 15
+          reasons.push(moderateTerms[m])
+        }
+      }
+
+      var rawText = (subj || '') + ' ' + (snippet || '')
+      var exclMatch = rawText.match(/!{2,}/g)
+      if (exclMatch) {
+        score -= 10
+        reasons.push('pontos de exclamação múltiplos')
+      }
+
+      var capsMatch = rawText.match(/\b[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{4,}\b/g)
+      if (capsMatch && capsMatch.length >= 2) {
+        score -= 10
+        reasons.push('palavras em maiúsculas excessivas')
+      }
+
+      for (var p = 0; p < positiveTerms.length; p++) {
+        if (text.indexOf(positiveTerms[p]) !== -1) {
+          score += 25
+          reasons.push(positiveTerms[p])
+        }
+      }
+
+      if (score < -100) score = -100
+      if (score > 100) score = 100
+
+      var label = 'Neutro'
+      var intensity = 'Leve'
+
+      if (score <= -60) {
+        label = 'Crítico'
+        intensity = 'Forte'
+      } else if (score <= -25) {
+        label = 'Frustrado'
+        intensity = score <= -40 ? 'Forte' : 'Moderado'
+      } else if (score < -5) {
+        label = 'Frustrado'
+        intensity = 'Leve'
+      } else if (score >= 20) {
+        label = 'Positivo'
+        intensity = score >= 50 ? 'Forte' : 'Moderado'
+      }
+
+      return {
+        score: score,
+        label: label,
+        intensity: intensity,
+        reasons: reasons.slice(0, 5),
+      }
+    }
+
+    function scoreCalc(signals, bizHours, cfg, messageCount, sentimentLabel, sentimentIntensity) {
       var score = 0
       if (signals.indexOf('Embarque <24h') !== -1) score += cfg.weight_departure_24h || 50
       else if (signals.indexOf('Embarque <48h') !== -1) score += cfg.weight_departure_48h || 30
@@ -1273,6 +1868,30 @@ routerAdd(
       if (signals.indexOf('Reclamação Formal') !== -1) score += cfg.weight_formal_complaint || 40
       if (signals.indexOf('Prazo Prometido') !== -1) score += cfg.weight_promised_deadline || 20
       if (signals.indexOf('Reincidente') !== -1) score += cfg.weight_repeat_contact || 15
+
+      // Bônus de sentimento negativo / cliente frustrado
+      var hasFrustratedSignal = false
+      for (var si = 0; si < signals.length; si++) {
+        if (signals[si].indexOf('Cliente Frustrado') !== -1) {
+          hasFrustratedSignal = true
+          break
+        }
+      }
+
+      var baseFrustWeight = cfg.weight_frustrated_client || 20
+      if (sentimentLabel === 'Crítico') {
+        score += Math.round(baseFrustWeight * 1.5)
+      } else if (sentimentLabel === 'Frustrado') {
+        if (sentimentIntensity === 'Forte') {
+          score += Math.round(baseFrustWeight * 1.25)
+        } else if (sentimentIntensity === 'Moderado') {
+          score += baseFrustWeight
+        } else {
+          score += Math.round(baseFrustWeight * 0.75)
+        }
+      } else if (hasFrustratedSignal) {
+        score += baseFrustWeight
+      }
 
       var mCount = messageCount || 1
       var hasPersistentSignal = false
@@ -1375,6 +1994,14 @@ routerAdd(
       var sigRes = parseSignals(subj, bodySnip, rAt, isVip, isRepeat)
       var bizHours = calcBizHours(rAt, nowIso, cfg)
 
+      // Análise de sentimento determinística por léxico em português
+      var sentAnalysis = analyzeSentiment(subj, bodySnip)
+      if (sentAnalysis.label === 'Frustrado' || sentAnalysis.label === 'Crítico') {
+        if (sigRes.signals.indexOf('Cliente Frustrado') === -1) {
+          sigRes.signals.push('Cliente Frustrado')
+        }
+      }
+
       var team = 'Nacional'
       var fullLower = ((subj || '') + ' ' + (bodySnip || '')).toLowerCase()
       if (
@@ -1449,11 +2076,59 @@ routerAdd(
         }
         filteredSigs.push(persistSignal)
 
-        // Recalcular score e prioridade da thread com o bônus de persistência
+        // A thread herda o PIOR sentimento (mais crítico / negativo)
+        var rootSentimentScore = foundThreadRoot.getFloat('sentiment_score') || 0
+        var rootSentimentLabel = foundThreadRoot.getString('sentiment_label') || 'Neutro'
+        var rootSentimentIntensity = foundThreadRoot.getString('sentiment_intensity') || 'Leve'
+        var rootSentimentReasons = parseStringList(foundThreadRoot.get('sentiment_reasons'))
+
+        var worstSentimentScore = Math.min(rootSentimentScore, sentAnalysis.score)
+        var worstSentimentLabel = rootSentimentLabel
+        var worstSentimentIntensity = rootSentimentIntensity
+
+        // Ordem de gravidade: Crítico > Frustrado > Neutro > Positivo
+        function getSeverity(lbl) {
+          if (lbl === 'Crítico') return 4
+          if (lbl === 'Frustrado') return 3
+          if (lbl === 'Neutro') return 2
+          return 1
+        }
+
+        if (getSeverity(sentAnalysis.label) > getSeverity(rootSentimentLabel)) {
+          worstSentimentLabel = sentAnalysis.label
+          worstSentimentIntensity = sentAnalysis.intensity
+        } else if (getSeverity(sentAnalysis.label) === getSeverity(rootSentimentLabel)) {
+          // Se mesma categoria, desempata pela intensidade ou menor score numérico
+          if (sentAnalysis.score < rootSentimentScore) {
+            worstSentimentIntensity = sentAnalysis.intensity
+          }
+        }
+
+        // Mesclar razões de sentimento detectadas
+        for (var rIdx = 0; rIdx < sentAnalysis.reasons.length; rIdx++) {
+          if (rootSentimentReasons.indexOf(sentAnalysis.reasons[rIdx]) === -1) {
+            rootSentimentReasons.push(sentAnalysis.reasons[rIdx])
+          }
+        }
+
+        if (worstSentimentLabel === 'Frustrado' || worstSentimentLabel === 'Crítico') {
+          if (filteredSigs.indexOf('Cliente Frustrado') === -1) {
+            filteredSigs.push('Cliente Frustrado')
+          }
+        }
+
+        // Recalcular score e prioridade da thread com o bônus de persistência e sentimento
         var rootRecAt =
           foundThreadRoot.getString('received_at') || foundThreadRoot.getString('created')
         var rootBizWaiting = calcBizHours(rootRecAt, nowIso, cfg)
-        var newRootScRes = scoreCalc(filteredSigs, rootBizWaiting, cfg, newCount)
+        var newRootScRes = scoreCalc(
+          filteredSigs,
+          rootBizWaiting,
+          cfg,
+          newCount,
+          worstSentimentLabel,
+          worstSentimentIntensity,
+        )
 
         // A thread herda o MELHOR score e prioridade
         var finalScore = Math.max(foundThreadRoot.getFloat('score') || 0, newRootScRes.score)
@@ -1476,6 +2151,10 @@ routerAdd(
         foundThreadRoot.set('priority', finalPriority)
         foundThreadRoot.set('last_message_at', rAt)
         foundThreadRoot.set('status', rootStatus)
+        foundThreadRoot.set('sentiment_score', worstSentimentScore)
+        foundThreadRoot.set('sentiment_label', worstSentimentLabel)
+        foundThreadRoot.set('sentiment_intensity', worstSentimentIntensity)
+        foundThreadRoot.set('sentiment_reasons', rootSentimentReasons)
 
         // Se nova mensagem trouxer reserva/PNR que a thread ainda não tinha
         if (!foundThreadRoot.getString('reservation_number') && sigRes.reservationNumber) {
@@ -1485,7 +2164,14 @@ routerAdd(
         $app.save(foundThreadRoot)
 
         // Criar registro filho da mensagem dentro da thread
-        var childScRes = scoreCalc(sigRes.signals, bizHours, cfg, 1)
+        var childScRes = scoreCalc(
+          sigRes.signals,
+          bizHours,
+          cfg,
+          1,
+          sentAnalysis.label,
+          sentAnalysis.intensity,
+        )
         var childRec = new Record(emailsCol)
         childRec.set('subject', subj)
         childRec.set('sender_email', sEmail)
@@ -1510,13 +2196,24 @@ routerAdd(
         childRec.set('thread_root', foundThreadRoot.id)
         childRec.set('is_thread_child', true)
         childRec.set('message_count', 1)
+        childRec.set('sentiment_score', sentAnalysis.score)
+        childRec.set('sentiment_label', sentAnalysis.label)
+        childRec.set('sentiment_intensity', sentAnalysis.intensity)
+        childRec.set('sentiment_reasons', sentAnalysis.reasons)
         $app.save(childRec)
 
         mergedToThread++
         processed++
       } else {
         // Não é continuação de thread existente — criar novo Root de conversa
-        var scRes = scoreCalc(sigRes.signals, bizHours, cfg, 1)
+        var scRes = scoreCalc(
+          sigRes.signals,
+          bizHours,
+          cfg,
+          1,
+          sentAnalysis.label,
+          sentAnalysis.intensity,
+        )
         var targetHours =
           scRes.priority === 'P1'
             ? cfg.target_sla_p1_hours
@@ -1547,6 +2244,10 @@ routerAdd(
         newRec.set('email_analysis_log', logId)
         newRec.set('business_hours_waiting', bizHours)
         newRec.set('sla_deadline', deadline)
+        newRec.set('sentiment_score', sentAnalysis.score)
+        newRec.set('sentiment_label', sentAnalysis.label)
+        newRec.set('sentiment_intensity', sentAnalysis.intensity)
+        newRec.set('sentiment_reasons', sentAnalysis.reasons)
 
         // Thread fields
         newRec.set('message_count', 1)

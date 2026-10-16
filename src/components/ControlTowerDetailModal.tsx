@@ -13,7 +13,11 @@ import { ControlTowerEmailRecord, ControlTowerStatus } from '@/types/control_tow
 import { formatGMT3DateTime } from '@/lib/timezone'
 import { SlaCountdownBadge } from '@/components/SlaCountdownBadge'
 import { getServiceGroupLabel } from '@/lib/service-groups'
-import { getAnalyzedSignals, normalizeSignals } from '@/lib/control-tower-signals'
+import {
+  getAnalyzedSignals,
+  normalizeSignals,
+  getSentimentVisual,
+} from '@/lib/control-tower-signals'
 import { getThreadMessages } from '@/services/control_tower'
 import pb from '@/lib/pocketbase/client'
 import {
@@ -203,7 +207,25 @@ export function ControlTowerDetailModal({
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+              {(() => {
+                const sVis = getSentimentVisual(
+                  email.sentiment_label,
+                  email.sentiment_score,
+                  email.sentiment_intensity,
+                )
+                return (
+                  <Badge
+                    variant="outline"
+                    className={`font-bold px-2.5 py-0.5 text-xs ${sVis.colorBadgeClass}`}
+                    title={sVis.description}
+                  >
+                    <span className="mr-1">{sVis.emoji}</span>
+                    {sVis.label}
+                    {email.sentiment_intensity ? ` (${email.sentiment_intensity})` : ''}
+                  </Badge>
+                )
+              })()}
               <Badge
                 variant="outline"
                 className={`font-bold px-2.5 py-0.5 text-xs ${priorityColor}`}
@@ -471,6 +493,22 @@ export function ControlTowerDetailModal({
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
+                          {(() => {
+                            const msgSentVis = getSentimentVisual(
+                              msg.sentiment_label,
+                              msg.sentiment_score,
+                              msg.sentiment_intensity,
+                            )
+                            return (
+                              <span
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${msgSentVis.colorBadgeClass}`}
+                                title={`Sentimento desta mensagem: ${msgSentVis.label} (Score: ${msg.sentiment_score ?? 0})`}
+                              >
+                                <span className="mr-0.5">{msgSentVis.emoji}</span>
+                                {msgSentVis.label}
+                              </span>
+                            )
+                          })()}
                           {msgSigs.length > 0 && (
                             <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
                               {msgSigs.length} sinal(is)

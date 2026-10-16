@@ -18,6 +18,7 @@ export const DEFAULT_CONTROL_TOWER_CONFIG: Omit<
   weight_formal_complaint: 40,
   weight_repeat_contact: 15,
   weight_persistent_client: 20,
+  weight_frustrated_client: 20,
   score_threshold_p1: 60,
   score_threshold_p2: 30,
   business_hours_start: '08:00',

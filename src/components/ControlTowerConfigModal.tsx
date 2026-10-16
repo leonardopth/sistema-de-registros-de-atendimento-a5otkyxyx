@@ -41,6 +41,7 @@ export function ControlTowerConfigModal({
   const [wComplaint, setWComplaint] = useState(40)
   const [wRepeat, setWRepeat] = useState(15)
   const [wPersistent, setWPersistent] = useState(20)
+  const [wFrustrated, setWFrustrated] = useState(20)
 
   // Thresholds
   const [thP1, setThP1] = useState(60)
@@ -67,6 +68,7 @@ export function ControlTowerConfigModal({
       setWComplaint(config.weight_formal_complaint ?? 40)
       setWRepeat(config.weight_repeat_contact ?? 15)
       setWPersistent(config.weight_persistent_client ?? 20)
+      setWFrustrated(config.weight_frustrated_client ?? 20)
       setThP1(config.score_threshold_p1 ?? 60)
       setThP2(config.score_threshold_p2 ?? 30)
       setHoursStart(config.business_hours_start || '08:00')
@@ -104,6 +106,7 @@ export function ControlTowerConfigModal({
         weight_formal_complaint: Number(wComplaint),
         weight_repeat_contact: Number(wRepeat),
         weight_persistent_client: Number(wPersistent),
+        weight_frustrated_client: Number(wFrustrated),
         score_threshold_p1: Number(thP1),
         score_threshold_p2: Number(thP2),
         business_hours_start: hoursStart.trim(),
@@ -261,10 +264,9 @@ export function ControlTowerConfigModal({
                   className="h-8 text-xs mt-1"
                 />
               </div>
-              <div className="sm:col-span-2">
+              <div>
                 <Label className="text-[11px] text-indigo-700 font-bold">
-                  Cliente Insistente / Thread com Múltiplas Mensagens (+ pontos por reincidência na
-                  mesma conversa)
+                  Cliente Insistente (+ pts por msg na thread)
                 </Label>
                 <Input
                   type="number"
@@ -275,8 +277,29 @@ export function ControlTowerConfigModal({
                   className="h-8 text-xs mt-1 border-indigo-300"
                 />
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Adiciona bônus ao score quando o cliente envia mensagens de cobrança/follow-up na
-                  mesma thread ativa.
+                  Bônus quando o cliente envia mensagens adicionais de follow-up.
+                </p>
+              </div>
+              <div className="rounded-md border border-amber-400/40 bg-amber-500/10 p-2.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px] text-amber-900 dark:text-amber-300 font-bold flex items-center gap-1">
+                    <span>😠</span> Cliente Frustrado (HUB AI)
+                  </Label>
+                  <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                    +{wFrustrated} pts
+                  </span>
+                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={wFrustrated}
+                  onChange={(e) => setWFrustrated(Number(e.target.value))}
+                  className="h-8 text-xs mt-1 bg-white dark:bg-slate-900 border-amber-300"
+                />
+                <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-1">
+                  Análise léxica automática de insatisfação. Eleva o score de prioridade na fila
+                  (graduado por gravidade).
                 </p>
               </div>
             </div>

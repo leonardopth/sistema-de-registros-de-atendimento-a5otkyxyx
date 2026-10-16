@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-15T22:04:51.326Z",
+  "generatedAt": "2026-10-16T13:26:29.301Z",
   "collections": [
     {
       "name": "users",
@@ -2833,6 +2833,12 @@
           "type": "number",
           "required": false,
           "system": false
+        },
+        {
+          "name": "weight_frustrated_client",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -3074,6 +3080,32 @@
           "required": false,
           "system": false,
           "collectionRef": "service_records"
+        },
+        {
+          "name": "sentiment_score",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sentiment_label",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Positivo", "Neutro", "Frustrado", "Crítico"]
+        },
+        {
+          "name": "sentiment_intensity",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Leve", "Moderado", "Forte"]
+        },
+        {
+          "name": "sentiment_reasons",
+          "type": "json",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [

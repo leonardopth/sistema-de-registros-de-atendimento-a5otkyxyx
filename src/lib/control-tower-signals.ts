@@ -17,6 +17,73 @@ export interface NormalizedSignal {
   isRed: boolean
   /** Indica se é sinal de persistência / cliente insistente (ícone de fogo / cor roxa) */
   isPersistent: boolean
+  /** Indica se é sinal de frustração do cliente */
+  isFrustrated?: boolean
+}
+
+export interface SentimentVisual {
+  label: 'Positivo' | 'Neutro' | 'Frustrado' | 'Crítico'
+  emoji: string
+  colorBadgeClass: string
+  borderClass: string
+  description: string
+}
+
+/**
+ * Normaliza dados de análise de sentimento e devolve estrutura padronizada para UI.
+ */
+export function getSentimentVisual(
+  label?: unknown,
+  score?: unknown,
+  intensity?: unknown,
+): SentimentVisual {
+  const lbl = String(label || '')
+    .toLowerCase()
+    .trim()
+  const numScore = typeof score === 'number' ? score : Number(score) || 0
+
+  if (lbl === 'crítico' || lbl === 'critico' || numScore <= -60) {
+    return {
+      label: 'Crítico',
+      emoji: '😡',
+      colorBadgeClass:
+        'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border-rose-300 dark:border-rose-800',
+      borderClass: 'border-rose-400 dark:border-rose-800',
+      description: 'Cliente altamente insatisfeito com menções a processos, Procon ou danos.',
+    }
+  }
+
+  if (lbl === 'frustrado' || numScore < -5) {
+    const intensStr = intensity ? ` (${intensity})` : ''
+    return {
+      label: 'Frustrado',
+      emoji: '😠',
+      colorBadgeClass:
+        'bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border-amber-300 dark:border-amber-800',
+      borderClass: 'border-amber-400 dark:border-amber-800',
+      description: `Tom de frustração detectado${intensStr}: insatisfação com demora ou problemas.`,
+    }
+  }
+
+  if (lbl === 'positivo' || numScore >= 20) {
+    return {
+      label: 'Positivo',
+      emoji: '😊',
+      colorBadgeClass:
+        'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
+      borderClass: 'border-emerald-400 dark:border-emerald-800',
+      description: 'Tom cordial, elogio ou agradecimento detectado.',
+    }
+  }
+
+  return {
+    label: 'Neutro',
+    emoji: '😐',
+    colorBadgeClass:
+      'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+    borderClass: 'border-slate-300 dark:border-slate-700',
+    description: 'Tom factual ou padrão operacional.',
+  }
 }
 
 /**
@@ -256,11 +323,15 @@ export function getAnalyzedSignals(raw: unknown): NormalizedSignal[] {
       const label = sig.trim()
       const lower = label.toLowerCase()
 
+      const isFrustrated =
+        lower.includes('frustrado') || lower.includes('crítico') || lower.includes('critico')
+
       const isRed =
         lower.includes('24h') ||
         lower.includes('formal') ||
         lower.includes('vip') ||
-        lower.includes('urgente')
+        lower.includes('urgente') ||
+        isFrustrated
 
       const isPersistent =
         lower.includes('insistente') ||
@@ -272,6 +343,7 @@ export function getAnalyzedSignals(raw: unknown): NormalizedSignal[] {
         label,
         isRed,
         isPersistent,
+        isFrustrated,
       }
     })
 }

@@ -9,6 +9,9 @@ export type ControlTowerStatus =
   | 'Resolvido'
   | 'Escalado'
 
+export type SentimentLabel = 'Positivo' | 'Neutro' | 'Frustrado' | 'Crítico'
+export type SentimentIntensity = 'Leve' | 'Moderado' | 'Forte'
+
 export interface ControlTowerConfigRecord {
   id: string
   weight_departure_24h: number
@@ -20,6 +23,7 @@ export interface ControlTowerConfigRecord {
   weight_formal_complaint: number
   weight_repeat_contact: number
   weight_persistent_client?: number
+  weight_frustrated_client?: number
   score_threshold_p1: number
   score_threshold_p2: number
   business_hours_start: string
@@ -72,6 +76,13 @@ export interface ControlTowerEmailRecord {
   is_thread_child?: boolean
   last_message_at?: string
   service_record?: string
+
+  // Análise de Sentimento (HUB AI)
+  sentiment_score?: number
+  sentiment_label?: SentimentLabel
+  sentiment_intensity?: SentimentIntensity
+  sentiment_reasons?: unknown
+
   created: string
   updated: string
   expand?: {
@@ -85,6 +96,7 @@ export interface ControlTowerFilters {
   search?: string
   priority?: ControlTowerPriority | 'Todas'
   status?: ControlTowerStatus | 'Todos' | 'Ativos' | 'Estourados/Escalados'
+  sentiment?: SentimentLabel | 'Todos' | 'Frustrados'
   service_group?: string
   team?: 'Nacional' | 'Internacional' | 'Todas'
   onlyAssignedToMe?: boolean

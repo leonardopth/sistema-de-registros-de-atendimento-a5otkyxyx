@@ -47,6 +47,14 @@ export interface ControlTowerPerformanceStats {
 
   // Aging do Backlog
   agingBuckets: AgingBucket[]
+
+  // HUB AI - Sentimento
+  sentimentStats: {
+    negativeCount: number
+    negativePct: number // % de conversas com sentimento frustrado / crítico
+    positiveCount: number
+    neutralCount: number
+  }
 }
 
 /**
@@ -411,5 +419,34 @@ export function computePerformanceStats(
     byPriority,
     allPriorities,
     agingBuckets,
+    sentimentStats: {
+      negativeCount: curWindowEmails.filter((e) => {
+        const lbl = e.sentiment_label || ''
+        const score = e.sentiment_score ?? 0
+        return lbl === 'Frustrado' || lbl === 'Crítico' || score < -5
+      }).length,
+      negativePct:
+        curWindowEmails.length > 0
+          ? Math.round(
+              (curWindowEmails.filter((e) => {
+                const lbl = e.sentiment_label || ''
+                const score = e.sentiment_score ?? 0
+                return lbl === 'Frustrado' || lbl === 'Crítico' || score < -5
+              }).length /
+                curWindowEmails.length) *
+                1000,
+            ) / 10
+          : 0,
+      positiveCount: curWindowEmails.filter((e) => {
+        const lbl = e.sentiment_label || ''
+        const score = e.sentiment_score ?? 0
+        return lbl === 'Positivo' || score >= 20
+      }).length,
+      neutralCount: curWindowEmails.filter((e) => {
+        const lbl = e.sentiment_label || ''
+        const score = e.sentiment_score ?? 0
+        return lbl === 'Neutro' || (!lbl && score >= -5 && score < 20)
+      }).length,
+    },
   }
 }

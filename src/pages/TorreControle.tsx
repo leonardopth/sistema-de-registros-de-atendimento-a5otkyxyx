@@ -39,7 +39,7 @@ import { ControlTowerAssignModal } from '@/components/ControlTowerAssignModal'
 import { ControlTowerAgentLoadCard } from '@/components/ControlTowerAgentLoadCard'
 import { ControlTowerPerformancePanel } from '@/components/ControlTowerPerformancePanel'
 import { SlaCountdownBadge, computeSlaStatus } from '@/components/SlaCountdownBadge'
-import { getAnalyzedSignals } from '@/lib/control-tower-signals'
+import { getAnalyzedSignals, getSentimentVisual } from '@/lib/control-tower-signals'
 import { AgingBucketKey, getAgingBucketKey, calcBizHours } from '@/lib/control-tower-performance'
 import {
   SlidersHorizontal,
@@ -81,6 +81,7 @@ export default function TorreControle() {
   // Filtros
   const [search, setSearch] = useState('')
   const [filterPriority, setFilterPriority] = useState<string>('Todas')
+  const [filterSentiment, setFilterSentiment] = useState<string>('Todos') // 'Todos' | 'Frustrados' | 'Crítico' | 'Positivo'
   const [filterStatus, setFilterStatus] = useState<string>('Ativos') // 'Ativos' | 'Todos' | 'Estourados/Escalados' | Status específico
   const [filterGroup, setFilterGroup] = useState<string>('Todos')
   const [filterTeam, setFilterTeam] = useState<string>('Todas')
@@ -294,6 +295,17 @@ export default function TorreControle() {
           }
         }
 
+        // Sentimento
+        if (filterSentiment === 'Frustrados') {
+          const sLabel = em.sentiment_label || ''
+          const sScore = em.sentiment_score ?? 0
+          if (sLabel !== 'Frustrado' && sLabel !== 'Crítico' && sScore >= -5) {
+            return false
+          }
+        } else if (filterSentiment !== 'Todos') {
+          if (em.sentiment_label !== filterSentiment) return false
+        }
+
         // Prioridade
         if (filterPriority !== 'Todas' && em.priority !== filterPriority) {
           return false
@@ -409,6 +421,7 @@ export default function TorreControle() {
   const clearFilters = () => {
     setSearch('')
     setFilterPriority('Todas')
+    setFilterSentiment('Todos')
     setFilterStatus('Ativos')
     setFilterGroup('Todos')
     setFilterTeam('Todas')
@@ -423,6 +436,7 @@ export default function TorreControle() {
   const hasActiveFilters =
     search ||
     filterPriority !== 'Todas' ||
+    filterSentiment !== 'Todos' ||
     filterStatus !== 'Ativos' ||
     filterGroup !== 'Todos' ||
     filterTeam !== 'Todas' ||
@@ -673,6 +687,21 @@ export default function TorreControle() {
                   <option value="P1">P1 (Alta Prioridade)</option>
                   <option value="P2">P2 (Média Prioridade)</option>
                   <option value="P3">P3 (Normal)</option>
+                </select>
+              </div>
+
+              {/* Filtro Sentimento (HUB AI) */}
+              <div>
+                <select
+                  value={filterSentiment}
+                  onChange={(e) => setFilterSentiment(e.target.value)}
+                  className="h-8 text-xs w-full border border-slate-200 rounded-md px-2 bg-white text-slate-700 font-medium"
+                >
+                  <option value="Todos">Sentimento (Todos)</option>
+                  <option value="Frustrados">😠 Somente Frustrados</option>
+                  <option value="Crítico">😡 Críticos</option>
+                  <option value="Positivo">😊 Positivos</option>
+                  <option value="Neutro">😐 Neutros</option>
                 </select>
               </div>
 
@@ -957,12 +986,39 @@ export default function TorreControle() {
                           )}
                         </TableCell>
 
-                        {/* Sinais em Chips */}
+                        {/* Sinais em Chips & Sentimento (HUB AI) */}
                         <TableCell className="align-middle">
-                          <div className="flex flex-wrap gap-1 max-w-[240px]">
+                          <div className="flex flex-wrap items-center gap-1 max-w-[240px]">
+                            {/* Chip de Sentimento HUB AI */}
+                            {(() => {
+                              const sentVisual = getSentimentVisual(
+                                item.sentiment_label,
+                                item.sentiment_score,
+                                item.sentiment_intensity,
+                              )
+                              const isNotable = sentVisual.label !== 'Neutro'
+                              return (
+                                <span
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border transition-shadow ${
+                                    sentVisual.colorBadgeClass
+                                  } ${isNotable ? 'shadow-2xs ring-1 ring-black/5' : ''}`}
+                                  title={`${sentVisual.description} (Score Sentimento: ${
+                                    item.sentiment_score ?? 0
+                                  })`}
+                                >
+                                  <span>{sentVisual.emoji}</span>
+                                  <span>{sentVisual.label}</span>
+                                </span>
+                              )
+                            })()}
+
                             {analyzedSignals
                               .filter((sig) =>
-                                Boolean(sig?.label && !/^\d{1,3}$/.test(sig.label.trim())),
+                                Boolean(
+                                  sig?.label &&
+                                  !/^\d{1,3}$/.test(sig.label.trim()) &&
+                                  !sig.label.toLowerCase().includes('frustrado'),
+                                ),
                               )
                               .map((sigObj, sIdx) => {
                                 return (
@@ -984,8 +1040,15 @@ export default function TorreControle() {
                                 )
                               })}
                             {analyzedSignals.filter((sig) =>
-                              Boolean(sig?.label && !/^\d{1,3}$/.test(sig.label.trim())),
-                            ).length === 0 && <span className="text-[11px] text-slate-400">—</span>}
+                              Boolean(
+                                sig?.label &&
+                                !/^\d{1,3}$/.test(sig.label.trim()) &&
+                                !sig.label.toLowerCase().includes('frustrado'),
+                              ),
+                            ).length === 0 &&
+                              !item.sentiment_label && (
+                                <span className="text-[11px] text-slate-400">—</span>
+                              )}
                           </div>
                         </TableCell>
 
