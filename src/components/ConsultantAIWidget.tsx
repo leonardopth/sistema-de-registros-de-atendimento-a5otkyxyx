@@ -184,13 +184,13 @@ export function ConsultantAIWidget() {
     return (
       <Button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 h-14 rounded-full px-5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 text-white shadow-xl hover:shadow-indigo-500/25 hover:scale-105 transition-all duration-200 gap-2 border border-white/20"
+        size="icon"
+        aria-label="Abrir HUB AI Assistente"
+        title="HUB AI Assistente"
+        className="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full p-0 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 text-white shadow-lg hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all duration-200 border border-white/20"
       >
         <Sparkles className="h-5 w-5 animate-pulse text-amber-300" />
-        <span className="font-semibold text-sm">HUB AI Assistente</span>
-        <Badge className="bg-white/20 text-white text-[10px] px-1.5 py-0 h-4 border-0">
-          Nativo
-        </Badge>
+        <span className="sr-only">HUB AI Assistente</span>
       </Button>
     )
   }

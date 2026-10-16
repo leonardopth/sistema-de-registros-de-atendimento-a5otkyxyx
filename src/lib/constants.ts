@@ -1,4 +1,4 @@
-export const APP_VERSION = '0.0.268'
+export const APP_VERSION = '0.0.270'
 
 export const APP_NAME = 'HUB AI'
 
