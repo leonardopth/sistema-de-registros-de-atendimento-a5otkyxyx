@@ -31,7 +31,11 @@ import { normalizeContactReason } from '@/constants/contactReasons'
 import { StatusBadge } from './StatusBadge'
 import { PriorityBadge } from './PriorityBadge'
 import { TfrBadge } from '@/components/TfrBadge'
-import { updateServiceRecordWithHistory, deleteServiceRecord } from '@/services/service_records'
+import {
+  updateServiceRecordWithHistory,
+  deleteServiceRecord,
+  refreshServiceRecordSummary,
+} from '@/services/service_records'
 import { analyzeDescription } from '@/services/ai-analysis'
 import { getUsers } from '@/services/users'
 import { useToast } from '@/hooks/use-toast'
@@ -125,6 +129,15 @@ export function ServiceRecordDetailModal({
     null,
   )
   const [analyzing, setAnalyzing] = useState(false)
+  const [refreshingSummary, setRefreshingSummary] = useState(false)
+  const [aiSummary, setAiSummary] = useState<string>(record?.ai_summary || '')
+  const [aiSummaryDate, setAiSummaryDate] = useState<string>(record?.ai_summary_generated_at || '')
+  const [aiSummaryCount, setAiSummaryCount] = useState<number>(
+    record?.ai_summary_messages_count || 0,
+  )
+  const [manualEdited, setManualEdited] = useState<boolean>(
+    record?.ai_summary_edited_by_user || false,
+  )
   const [linkedEmailLogs, setLinkedEmailLogs] = useState<EmailLogRecord[]>([])
   const [loadingEmailLogs, setLoadingEmailLogs] = useState(false)
   const [linkedCallRecords, setLinkedCallRecords] = useState<CallAnalysisLogRecord[]>([])
@@ -159,6 +172,10 @@ export function ServiceRecordDetailModal({
       setAccumulatedMs(record.duration ? record.duration * 60000 : 0)
       setDuration(record.duration || 0)
       setDescription(record.description || '')
+      setAiSummary(record.ai_summary || '')
+      setAiSummaryDate(record.ai_summary_generated_at || '')
+      setAiSummaryCount(record.ai_summary_messages_count || 0)
+      setManualEdited(!!record.ai_summary_edited_by_user)
       setTravelType((record.travel_type as TravelType) || '')
       setClientName(record.client_name || '')
       setClientCompany(record.client_company || '')
@@ -304,6 +321,42 @@ export function ServiceRecordDetailModal({
     setDuration(0)
   }
 
+  const handleRefreshSummary = async () => {
+    if (!record) return
+    setRefreshingSummary(true)
+    try {
+      const res = await refreshServiceRecordSummary(record.id)
+      if (res.success && res.summary) {
+        setAiSummary(res.summary)
+        setAiSummaryDate(res.generated_at)
+        setAiSummaryCount(res.messages_count)
+        if (!manualEdited) {
+          // Se não editou manualmente, atualiza a descrição visual
+          const newHeader = `📋 [Resumo gerado por HUB AI]\n${res.summary}\n\n`
+          if (description.includes('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')) {
+            const parts = description.split('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+            setDescription(newHeader + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' + parts[1])
+          } else {
+            setDescription(newHeader + description)
+          }
+        }
+        toast({
+          title: 'Resumo HUB AI atualizado',
+          description: `${res.messages_count} mensagem(ns) analisada(s) com sucesso.`,
+        })
+        onUpdateSuccess?.()
+      }
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível atualizar o resumo',
+        description: 'Verifique se há e-mails vinculados a este atendimento.',
+      })
+    } finally {
+      setRefreshingSummary(false)
+    }
+  }
+
   const handleAIAnalysis = async () => {
     if (!description.trim()) {
       toast({ variant: 'destructive', title: 'Digite uma descrição primeiro' })
@@ -435,6 +488,7 @@ export function ServiceRecordDetailModal({
           assigned_user: assignedUserId,
           first_response_time: computedTfr,
           first_response_at: computedTfrAt,
+          ai_summary_edited_by_user: manualEdited,
         },
         user?.id || '',
       )
@@ -828,9 +882,76 @@ export function ServiceRecordDetailModal({
               />
             </div>
 
+            {/* Bloco de Resumo Gerado por HUB AI (Torre de Controle) */}
+            {(aiSummary || record.origin === 'E-mail (Torre)' || record.control_tower_email) && (
+              <div className="p-3.5 bg-gradient-to-r from-indigo-50/90 via-purple-50/50 to-white border border-indigo-100 rounded-lg space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1 text-[11px] font-semibold py-0.5">
+                      <Sparkles className="h-3 w-3" />
+                      Resumo gerado por HUB AI
+                    </Badge>
+                    {aiSummaryDate && (
+                      <span className="text-[10px] text-slate-500">
+                        em {formatGMT3DateTime(aiSummaryDate)}
+                        {aiSummaryCount > 0 ? ` (${aiSummaryCount} msg)` : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  {(record.control_tower_email || record.thread_id) && isEditable && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-[11px] gap-1 text-indigo-700 border-indigo-200 hover:bg-indigo-100/70"
+                      onClick={handleRefreshSummary}
+                      disabled={refreshingSummary}
+                    >
+                      {refreshingSummary ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-3 w-3" />
+                      )}
+                      Atualizar Resumo da Thread
+                    </Button>
+                  )}
+                </div>
+
+                {aiSummary ? (
+                  <div className="text-xs text-slate-700 bg-white/80 p-2.5 rounded border border-indigo-50 whitespace-pre-line leading-relaxed font-sans">
+                    {aiSummary}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 italic">
+                    Atendimento originado da Torre. Clique em "Atualizar Resumo da Thread" para
+                    redigir o resumo executivo.
+                  </p>
+                )}
+
+                {manualEdited && (
+                  <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                    ✏️ Edição manual do consultor preservada (não será sobrescrita pela IA).
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-medium text-slate-500">Descrição do Atendimento</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-slate-500">
+                    Descrição do Atendimento
+                  </span>
+                  {manualEdited && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] text-amber-700 border-amber-300 bg-amber-50 py-0"
+                    >
+                      Editado manualmente
+                    </Badge>
+                  )}
+                </div>
                 {isEditable && (
                   <Button
                     type="button"
@@ -841,7 +962,7 @@ export function ServiceRecordDetailModal({
                     disabled={analyzing}
                   >
                     {analyzing ? (
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
                       <Sparkles className="h-3 w-3 mr-1" />
                     )}
@@ -860,7 +981,10 @@ export function ServiceRecordDetailModal({
                         : 'border-slate-200 focus:border-indigo-400',
                     )}
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={(e) => {
+                      setDescription(e.target.value)
+                      setManualEdited(true)
+                    }}
                     placeholder="Descreva o atendimento..."
                   />
                   {fieldErrors.description && (
@@ -873,7 +997,6 @@ export function ServiceRecordDetailModal({
                 </div>
               )}
             </div>
-
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-slate-500 flex items-center gap-1">

@@ -2163,6 +2163,42 @@ routerAdd(
 
         $app.save(foundThreadRoot)
 
+        // -------------------------------------------------------------
+        // Se houver atendimento vinculado à thread, atualizar de forma incremental
+        // indicando novas mensagens ou gerando novo resumo complementar se o consultor não editou manualmente
+        // -------------------------------------------------------------
+        var linkedSrId = foundThreadRoot.getString('service_record')
+        if (linkedSrId) {
+          try {
+            var linkedSr = $app.findRecordById('service_records', linkedSrId)
+            if (linkedSr && linkedSr.getString('status') !== 'Concluído') {
+              var isManualEdited = linkedSr.getBool('ai_summary_edited_by_user')
+              var prevDesc = linkedSr.getString('description') || ''
+              var newNotice =
+                '\n\n📩 [HUB AI: Nova mensagem recebida na conversa em ' +
+                rAt +
+                ']\n' +
+                'De: ' +
+                (log.getString('sender_name') || sEmail) +
+                '\n' +
+                'Assunto: ' +
+                subj +
+                '\n' +
+                'Mensagem: ' +
+                (bodySnip || '(sem texto)')
+
+              // Se o consultor não editou manualmente a descrição, podemos anexar o aviso e atualizar o contador
+              if (!isManualEdited) {
+                linkedSr.set('description', prevDesc + newNotice)
+              }
+              linkedSr.set('ai_summary_messages_count', newCount)
+              $app.save(linkedSr)
+            }
+          } catch (srUpErr) {
+            $app.logger().warn('Erro ao atualizar service_record com nova mensagem: ' + srUpErr)
+          }
+        }
+
         // Criar registro filho da mensagem dentro da thread
         var childScRes = scoreCalc(
           sigRes.signals,
@@ -2652,23 +2688,141 @@ routerAdd(
             var pVal = record.getString('priority')
             var srPriority = pVal === 'P1' ? 'Alta' : pVal === 'P2' ? 'Média' : 'Baixa'
 
-            // Montar descrição com assunto e corpo da mensagem
-            var desc =
-              'E-mail recebido via Torre de Controle:\n' +
-              'Assunto: ' +
-              (record.getString('subject') || '(Sem assunto)') +
-              '\nDe: ' +
-              (record.getString('sender_name')
-                ? record.getString('sender_name') + ' <' + record.getString('sender_email') + '>'
-                : record.getString('sender_email')) +
-              '\nCaixa: ' +
-              (record.getString('inbox_address') || record.getString('service_group') || '') +
-              '\nNúcleo: ' +
-              (record.getString('service_group') || '') +
-              ' | Equipe: ' +
-              teamVal +
-              '\n\nMensagem:\n' +
-              (record.getString('body_snippet') || '(sem conteúdo textual)')
+            // Coletar todas as mensagens da thread para o resumo completo da conversa
+            var threadMessages = []
+            if (threadId) {
+              try {
+                threadMessages = $app.findRecordsByFilter(
+                  'control_tower_emails',
+                  "thread_id = '" + threadId + "' || id = '" + record.id + "'",
+                  'received_at, created',
+                  50,
+                  0,
+                )
+              } catch (_) {}
+            }
+            if (!threadMessages || threadMessages.length === 0) {
+              threadMessages = [record]
+            }
+
+            // Preparar o histórico consolidado de e-mails para geração do resumo por IA
+            var threadTranscript = ''
+            var allReservationNumbers = []
+            var allDates = []
+            var worstSentiment = record.getString('sentiment_label') || 'Neutro'
+            var worstIntensity = record.getString('sentiment_intensity') || 'Leve'
+
+            for (var tmIdx = 0; tmIdx < threadMessages.length; tmIdx++) {
+              var tm = threadMessages[tmIdx]
+              var tmSender = tm.getString('sender_name')
+                ? tm.getString('sender_name') + ' <' + tm.getString('sender_email') + '>'
+                : tm.getString('sender_email')
+              var tmDate = tm.getString('received_at') || tm.getString('created') || ''
+              var tmRes = tm.getString('reservation_number')
+              if (tmRes && allReservationNumbers.indexOf(tmRes) === -1) {
+                allReservationNumbers.push(tmRes)
+              }
+              var tmDates = parseStringList(tm.get('detected_dates'))
+              for (var dIdx = 0; dIdx < tmDates.length; dIdx++) {
+                if (allDates.indexOf(tmDates[dIdx]) === -1) allDates.push(tmDates[dIdx])
+              }
+
+              threadTranscript +=
+                '---\n' +
+                'Mensagem #' +
+                (tmIdx + 1) +
+                ' | De: ' +
+                tmSender +
+                ' | Em: ' +
+                tmDate +
+                '\n' +
+                'Assunto: ' +
+                tm.getString('subject') +
+                '\n' +
+                'Conteúdo:\n' +
+                (tm.getString('body_snippet') || '(sem conteúdo)') +
+                '\n'
+            }
+
+            // Geração nativa de Resumo da Conversa com IA (Skip AI)
+            var generatedSummary = ''
+            var suggestedReason = 'Outros'
+            try {
+              var summaryPrompt =
+                'Você é o motor de IA HUB AI da RexturAdvance / agência de viagens corporativa.\n' +
+                'Sua tarefa é redigir um RESUMO EXECUTIVO DO ATENDIMENTO a partir da conversa de e-mails abaixo da Torre de Controle.\n' +
+                'O resumo deve ser em Português do Brasil, profissional, estruturado em tópicos objetivos:\n' +
+                '- Motivo do Contato: (resumo direto do que o cliente/agência precisa)\n' +
+                '- Pontos Principais: (itens acordados, dúvidas ou solicitações cruciais)\n' +
+                '- Urgência / Sentimento: (destaque se o cliente está Crítico/Frustrado/Urgente, prazos prometidos ou riscos de embarque)\n' +
+                '- Dados Detectados: (número de reserva/PNR e datas de viagem se identificados)\n\n' +
+                'Classifique também o contact_reason em um dos valores: Bagagem, Assento, Cálculo de Reemissão, Reembolso, Cotação, Reserva, Cancelamento, Regras Tarifárias, Erro RF, Remarcação, Check-in, Alteração de Voo, Reclamação, Dúvida Geral, Outros.\n\n' +
+                'Responda em formato JSON com as chaves "summary" (texto com os tópicos) e "contact_reason":\n' +
+                '{"summary":"...","contact_reason":"..."}'
+
+              var aiSummaryRes = $ai.chat({
+                model: 'fast',
+                messages: [
+                  { role: 'system', content: summaryPrompt },
+                  { role: 'user', content: threadTranscript },
+                ],
+              })
+
+              var aiSummaryText = aiSummaryRes.choices[0].message.content
+              var summaryJsonMatch = aiSummaryText.match(/\{[\s\S]*\}/)
+              if (summaryJsonMatch) {
+                var parsedSumm = JSON.parse(summaryJsonMatch[0])
+                if (parsedSumm.summary) generatedSummary = String(parsedSumm.summary).trim()
+                if (parsedSumm.contact_reason)
+                  suggestedReason = String(parsedSumm.contact_reason).trim()
+              } else if (aiSummaryText.trim()) {
+                generatedSummary = aiSummaryText.trim()
+              }
+            } catch (aiErr) {
+              $app.logger().warn('IA Fallback ao gerar resumo de e-mail na Torre: ' + aiErr)
+            }
+
+            // Se a IA não responder, gera um resumo heurístico estruturado padrão
+            if (!generatedSummary) {
+              var resStr =
+                allReservationNumbers.length > 0
+                  ? allReservationNumbers.join(', ')
+                  : 'Não detectado'
+              var datesStr = allDates.length > 0 ? allDates.join(', ') : 'Não detectadas'
+              generatedSummary =
+                '• Motivo do Contato: ' +
+                (record.getString('subject') || 'Atendimento via e-mail Torre') +
+                '\n' +
+                '• Pontos Principais: Mensagem inicial de ' +
+                clientName +
+                ' via caixa ' +
+                (record.getString('service_group') || '') +
+                ' (' +
+                teamVal +
+                ').\n' +
+                '• Urgência / Sentimento: ' +
+                worstSentiment +
+                ' (' +
+                worstIntensity +
+                ') | Prioridade ' +
+                pVal +
+                '\n' +
+                '• Dados Detectados: Reserva/PNR: ' +
+                resStr +
+                ' | Datas: ' +
+                datesStr
+            }
+
+            // Descrição inicial do atendimento contém o resumo estruturado e a transcrição
+            var fullInitialDescription =
+              '📋 [Resumo gerado por HUB AI]\n' +
+              generatedSummary +
+              '\n\n' +
+              '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+              'Histórico da Conversa (' +
+              threadMessages.length +
+              ' msg(s)):\n' +
+              threadTranscript
 
             srRecord.set('user_id', targetUserId)
             srRecord.set('assigned_user', targetUserId)
@@ -2678,12 +2832,16 @@ routerAdd(
             srRecord.set('status', 'Em Andamento')
             srRecord.set('priority', srPriority)
             srRecord.set('travel_type', travelTypeVal)
-            srRecord.set('contact_reason', 'Outros')
+            srRecord.set('contact_reason', suggestedReason || 'Outros')
             srRecord.set('client', clientId || null)
             srRecord.set('client_name', clientName)
             srRecord.set('client_company', clientCompany)
             srRecord.set('client_email', clientEmail)
-            srRecord.set('description', desc)
+            srRecord.set('description', fullInitialDescription)
+            srRecord.set('ai_summary', generatedSummary)
+            srRecord.set('ai_summary_generated_at', nowIso)
+            srRecord.set('ai_summary_messages_count', threadMessages.length)
+            srRecord.set('ai_summary_edited_by_user', false)
             srRecord.set('control_tower_email', record.id)
             srRecord.set('thread_id', threadId)
             srRecord.set('control_tower_inbox', record.getString('inbox_address') || '')

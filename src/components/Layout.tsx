@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { QuickLog } from '@/components/QuickLog'
 import { GuidedTourModal } from '@/components/GuidedTourModal'
+import { ConsultantAIWidget } from '@/components/ConsultantAIWidget'
 import {
   LayoutDashboard,
   Headset,
@@ -453,6 +454,7 @@ export default function Layout() {
       </div>
       <QuickLog open={quickLogOpen} onOpenChange={setQuickLogOpen} />
       <GuidedTourModal />
+      <ConsultantAIWidget />
     </div>
   )
 }

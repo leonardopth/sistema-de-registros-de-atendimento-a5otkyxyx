@@ -525,6 +525,34 @@ routerAdd(
               cteRec.set('team', 'Nacional')
               if (matchedClientId) cteRec.set('client', matchedClientId)
               $app.save(cteRec)
+
+              // Se o atendimento correspondente existe, registrar aviso de nova mensagem recebida
+              if (matchedSrId) {
+                try {
+                  var mSr = $app.findRecordById('service_records', matchedSrId)
+                  if (mSr && mSr.getString('status') !== 'Concluído') {
+                    if (!mSr.getBool('ai_summary_edited_by_user')) {
+                      var pDesc = mSr.getString('description') || ''
+                      var nNotice =
+                        '\n\n📩 [HUB AI: Nova mensagem recebida em ' +
+                        (msg.receivedDateTime || new Date().toISOString()) +
+                        ']\n' +
+                        'De: ' +
+                        msgSenderName +
+                        ' <' +
+                        msgSender +
+                        '>\n' +
+                        'Assunto: ' +
+                        msgSubject +
+                        '\n' +
+                        'Conteúdo: ' +
+                        msgBody.substring(0, 300)
+                      mSr.set('description', pDesc + nNotice)
+                      $app.save(mSr)
+                    }
+                  }
+                } catch (_) {}
+              }
             }
           } catch (_) {}
         }

@@ -49,6 +49,7 @@ import {
   Search,
   Filter,
   RotateCcw,
+  Sparkles,
   Eye,
   CheckCircle2,
   Trash2,
@@ -1307,6 +1308,25 @@ export default function Atendimentos() {
                             </>
                           )
                         })()}
+                        {r.origin === 'E-mail (Torre)' && (
+                          <Badge
+                            variant="outline"
+                            className="bg-purple-50 text-purple-700 border-purple-200 text-[9px] py-0 px-1 gap-0.5 flex items-center font-medium"
+                            title="Atendimento originado da Torre de Controle de e-mails"
+                          >
+                            Torre
+                          </Badge>
+                        )}
+                        {r.ai_summary && (
+                          <Badge
+                            variant="outline"
+                            className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[9px] py-0 px-1 gap-0.5 flex items-center font-medium"
+                            title="Resumo de conversa gerado por HUB AI"
+                          >
+                            <Sparkles className="h-2.5 w-2.5 text-indigo-600" />
+                            HUB AI
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs text-slate-700">

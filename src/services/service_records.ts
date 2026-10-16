@@ -531,3 +531,20 @@ export const mergeSharedRecords = (
   }
   return Array.from(map.values())
 }
+
+/**
+ * Solicita a regeneração do resumo executivo da conversa de e-mails da Torre de Controle pelo HUB AI
+ */
+export const refreshServiceRecordSummary = async (
+  recordId: string,
+): Promise<{
+  success: boolean
+  summary: string
+  messages_count: number
+  generated_at: string
+  suggested_contact_reason?: string
+}> => {
+  return await pb.send(`/backend/v1/service-records/${recordId}/refresh-summary`, {
+    method: 'POST',
+  })
+}

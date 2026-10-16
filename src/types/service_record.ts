@@ -115,6 +115,10 @@ export interface ServiceRecord {
   control_tower_email?: string
   thread_id?: string
   control_tower_inbox?: string
+  ai_summary?: string
+  ai_summary_generated_at?: string
+  ai_summary_messages_count?: number
+  ai_summary_edited_by_user?: boolean
   expand?: {
     account_executive?: AccountExecutiveRecord
     client?: ClientRecord
