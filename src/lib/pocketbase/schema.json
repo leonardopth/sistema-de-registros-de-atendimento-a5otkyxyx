@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-16T18:34:23.052Z",
+  "generatedAt": "2026-10-18T16:12:30.790Z",
   "collections": [
     {
       "name": "users",
@@ -3142,6 +3142,304 @@
         "CREATE INDEX `idx_cte_thread_id` ON `control_tower_emails` (thread_id)",
         "CREATE INDEX `idx_cte_thread_root` ON `control_tower_emails` (thread_root)",
         "CREATE INDEX `idx_cte_sr` ON `control_tower_emails` (service_record)"
+      ]
+    },
+    {
+      "name": "waiver_configs",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'Líder' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Gerente' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'Líder' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Gerente' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Líder' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Gerente' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
+      },
+      "fields": [
+        {
+          "name": "units",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "approvers_latam",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "approvers_afkl",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "approvers_assistencia",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "approvers_default",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "airlines_config",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "updated_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "waiver_requests",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Master' || @request.auth.master_access = true)"
+      },
+      "fields": [
+        {
+          "name": "airline_key",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "airline_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "request_type",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "unit",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "gds_locator",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "airline_locator",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pax_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pax_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "currency",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "priority",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "approver_name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Pendente", "Em análise", "Aprovada", "Negociada", "Recusada"]
+        },
+        {
+          "name": "form_data",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "requester",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "reviewed_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "reviewed_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "review_notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "negotiated_amount",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_wr_status ON waiver_requests (status)",
+        "CREATE INDEX idx_wr_airline ON waiver_requests (airline_key)",
+        "CREATE INDEX idx_wr_unit ON waiver_requests (unit)",
+        "CREATE INDEX idx_wr_requester ON waiver_requests (requester)",
+        "CREATE INDEX idx_wr_gds ON waiver_requests (gds_locator)",
+        "CREATE INDEX idx_wr_created ON waiver_requests (created DESC)"
+      ]
+    },
+    {
+      "name": "waiver_history",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "waiver_request",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "waiver_requests"
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "previous_status",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "new_status",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "details",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_wh_request ON waiver_history (waiver_request)",
+        "CREATE INDEX idx_wh_created ON waiver_history (created DESC)"
       ]
     }
   ]

@@ -42,6 +42,7 @@ import {
   Layers,
   CalendarDays,
   Flame,
+  FileCheck2,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -67,6 +68,12 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Dashboard', to: '/', icon: LayoutDashboard, visible: () => true },
       { label: 'Atendimentos', to: '/atendimentos', icon: ClipboardList, visible: () => true },
+      {
+        label: 'Waivers & Favors',
+        to: '/waivers',
+        icon: FileCheck2,
+        visible: () => true,
+      },
       {
         label: 'Fila & Backlog',
         to: '/fila-atendimentos',
@@ -380,7 +387,7 @@ export default function Layout() {
               </Button>
               <div className="text-center pt-1">
                 <span className="text-[10px] text-slate-400 font-mono tracking-tight">
-                  v0.0.271
+                  v0.0.272
                 </span>
               </div>
             </>
@@ -415,7 +422,7 @@ export default function Layout() {
                   Sair
                 </TooltipContent>
               </Tooltip>
-              <span className="text-[9px] text-slate-400 font-mono text-center">v271</span>
+              <span className="text-[9px] text-slate-400 font-mono text-center">v272</span>
             </div>
           )}
         </div>

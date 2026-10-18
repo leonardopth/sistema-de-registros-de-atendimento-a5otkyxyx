@@ -13,6 +13,7 @@ import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
 import NovoAtendimento from '@/pages/NovoAtendimento'
 import Atendimentos from '@/pages/Atendimentos'
+import Waivers from '@/pages/Waivers'
 import Clientes from '@/pages/Clientes'
 import Autonomia from '@/pages/Autonomia'
 import ExecutivosContas from '@/pages/ExecutivosContas'
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/novo-atendimento" element={<NovoAtendimento />} />
               <Route path="/atendimentos" element={<Atendimentos />} />
+              <Route path="/waivers" element={<Waivers />} />
               <Route path="/fila-atendimentos" element={<FilaAtendimentos />} />
               <Route path="/torre-controle" element={<TorreControle />} />
               <Route path="/central-relatorios" element={<CentralRelatorios />} />
