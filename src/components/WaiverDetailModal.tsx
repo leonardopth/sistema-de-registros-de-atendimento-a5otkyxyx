@@ -31,6 +31,8 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import type { WaiverRequestRecord, WaiverHistoryRecord, WaiverStatus } from '@/types/waiver'
 import { updateWaiverStatus, getWaiverHistory } from '@/services/waivers'
+import { findMatchingActiveBudget } from '@/services/waiver_budgets'
+import type { WaiverBudgetRecord } from '@/types/waiver'
 import { cn } from '@/lib/utils'
 
 interface WaiverDetailModalProps {
@@ -59,6 +61,8 @@ export function WaiverDetailModal({
   const [selectedDecision, setSelectedDecision] = useState<WaiverStatus | null>(null)
   const [reviewNotes, setReviewNotes] = useState('')
   const [negotiatedAmount, setNegotiatedAmount] = useState('')
+  const [matchingBudget, setMatchingBudget] = useState<WaiverBudgetRecord | null>(null)
+  const [loadingBudget, setLoadingBudget] = useState(false)
 
   useEffect(() => {
     if (request && open) {
@@ -70,8 +74,26 @@ export function WaiverDetailModal({
           : '',
       )
       loadHistory(request.id)
+      loadMatchingBudget(request)
     }
   }, [request, open])
+
+  const loadMatchingBudget = async (req: WaiverRequestRecord) => {
+    setLoadingBudget(true)
+    try {
+      const budget = await findMatchingActiveBudget({
+        airline_key: req.airline_key,
+        unit: req.unit,
+        currency: req.currency,
+      })
+      setMatchingBudget(budget)
+    } catch (err) {
+      console.error('Erro ao verificar verba:', err)
+      setMatchingBudget(null)
+    } finally {
+      setLoadingBudget(false)
+    }
+  }
 
   const loadHistory = async (id: string) => {
     setLoadingHistory(true)
@@ -419,6 +441,103 @@ export function WaiverDetailModal({
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Informativo de Verba Comercial Disponível (para o Aprovador/Gestor) */}
+        <div className="mt-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50/80 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-slate-700 flex items-center gap-1.5">
+              <DollarSign className="h-4 w-4 text-indigo-600" />
+              Saldo da Verba Comercial ({request.airline_name})
+            </span>
+            {matchingBudget && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-[10px] font-bold',
+                  matchingBudget.budget_amount - (matchingBudget.used_amount || 0) > 0
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                    : 'bg-red-50 text-red-700 border-red-300',
+                )}
+              >
+                {matchingBudget.budget_amount - (matchingBudget.used_amount || 0) > 0
+                  ? 'Verba com Saldo'
+                  : 'Verba Esgotada'}
+              </Badge>
+            )}
+          </div>
+
+          {loadingBudget ? (
+            <p className="text-xs text-slate-400">Consultando saldo de verba...</p>
+          ) : matchingBudget ? (
+            (() => {
+              const available = matchingBudget.budget_amount - (matchingBudget.used_amount || 0)
+              const pctUsed = Math.min(
+                100,
+                Math.round(
+                  ((matchingBudget.used_amount || 0) / (matchingBudget.budget_amount || 1)) * 100,
+                ),
+              )
+              return (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="bg-white p-2 rounded border border-slate-200">
+                      <span className="text-[10px] text-slate-400 block uppercase">
+                        Orçado ({matchingBudget.period_label})
+                      </span>
+                      <span className="font-bold font-mono text-slate-800">
+                        {matchingBudget.budget_amount.toLocaleString('pt-BR', {
+                          minimumFractionDigits: 2,
+                        })}{' '}
+                        {matchingBudget.currency}
+                      </span>
+                    </div>
+                    <div className="bg-white p-2 rounded border border-slate-200">
+                      <span className="text-[10px] text-slate-400 block uppercase">
+                        Já Utilizado
+                      </span>
+                      <span className="font-bold font-mono text-amber-700">
+                        {(matchingBudget.used_amount || 0).toLocaleString('pt-BR', {
+                          minimumFractionDigits: 2,
+                        })}{' '}
+                        {matchingBudget.currency} ({pctUsed}%)
+                      </span>
+                    </div>
+                    <div className="bg-white p-2 rounded border border-slate-200">
+                      <span className="text-[10px] text-slate-400 block uppercase">Disponível</span>
+                      <span
+                        className={cn(
+                          'font-bold font-mono',
+                          available > 0 ? 'text-emerald-700' : 'text-red-700',
+                        )}
+                      >
+                        {available.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}{' '}
+                        {matchingBudget.currency}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className={cn(
+                        'h-full transition-all',
+                        pctUsed < 70
+                          ? 'bg-emerald-500'
+                          : pctUsed < 90
+                            ? 'bg-amber-500'
+                            : 'bg-red-500',
+                      )}
+                      style={{ width: `${pctUsed}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })()
+          ) : (
+            <p className="text-xs text-slate-500 italic">
+              Nenhuma verba ativa vinculada para {request.airline_name}. A aprovação será permitida
+              e registrada como "sem verba vinculada".
+            </p>
+          )}
+        </div>
 
         {/* Painel de Ação e Decisão (somente para Gestores/Supervisores/Líderes/Master) */}
         {canManage && (

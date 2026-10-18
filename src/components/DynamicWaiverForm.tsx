@@ -60,6 +60,13 @@ export function DynamicWaiverForm({
       if (Array.isArray(approversList) && approversList.length > 0) {
         return approversList.map((a: string) => ({ label: a, value: a }))
       }
+      if (config.key === 'sky') {
+        return [
+          { label: 'Laurence Brotero', value: 'Laurence Brotero' },
+          { label: 'Gerência Comercial', value: 'Gerência Comercial' },
+          { label: 'Supervisão Operacional', value: 'Supervisão Operacional' },
+        ]
+      }
       return [
         { label: 'Gerência Operacional', value: 'Gerência Operacional' },
         { label: 'Supervisão de Operações', value: 'Supervisão de Operações' },

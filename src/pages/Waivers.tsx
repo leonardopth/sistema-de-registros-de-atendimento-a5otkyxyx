@@ -37,11 +37,18 @@ import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
 import { isMasterUser, isManagerUser } from '@/lib/service-group-access'
-import type { WaiverRequestRecord, WaiverConfigRecord, WaiverStatus } from '@/types/waiver'
+import type {
+  WaiverRequestRecord,
+  WaiverConfigRecord,
+  WaiverStatus,
+  WaiverBudgetRecord,
+} from '@/types/waiver'
 import { getWaiverRequests, getWaiverConfig } from '@/services/waivers'
+import { getWaiverBudgets } from '@/services/waiver_budgets'
 import { NewWaiverWizardModal } from '@/components/NewWaiverWizardModal'
 import { WaiverDetailModal } from '@/components/WaiverDetailModal'
 import { WaiverSettingsModal } from '@/components/WaiverSettingsModal'
+import { WaiverBudgetsView } from '@/components/WaiverBudgetsView'
 import { AIRLINE_CONFIGS } from '@/constants/waivers'
 import { cn } from '@/lib/utils'
 
@@ -50,15 +57,19 @@ export default function Waivers() {
   const { toast } = useToast()
 
   const [requests, setRequests] = useState<WaiverRequestRecord[]>([])
+  const [budgets, setBudgets] = useState<WaiverBudgetRecord[]>([])
   const [config, setConfig] = useState<WaiverConfigRecord | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingBudgets, setLoadingBudgets] = useState(false)
 
   // Filtros de listagem
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [airlineFilter, setAirlineFilter] = useState<string>('ALL')
   const [unitFilter, setUnitFilter] = useState<string>('ALL')
-  const [activeTab, setActiveTab] = useState<'queue' | 'my_requests' | 'metrics'>('queue')
+  const [activeTab, setActiveTab] = useState<'queue' | 'my_requests' | 'metrics' | 'budgets'>(
+    'queue',
+  )
 
   // Modais
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -83,9 +94,14 @@ export default function Waivers() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [reqList, cfg] = await Promise.all([getWaiverRequests(), getWaiverConfig()])
+      const [reqList, cfg, budgetList] = await Promise.all([
+        getWaiverRequests(),
+        getWaiverConfig(),
+        getWaiverBudgets(),
+      ])
       setRequests(reqList)
       setConfig(cfg)
+      setBudgets(budgetList)
     } catch (err) {
       console.error('Erro ao carregar waivers:', err)
       toast({
@@ -98,6 +114,18 @@ export default function Waivers() {
     }
   }
 
+  const loadBudgetsOnly = async () => {
+    setLoadingBudgets(true)
+    try {
+      const budgetList = await getWaiverBudgets()
+      setBudgets(budgetList)
+    } catch (err) {
+      console.error('Erro ao recarregar verbas:', err)
+    } finally {
+      setLoadingBudgets(false)
+    }
+  }
+
   useEffect(() => {
     loadData()
   }, [])
@@ -105,6 +133,7 @@ export default function Waivers() {
   // Inscrição Realtime no PocketBase
   useRealtime('waiver_requests', () => loadData(), true)
   useRealtime('waiver_configs', () => loadData(), true)
+  useRealtime('waiver_budgets', () => loadBudgetsOnly(), true)
 
   // Segregação de escopo:
   // - Master: vê tudo
@@ -424,6 +453,9 @@ export default function Waivers() {
             <TabsTrigger value="my_requests" className="text-xs font-semibold">
               Minhas Solicitações ({scopedRequests.filter((r) => r.requester === user?.id).length})
             </TabsTrigger>
+            <TabsTrigger value="budgets" className="text-xs font-semibold">
+              <DollarSign className="h-3.5 w-3.5 mr-1" /> Verbas Comerciais ({budgets.length})
+            </TabsTrigger>
             <TabsTrigger value="metrics" className="text-xs font-semibold">
               <TrendingUp className="h-3.5 w-3.5 mr-1" /> Indicadores & Resumo
             </TabsTrigger>
@@ -673,6 +705,16 @@ export default function Waivers() {
               )}
             </div>
           </div>
+        )}
+
+        {/* Conteúdo da Aba Verbas Comerciais */}
+        {activeTab === 'budgets' && (
+          <WaiverBudgetsView
+            budgets={budgets}
+            loading={loadingBudgets}
+            canEdit={canManageWaivers}
+            onRefresh={loadBudgetsOnly}
+          />
         )}
 
         {/* Conteúdo de Indicadores & Resumo */}

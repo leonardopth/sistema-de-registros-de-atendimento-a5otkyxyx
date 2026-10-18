@@ -7,6 +7,7 @@ import type {
 } from '@/types/waiver'
 import { createAuditLog } from '@/services/audit-log'
 import { createNotification } from '@/services/notifications'
+import { consumeWaiverBudget } from '@/services/waiver_budgets'
 
 /**
  * Obtém configuração de parâmetros (unidades e aprovadores por companhia)
@@ -174,17 +175,58 @@ export async function updateWaiverStatus(params: {
       expand: 'requester,reviewed_by',
     })
 
+  // Consumo automático de verba comercial caso a solicitação seja Aprovada ou Negociada
+  let budgetConsumptionDetails: Record<string, any> | undefined = undefined
+  let budgetNotes = ''
+
+  if (params.newStatus === 'Aprovada' || params.newStatus === 'Negociada') {
+    // Valor a debitar: se negociado, usa negotiated_amount; senão o valor solicitado
+    const effectiveAmount =
+      params.newStatus === 'Negociada' && params.negotiatedAmount !== undefined
+        ? params.negotiatedAmount
+        : current.amount || 0
+
+    if (effectiveAmount > 0) {
+      try {
+        const consumption = await consumeWaiverBudget({
+          airline_key: current.airline_key,
+          amount: effectiveAmount,
+          unit: current.unit,
+          currency: current.currency,
+        })
+        budgetConsumptionDetails = {
+          consumed: consumption.consumed,
+          budgetId: consumption.budgetId,
+          category: consumption.category,
+          remainingBalance: consumption.remainingBalance,
+          amountDebited: effectiveAmount,
+          message: consumption.message,
+        }
+        budgetNotes = ` | Consumo de verba: ${consumption.message}`
+      } catch (budgetErr) {
+        console.warn('Erro ao processar débito de verba:', budgetErr)
+        budgetNotes = ' | Consumo de verba: Erro ao debitar'
+      }
+    } else {
+      budgetNotes = ' | Consumo de verba: Valor zerado ou não informado'
+    }
+  }
+
   // Registra entrada no histórico
+  const combinedNotes =
+    (params.reviewNotes || `Status alterado de "${current.status}" para "${params.newStatus}"`) +
+    budgetNotes
+
   await pb.collection('waiver_history').create<WaiverHistoryRecord>({
     waiver_request: params.requestId,
     action: params.actionLabel || `Status alterado para ${params.newStatus}`,
     previous_status: current.status,
     new_status: params.newStatus,
     user: currentUserId,
-    notes:
-      params.reviewNotes || `Status alterado de "${current.status}" para "${params.newStatus}"`,
+    notes: combinedNotes,
     details: {
       negotiated_amount: params.negotiatedAmount,
+      budget_consumption: budgetConsumptionDetails,
     },
   })
 

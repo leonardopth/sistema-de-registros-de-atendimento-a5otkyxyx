@@ -218,6 +218,11 @@ export function NewWaiverWizardModal({
         if (formData.tarifa_original_usd) {
           amount = parseFloat(formData.tarifa_original_usd)
         }
+      } else if (selectedAirline.key === 'sky') {
+        currency = 'USD'
+        if (formData.amount_per_pax_usd) {
+          amount = parseFloat(formData.amount_per_pax_usd)
+        }
       }
 
       const created = await createWaiverRequest({

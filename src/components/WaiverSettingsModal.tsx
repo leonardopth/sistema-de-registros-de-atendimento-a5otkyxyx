@@ -47,6 +47,7 @@ export function WaiverSettingsModal({
   const [approversLatam2, setApproversLatam2] = useState<string[]>(
     () => config?.approvers_latam2 || [],
   )
+  const [approversSky, setApproversSky] = useState<string[]>(() => config?.approvers_sky || [])
   const [approversDefault, setApproversDefault] = useState<string[]>(
     () => config?.approvers_default || [],
   )
@@ -59,6 +60,7 @@ export function WaiverSettingsModal({
   const [newGol, setNewGol] = useState('')
   const [newAa, setNewAa] = useState('')
   const [newLatam2, setNewLatam2] = useState('')
+  const [newSky, setNewSky] = useState('')
   const [newDefault, setNewDefault] = useState('')
 
   // Sincroniza quando abrir
@@ -71,6 +73,7 @@ export function WaiverSettingsModal({
       setApproversGol(config.approvers_gol || [])
       setApproversAa(config.approvers_aa || [])
       setApproversLatam2(config.approvers_latam2 || [])
+      setApproversSky(config.approvers_sky || [])
       setApproversDefault(config.approvers_default || [])
     }
   }, [config, open])
@@ -114,6 +117,7 @@ export function WaiverSettingsModal({
         approvers_gol: approversGol,
         approvers_aa: approversAa,
         approvers_latam2: approversLatam2,
+        approvers_sky: approversSky,
         approvers_default: approversDefault,
       })
 
@@ -220,15 +224,28 @@ export function WaiverSettingsModal({
         </DialogHeader>
 
         <Tabs defaultValue="units" className="w-full mt-2">
-          <TabsList className="grid grid-cols-7 w-full text-xs">
+          <TabsList className="grid grid-cols-8 w-full text-xs">
             <TabsTrigger value="units">Unidades</TabsTrigger>
+            <TabsTrigger value="sky">SKY</TabsTrigger>
             <TabsTrigger value="gol">GOL</TabsTrigger>
             <TabsTrigger value="aa">American</TabsTrigger>
-            <TabsTrigger value="latam2">LATAM Descontos</TabsTrigger>
-            <TabsTrigger value="latam">LATAM Isenções</TabsTrigger>
+            <TabsTrigger value="latam2">LATAM Desc.</TabsTrigger>
+            <TabsTrigger value="latam">LATAM Isen.</TabsTrigger>
             <TabsTrigger value="afkl">AF / KL</TabsTrigger>
             <TabsTrigger value="assistencia">Aeroportos</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="sky">
+            {renderTagManager(
+              'Aprovadores — SKY Airline',
+              'Gestores e responsáveis que aparecem no campo APROVADOR para solicitações SKY Airline.',
+              approversSky,
+              setApproversSky,
+              newSky,
+              setNewSky,
+              'Nome do aprovador (ex: Laurence Brotero, Gerência Comercial)',
+            )}
+          </TabsContent>
 
           <TabsContent value="units">
             {renderTagManager(

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T16:53:56.605Z",
+  "generatedAt": "2026-10-18T17:04:14.429Z",
   "collections": [
     {
       "name": "users",
@@ -3229,6 +3229,12 @@
           "type": "json",
           "required": false,
           "system": false
+        },
+        {
+          "name": "approvers_sky",
+          "type": "json",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -3458,6 +3464,120 @@
       "indexes": [
         "CREATE INDEX idx_wh_request ON waiver_history (waiver_request)",
         "CREATE INDEX idx_wh_created ON waiver_history (created DESC)"
+      ]
+    },
+    {
+      "name": "waiver_budgets",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'Líder' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Gerente' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'Líder' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Gerente' || @request.auth.role = 'Master' || @request.auth.master_access = true)",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'Líder' || @request.auth.role = 'Supervisor' || @request.auth.role = 'Gerente' || @request.auth.role = 'Master' || @request.auth.master_access = true)"
+      },
+      "fields": [
+        {
+          "name": "airline_key",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "airline_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "period_label",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "start_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "end_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "budget_amount",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "used_amount",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "currency",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["USD", "BRL", "EUR"]
+        },
+        {
+          "name": "unit",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Ativo", "Inativo", "Encerrado"]
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_wb_airline ON waiver_budgets (airline_key)",
+        "CREATE INDEX idx_wb_status ON waiver_budgets (status)",
+        "CREATE INDEX idx_wb_period ON waiver_budgets (period_label)",
+        "CREATE INDEX idx_wb_created ON waiver_budgets (created DESC)"
       ]
     }
   ]

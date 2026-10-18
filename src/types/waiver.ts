@@ -13,6 +13,7 @@ export interface WaiverConfigRecord {
   approvers_gol?: string[]
   approvers_aa?: string[]
   approvers_latam2?: string[]
+  approvers_sky?: string[]
   approvers_default?: string[]
   airlines_config?: Record<string, unknown>
   updated_by?: string
@@ -20,6 +21,30 @@ export interface WaiverConfigRecord {
   updated: string
   expand?: {
     updated_by?: UserRecord
+  }
+}
+
+export type WaiverBudgetStatus = 'Ativo' | 'Inativo' | 'Encerrado'
+
+export interface WaiverBudgetRecord {
+  id: string
+  airline_key: string // 'latam' | 'afkl' | 'gol' | 'aa' | 'sky' | 'assistencia'
+  airline_name?: string
+  category: string
+  period_label: string
+  start_date?: string
+  end_date?: string
+  budget_amount: number
+  used_amount: number
+  currency: 'USD' | 'BRL' | 'EUR'
+  unit?: string
+  status: WaiverBudgetStatus
+  notes?: string
+  created_by?: string
+  created: string
+  updated: string
+  expand?: {
+    created_by?: UserRecord
   }
 }
 
@@ -86,6 +111,7 @@ export interface DynamicFormField {
   label: string
   type: FieldType
   required?: boolean
+  onlyInt?: boolean
   placeholder?: string
   helperText?: string
   options?: { label: string; value: string }[] | string[]
@@ -120,5 +146,6 @@ export interface AirlineFormConfig {
     | 'approvers_gol'
     | 'approvers_aa'
     | 'approvers_latam2'
+    | 'approvers_sky'
     | 'approvers_default'
 }
