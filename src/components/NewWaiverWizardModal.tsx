@@ -183,6 +183,7 @@ export function NewWaiverWizardModal({
         ? String(formData.airline_locator).toUpperCase().trim()
         : undefined
       const approver_name = formData.approver_name || 'Gestão Operacional'
+      const approver_id = formData.approver_id || undefined
       const request_type =
         formData.request_type || (selectedAirline.key === 'latam' ? 'ISENÇÃO' : 'GERAL')
       const priority = formData.priority || 'MÉDIA'
@@ -238,6 +239,7 @@ export function NewWaiverWizardModal({
         currency,
         priority,
         approver_name,
+        approver_id,
         form_data: formData,
       })
 

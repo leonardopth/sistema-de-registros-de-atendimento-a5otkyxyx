@@ -59,7 +59,7 @@ export async function getWaiverRequests(filter?: string): Promise<WaiverRequestR
     return await pb.collection('waiver_requests').getFullList<WaiverRequestRecord>({
       filter: filter || undefined,
       sort: '-created',
-      expand: 'requester,reviewed_by',
+      expand: 'requester,reviewed_by,approver_id',
     })
   } catch (error) {
     console.error('Erro ao buscar waiver_requests:', error)
@@ -73,7 +73,7 @@ export async function getWaiverRequests(filter?: string): Promise<WaiverRequestR
 export async function getWaiverRequestById(id: string): Promise<WaiverRequestRecord | null> {
   try {
     return await pb.collection('waiver_requests').getOne<WaiverRequestRecord>(id, {
-      expand: 'requester,reviewed_by',
+      expand: 'requester,reviewed_by,approver_id',
     })
   } catch (error) {
     console.error(`Erro ao buscar waiver_request ${id}:`, error)
@@ -97,6 +97,7 @@ export async function createWaiverRequest(data: {
   currency?: string
   priority?: string
   approver_name: string
+  approver_id?: string
   form_data: Record<string, any>
 }): Promise<WaiverRequestRecord> {
   const currentUserId = pb.authStore.record?.id
@@ -104,6 +105,7 @@ export async function createWaiverRequest(data: {
 
   const created = await pb.collection('waiver_requests').create<WaiverRequestRecord>({
     ...data,
+    approver_id: data.approver_id || undefined,
     status: 'Pendente',
     requester: currentUserId,
   })
@@ -135,8 +137,21 @@ export async function createWaiverRequest(data: {
       unit: data.unit,
       loc: data.gds_locator,
       approver: data.approver_name,
+      approver_id: data.approver_id,
     },
   })
+
+  // Disparo assíncrono do e-mail ao aprovador (com token único de ação direta)
+  try {
+    await pb.send('/backend/v1/waivers/send-approval-email', {
+      method: 'POST',
+      body: {
+        waiver_id: created.id,
+      },
+    })
+  } catch (emailTriggerErr) {
+    console.warn('Aviso: falha ao acionar envio de e-mail ao aprovador:', emailTriggerErr)
+  }
 
   return created
 }
@@ -243,18 +258,23 @@ export async function updateWaiverStatus(params: {
     },
   })
 
-  // Notificar o solicitante se foi decidido (Aprovada, Negociada, Recusada)
-  if (['Aprovada', 'Negociada', 'Recusada'].includes(params.newStatus) && current.requester) {
+  // Notificar o solicitante se foi decidido (Aprovada, Negociada, Recusada, Standby)
+  if (
+    ['Aprovada', 'Negociada', 'Recusada', 'Standby'].includes(params.newStatus) &&
+    current.requester
+  ) {
     const statusTitles: Record<string, string> = {
       Aprovada: 'Solicitação de Waiver Aprovada',
       Negociada: 'Solicitação de Waiver Negociada',
       Recusada: 'Solicitação de Waiver Recusada',
+      Standby: 'Solicitação de Waiver em Standby / Em Análise',
     }
 
     const typeMapping: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
       Aprovada: 'success',
       Negociada: 'warning',
       Recusada: 'error',
+      Standby: 'info',
     }
 
     const locMsg = current.gds_locator ? ` (Loc: ${current.gds_locator})` : ''

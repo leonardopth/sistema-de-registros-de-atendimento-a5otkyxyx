@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Info, ChevronDown, ChevronUp, AlertCircle, FileText } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,8 @@ import {
 import { Badge } from '@/components/ui/badge'
 import type { AirlineFormConfig, DynamicFormField, WaiverConfigRecord } from '@/types/waiver'
 import { cn } from '@/lib/utils'
+import { getUsers } from '@/services/users'
+import type { UserRecord } from '@/types/service_record'
 
 interface DynamicWaiverFormProps {
   config: AirlineFormConfig
@@ -35,6 +37,27 @@ export function DynamicWaiverForm({
   disabled = false,
 }: DynamicWaiverFormProps) {
   const [rulesOpen, setRulesOpen] = useState(true)
+  const [operationalUsers, setOperationalUsers] = useState<UserRecord[]>([])
+
+  // Busca usuários cadastrados no sistema com papéis "Gerente" e "Supervisor" (Gerente e Supervisor Operacional)
+  useEffect(() => {
+    let isMounted = true
+    getUsers()
+      .then((users) => {
+        if (!isMounted) return
+        const filtered = users.filter(
+          (u) =>
+            u.approval_status === 'Aprovado' && (u.role === 'Gerente' || u.role === 'Supervisor'),
+        )
+        setOperationalUsers(filtered)
+      })
+      .catch((err) => {
+        console.warn('Erro ao carregar aprovadores operacionais:', err)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   // Resolve options para campos parametrizáveis: UNIDADE e APROVADOR
   const getFieldOptions = (field: DynamicFormField) => {
@@ -56,22 +79,39 @@ export function DynamicWaiverForm({
     }
 
     if (field.name === 'approver_name') {
+      const listOptions: { label: string; value: string; userId?: string }[] = []
+      const addedNames = new Set<string>()
+
+      // 1. Prioriza os usuários reais do sistema dos papéis "Gerente" e "Supervisor" (Gerente Operacional e Supervisor Operacional)
+      operationalUsers.forEach((u) => {
+        const roleLabel = u.role === 'Gerente' ? 'Gerente Operacional' : 'Supervisor Operacional'
+        const label = `${u.name} (${roleLabel})`
+        listOptions.push({ label, value: u.name, userId: u.id })
+        addedNames.add(u.name.toLowerCase().trim())
+      })
+
+      // 2. Parâmetros específicos por companhia (waiver_configs), alinhando e complementando
       const approversList = (waiverConfig && (waiverConfig as any)[config.approversKey]) || []
       if (Array.isArray(approversList) && approversList.length > 0) {
-        return approversList.map((a: string) => ({ label: a, value: a }))
+        approversList.forEach((a: string) => {
+          const trimmed = String(a).trim()
+          if (!trimmed) return
+          if (!addedNames.has(trimmed.toLowerCase())) {
+            listOptions.push({ label: trimmed, value: trimmed })
+            addedNames.add(trimmed.toLowerCase())
+          }
+        })
       }
-      if (config.key === 'sky') {
+
+      // 3. Fallback genérico operacional caso a lista esteja vazia
+      if (listOptions.length === 0) {
         return [
-          { label: 'Laurence Brotero', value: 'Laurence Brotero' },
-          { label: 'Gerência Comercial', value: 'Gerência Comercial' },
-          { label: 'Supervisão Operacional', value: 'Supervisão Operacional' },
+          { label: 'Gerente Operacional', value: 'Gerente Operacional' },
+          { label: 'Supervisor Operacional', value: 'Supervisor Operacional' },
         ]
       }
-      return [
-        { label: 'Gerência Operacional', value: 'Gerência Operacional' },
-        { label: 'Supervisão de Operações', value: 'Supervisão de Operações' },
-        { label: 'Liderança de Atendimento', value: 'Liderança de Atendimento' },
-      ]
+
+      return listOptions
     }
 
     if (!field.options) return []
@@ -189,7 +229,20 @@ export function DynamicWaiverForm({
           <Select
             value={value || ''}
             disabled={disabled}
-            onValueChange={(val) => onChange(field.name, val)}
+            onValueChange={(val) => {
+              onChange(field.name, val)
+              if (field.name === 'approver_name') {
+                // Localiza o ID do usuário correspondente (se existir) para sincronizar approver_id
+                const matched = operationalUsers.find(
+                  (u) => u.name.toLowerCase().trim() === val.toLowerCase().trim(),
+                )
+                if (matched) {
+                  onChange('approver_id', matched.id)
+                } else {
+                  onChange('approver_id', '')
+                }
+              }
+            }}
           >
             <SelectTrigger
               id={field.name}
@@ -198,11 +251,15 @@ export function DynamicWaiverForm({
               <SelectValue placeholder={field.placeholder || 'Selecione uma opção'} />
             </SelectTrigger>
             <SelectContent>
-              {options.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
+              {options.map((opt) => {
+                const optVal = typeof opt === 'string' ? opt : opt.value
+                const optLab = typeof opt === 'string' ? opt : opt.label
+                return (
+                  <SelectItem key={optVal} value={optVal}>
+                    {optLab}
+                  </SelectItem>
+                )
+              })}
             </SelectContent>
           </Select>
         )}

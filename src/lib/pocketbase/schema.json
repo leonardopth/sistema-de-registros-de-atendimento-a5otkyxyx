@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T17:04:14.429Z",
+  "generatedAt": "2026-10-18T17:23:04.753Z",
   "collections": [
     {
       "name": "users",
@@ -3323,13 +3323,6 @@
           "system": false
         },
         {
-          "name": "status",
-          "type": "select",
-          "required": false,
-          "system": false,
-          "selectValues": ["Pendente", "Em análise", "Aprovada", "Negociada", "Recusada"]
-        },
-        {
           "name": "form_data",
           "type": "json",
           "required": false,
@@ -3380,6 +3373,20 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["Pendente", "Em análise", "Standby", "Aprovada", "Negociada", "Recusada"]
+        },
+        {
+          "name": "approver_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
         }
       ],
       "indexes": [
@@ -3578,6 +3585,87 @@
         "CREATE INDEX idx_wb_status ON waiver_budgets (status)",
         "CREATE INDEX idx_wb_period ON waiver_budgets (period_label)",
         "CREATE INDEX idx_wb_created ON waiver_budgets (created DESC)"
+      ]
+    },
+    {
+      "name": "waiver_decision_tokens",
+      "type": "base",
+      "apiRules": {
+        "list": null,
+        "view": null,
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "waiver_request",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "waiver_requests"
+        },
+        {
+          "name": "token",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "approver_email",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "approver_user",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "used",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "expires_at",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "used_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_wdt_token ON waiver_decision_tokens (token)",
+        "CREATE INDEX idx_wdt_request ON waiver_decision_tokens (waiver_request)"
       ]
     }
   ]

@@ -217,7 +217,9 @@ export function WaiverSettingsModal({
                 Parâmetros de Waivers & Favors
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500">
-                Gerencie as opções do dropdown de Unidades e Aprovadores para cada companhia.
+                Gerencie as opções do dropdown de Unidades e Aprovadores para cada companhia. O
+                formulário também inclui automaticamente os colaboradores com papéis de{' '}
+                <strong>Gerente Operacional</strong> e <strong>Supervisor Operacional</strong>.
               </DialogDescription>
             </div>
           </div>

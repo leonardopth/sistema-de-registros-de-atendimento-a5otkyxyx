@@ -1,6 +1,12 @@
 import type { UserRecord } from '@/types/service_record'
 
-export type WaiverStatus = 'Pendente' | 'Em análise' | 'Aprovada' | 'Negociada' | 'Recusada'
+export type WaiverStatus =
+  | 'Pendente'
+  | 'Em análise'
+  | 'Standby'
+  | 'Aprovada'
+  | 'Negociada'
+  | 'Recusada'
 
 export type WaiverPriority = 'BAIXA' | 'MÉDIA' | 'ALTA'
 
@@ -62,6 +68,7 @@ export interface WaiverRequestRecord {
   currency?: string
   priority?: WaiverPriority | string
   approver_name: string
+  approver_id?: string
   status: WaiverStatus
   form_data: Record<string, any>
   requester: string
@@ -74,6 +81,7 @@ export interface WaiverRequestRecord {
   expand?: {
     requester?: UserRecord
     reviewed_by?: UserRecord
+    approver_id?: UserRecord
   }
 }
 
