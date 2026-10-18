@@ -76,13 +76,17 @@ export function NewWaiverWizardModal({
       unit: prev.unit || userDefaultUnit || 'Concierge',
       // Para AF/KL
       cia_validadora: prev.cia_validadora || 'AF-057',
-      // Para LATAM
+      // Para LATAM Isenções
       mercado: prev.mercado || 'EUA - Katia Vieira',
       canal_analise: prev.canal_analise || 'MANUAL',
       priority: prev.priority || 'MÉDIA',
       // Para Assistência
       is_codeshare: prev.is_codeshare || 'NÃO',
       horario_voo: prev.horario_voo || 'NORMAL (entre 06h e 22h00)',
+      // Para LATAM 2 Descontos Manuais
+      tem_surcharge_q: prev.tem_surcharge_q || 'NÃO',
+      manual_ou_portal: prev.manual_ou_portal || 'MANUAL',
+      advp: prev.advp || 'D+30 ou mais',
     }))
     setStep(2)
   }
@@ -198,6 +202,21 @@ export function NewWaiverWizardModal({
         currency = 'EUR'
         if (formData.amount_eur) {
           amount = parseFloat(formData.amount_eur)
+        }
+      } else if (selectedAirline.key === 'gol') {
+        currency = 'BRL'
+        if (formData.amount_per_pax_brl) {
+          amount = parseFloat(formData.amount_per_pax_brl)
+        }
+      } else if (selectedAirline.key === 'aa') {
+        currency = 'USD'
+        if (formData.amount_per_pax_usd) {
+          amount = parseFloat(formData.amount_per_pax_usd)
+        }
+      } else if (selectedAirline.key === 'latam2') {
+        currency = 'USD'
+        if (formData.tarifa_original_usd) {
+          amount = parseFloat(formData.tarifa_original_usd)
         }
       }
 
@@ -330,9 +349,8 @@ export function NewWaiverWizardModal({
               <div>
                 <p className="font-semibold">Arquitetura Extensível Dinâmica</p>
                 <p className="text-indigo-800/80 text-[11.5px]">
-                  Os formulários são montados a partir de definições de dados configuráveis. Novas
-                  companhias como SKY, GOL e American Airlines entrarão automaticamente sem
-                  necessidade de refatoração de código.
+                  Os formulários são montados a partir de definições de dados configuráveis. GOL,
+                  American Airlines e Descontos LATAM integrados e parametrizáveis.
                 </p>
               </div>
             </div>

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T16:12:30.790Z",
+  "generatedAt": "2026-10-18T16:53:56.605Z",
   "collections": [
     {
       "name": "users",
@@ -3211,6 +3211,24 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "approvers_gol",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "approvers_aa",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "approvers_latam2",
+          "type": "json",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []

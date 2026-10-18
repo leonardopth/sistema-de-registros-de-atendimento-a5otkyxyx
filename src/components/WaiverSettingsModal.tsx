@@ -42,6 +42,11 @@ export function WaiverSettingsModal({
   const [approversAssistencia, setApproversAssistencia] = useState<string[]>(
     () => config?.approvers_assistencia || [],
   )
+  const [approversGol, setApproversGol] = useState<string[]>(() => config?.approvers_gol || [])
+  const [approversAa, setApproversAa] = useState<string[]>(() => config?.approvers_aa || [])
+  const [approversLatam2, setApproversLatam2] = useState<string[]>(
+    () => config?.approvers_latam2 || [],
+  )
   const [approversDefault, setApproversDefault] = useState<string[]>(
     () => config?.approvers_default || [],
   )
@@ -51,6 +56,9 @@ export function WaiverSettingsModal({
   const [newLatam, setNewLatam] = useState('')
   const [newAfkl, setNewAfkl] = useState('')
   const [newAssistencia, setNewAssistencia] = useState('')
+  const [newGol, setNewGol] = useState('')
+  const [newAa, setNewAa] = useState('')
+  const [newLatam2, setNewLatam2] = useState('')
   const [newDefault, setNewDefault] = useState('')
 
   // Sincroniza quando abrir
@@ -60,6 +68,9 @@ export function WaiverSettingsModal({
       setApproversLatam(config.approvers_latam || [])
       setApproversAfkl(config.approvers_afkl || [])
       setApproversAssistencia(config.approvers_assistencia || [])
+      setApproversGol(config.approvers_gol || [])
+      setApproversAa(config.approvers_aa || [])
+      setApproversLatam2(config.approvers_latam2 || [])
       setApproversDefault(config.approvers_default || [])
     }
   }, [config, open])
@@ -100,6 +111,9 @@ export function WaiverSettingsModal({
         approvers_latam: approversLatam,
         approvers_afkl: approversAfkl,
         approvers_assistencia: approversAssistencia,
+        approvers_gol: approversGol,
+        approvers_aa: approversAa,
+        approvers_latam2: approversLatam2,
         approvers_default: approversDefault,
       })
 
@@ -206,9 +220,12 @@ export function WaiverSettingsModal({
         </DialogHeader>
 
         <Tabs defaultValue="units" className="w-full mt-2">
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid grid-cols-7 w-full text-xs">
             <TabsTrigger value="units">Unidades</TabsTrigger>
-            <TabsTrigger value="latam">LATAM</TabsTrigger>
+            <TabsTrigger value="gol">GOL</TabsTrigger>
+            <TabsTrigger value="aa">American</TabsTrigger>
+            <TabsTrigger value="latam2">LATAM Descontos</TabsTrigger>
+            <TabsTrigger value="latam">LATAM Isenções</TabsTrigger>
             <TabsTrigger value="afkl">AF / KL</TabsTrigger>
             <TabsTrigger value="assistencia">Aeroportos</TabsTrigger>
           </TabsList>
@@ -246,6 +263,42 @@ export function WaiverSettingsModal({
               newAfkl,
               setNewAfkl,
               'Nome do aprovador (ex: Anderson Salva, Paulo Lobao)',
+            )}
+          </TabsContent>
+
+          <TabsContent value="gol">
+            {renderTagManager(
+              'Aprovadores — Cota Valorada GOL',
+              'Gestores e responsáveis que aparecem no campo APROVADOR para solicitações GOL.',
+              approversGol,
+              setApproversGol,
+              newGol,
+              setNewGol,
+              'Nome do aprovador (ex: Supervisão GOL, Coordenação)',
+            )}
+          </TabsContent>
+
+          <TabsContent value="aa">
+            {renderTagManager(
+              'Aprovadores — American Airlines',
+              'Gestores e responsáveis que aparecem no campo APROVADOR para solicitações American Airlines.',
+              approversAa,
+              setApproversAa,
+              newAa,
+              setNewAa,
+              'Nome do aprovador (ex: Supervisão American, Gerência)',
+            )}
+          </TabsContent>
+
+          <TabsContent value="latam2">
+            {renderTagManager(
+              'Aprovadores — Descontos Manuais LATAM',
+              'Gestores e responsáveis que aparecem no campo APROVADOR para Descontos Manuais LATAM.',
+              approversLatam2,
+              setApproversLatam2,
+              newLatam2,
+              setNewLatam2,
+              'Nome do aprovador (ex: Katia Vieira, Ruana Recio, Gestor)',
             )}
           </TabsContent>
 

@@ -621,41 +621,432 @@ export const AIRLINE_CONFIGS: AirlineFormConfig[] = [
   },
   {
     key: 'gol',
-    name: 'GOL Linhas Aéreas',
-    airlineName: 'GOL (G3)',
+    name: 'Cota Valorada GOL',
+    airlineName: 'GOL Linhas Aéreas',
     logoBadge: 'GOL',
-    active: false,
-    comingSoon: true,
+    active: true,
+    comingSoon: false,
     description:
-      'Waivers, isenções e flexibilizações GOL Linhas Aéreas (em migração do Microsoft Forms).',
-    approversKey: 'approvers_default',
-    rules: ['Formulário em processo de parametrização e integração digital.'],
-    fields: [],
+      'Solicitações de cota valorada GOL: diferença tarifária, isenção de taxas de remarcação, cancelamento e no-show.',
+    approversKey: 'approvers_gol',
+    rules: [
+      'O uso da cota valorada GOL pode ser utilizada nas seguintes situações (pode-se tentar exceções):',
+      '*DIFERENÇA TARIFÁRIA* — Emissão realizada até 10 dias antes da data de embarque; Remarcação para até 02 dias antes ou depois da data original do voo; Utilização para apenas 1 alteração por localizador; Não é permitida utilização para negociação de tarifa, inclusão de serviços e taxas de embarque; Não é permitido utilizar a cota valorada nas reitinerações (exceto multi-trecho);',
+      '*TAXAS E MULTAS* — Isenção de taxas de remarcação, cancelamento e no-show.',
+    ],
+    fields: [
+      {
+        name: 'empresa',
+        label: '1. EMPRESA',
+        type: 'text',
+        required: true,
+        placeholder: 'ex: AQAFR 57565653',
+        gridCols: 2,
+      },
+      {
+        name: 'oac_iata',
+        label: '2. OAC/IATA',
+        type: 'text',
+        required: true,
+        placeholder: 'Insira sua resposta',
+        gridCols: 2,
+      },
+      {
+        name: 'unit',
+        label: '3. UNIDADE',
+        type: 'select',
+        required: true,
+        placeholder: 'Selecionar sua resposta',
+        gridCols: 2,
+      },
+      {
+        name: 'request_type',
+        label: '4. TIPO',
+        type: 'radio',
+        required: true,
+        options: ['REEMBOLSO', 'DIF. TARIFA', 'MULTA', 'DIF. TARIFA + MULTA'],
+        gridCols: 2,
+      },
+      {
+        name: 'gds_locator',
+        label: '5. LOCALIZADOR',
+        type: 'text',
+        required: true,
+        placeholder: 'Insira sua resposta',
+        helperText: 'Informar sempre o NOVO LOC (se houver). Somente 1 loc por formulário.',
+        gridCols: 2,
+      },
+      {
+        name: 'pax_count',
+        label: '6. QUANTIDADE PAX',
+        type: 'number',
+        required: true,
+        min: 1,
+        placeholder: '1',
+        helperText: 'Informar somente os paxs envolvidos na solicitação',
+        gridCols: 2,
+      },
+      {
+        name: 'pax_name',
+        label: '7. SOBRENOME/NOME PAX 1/1',
+        type: 'text',
+        required: true,
+        placeholder: 'Insira sua resposta',
+        gridCols: 2,
+      },
+      {
+        name: 'amount_per_pax_brl',
+        label: '8. VALOR ISENÇÃO POR PAX EM BRL',
+        type: 'number',
+        required: true,
+        step: 0.01,
+        min: 0,
+        placeholder: 'Ex: 150.20',
+        helperText: 'Não usar "vírgula". Ex: 150.20 — O valor deve ser um número',
+        gridCols: 2,
+      },
+      {
+        name: 'motivo',
+        label: '9. MOTIVO',
+        type: 'radio',
+        required: true,
+        options: [
+          'ERRO ATENDIMENTO',
+          'ERRO CCO',
+          'ERRO RF/EF',
+          'CONCESSÃO COMERCIAL',
+          'RENTABILIZAÇÃO',
+          'Outra',
+        ],
+        gridCols: 2,
+      },
+      {
+        name: 'observacao',
+        label: '10. OBSERVAÇÃO',
+        type: 'textarea',
+        required: false,
+        placeholder: 'Insira sua resposta',
+        gridCols: 4,
+      },
+      {
+        name: 'email_atendente_gol',
+        label: '11. E-MAIL ATENDENTE GOL',
+        type: 'email',
+        required: true,
+        placeholder: 'Insira um endereço de email',
+        helperText: 'Informe o endereço de e-mail do atendente GOL',
+        validation: {
+          customValidator: (val) => {
+            if (!val || typeof val !== 'string') return 'Campo obrigatório'
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            if (!emailRegex.test(val.trim())) {
+              return 'Insira um endereço de e-mail válido'
+            }
+            return null
+          },
+        },
+        gridCols: 2,
+      },
+      {
+        name: 'approver_name',
+        label: '12. APROVADOR',
+        type: 'select',
+        required: true,
+        placeholder: 'Selecionar sua resposta',
+        gridCols: 2,
+      },
+    ],
   },
   {
     key: 'aa',
-    name: 'American Airlines',
-    airlineName: 'American Airlines (AA)',
+    name: 'American Airlines Waivers and Favours',
+    airlineName: 'American Airlines',
     logoBadge: 'AA',
-    active: false,
-    comingSoon: true,
+    active: true,
+    comingSoon: false,
     description:
-      'Waivers, proteção tarifária e facilidades American Airlines (em migração do Microsoft Forms).',
-    approversKey: 'approvers_default',
-    rules: ['Formulário em processo de parametrização e integração digital.'],
-    fields: [],
+      'Waivers, assentos preferenciais, ADVP, reembolsos e extensões de validade American Airlines.',
+    approversKey: 'approvers_aa',
+    rules: [
+      'Informar o valor da isenção sempre em USD (utilizar o câmbio do dia do preenchimento);',
+      'ADVP - Custo da diferença entre as tarifas;',
+      'Preferred Seat - Custo do assento (não tem mais MCE);',
+      'Reembolso tarifa non ref - Custo do valor inteiro do etkt (exceto basic economy);',
+      'NOGO to OK - USD100 por bilhete;',
+      'Name Change - USD100 por bilhete;',
+      'Ticket Valid Extension +30d - USD100 por bilhete;',
+      'Valor mínimo de waiver será USD25 – exemplo, se o waiver for USD18, será cobrado USD25;',
+      'Reembolso – necessário inserir o e-mail no saleslink para receber o waiver code para dar entrada no gds ou bsp. Obrigatorio processar em 24 horas senão perde a validade. Reembolso de bilhetes reemitidos e/ou parcialmente utilizados não serao permitidos.',
+    ],
+    fields: [
+      {
+        name: 'unit',
+        label: '1. UNIDADE',
+        type: 'select',
+        required: true,
+        placeholder: 'Selecionar sua resposta',
+        gridCols: 2,
+      },
+      {
+        name: 'gds_locator',
+        label: '2. LOCALIZADOR GDS',
+        type: 'text',
+        required: true,
+        placeholder: 'Insira sua resposta',
+        helperText: 'Somente 1 loc por formulário',
+        gridCols: 2,
+      },
+      {
+        name: 'request_type',
+        label: '3. TIPO',
+        type: 'radio',
+        required: true,
+        options: [
+          'PREFERRED SEAT',
+          'REEMBOLSO',
+          'ADVP',
+          'NAME CHANGE',
+          'NOGO TO OK',
+          'TICKET VALID EXT',
+        ],
+        gridCols: 2,
+      },
+      {
+        name: 'amount_per_pax_usd',
+        label: '4. VALOR ISENÇÃO POR PAX EM USD (usar câmbio de hoje)',
+        type: 'number',
+        required: true,
+        step: 0.01,
+        min: 0,
+        placeholder: 'Ex: 150.20',
+        helperText: 'Não usar "vírgula". Ex: 150.20 — O valor deve ser um número',
+        gridCols: 2,
+      },
+      {
+        name: 'motivo',
+        label: '5. MOTIVO',
+        type: 'radio',
+        required: true,
+        options: ['ERRO ATENDIMENTO', 'ERRO CCO', 'ERRO RF/EF', 'AÇÃO COMERCIAL', 'RENTABILIZAÇÃO'],
+        gridCols: 2,
+      },
+      {
+        name: 'observacao',
+        label: '6. OBSERVAÇÃO',
+        type: 'textarea',
+        required: false,
+        placeholder: 'Insira sua resposta',
+        gridCols: 4,
+      },
+      {
+        name: 'approver_name',
+        label: '7. APROVADOR',
+        type: 'select',
+        required: true,
+        placeholder: 'Selecionar sua resposta',
+        gridCols: 4,
+      },
+    ],
   },
   {
     key: 'latam2',
-    name: 'LATAM — Operações Especiais',
-    airlineName: 'LATAM Airlines (Fase 2)',
-    logoBadge: 'LA2',
-    active: false,
-    comingSoon: true,
-    description: 'Solicitações avançadas e acordos corporativos LATAM (em breve).',
-    approversKey: 'approvers_default',
-    rules: ['Formulário em processo de parametrização e integração digital.'],
-    fields: [],
+    name: 'Descontos Manuais LATAM',
+    airlineName: 'LATAM Airlines (Descontos)',
+    logoBadge: 'LA-DESC',
+    active: true,
+    comingSoon: false,
+    description:
+      'Descontos manuais em reservas ELATAM: aplicação direta na construção tarifária sem Q.',
+    approversKey: 'approvers_latam2',
+    rules: [
+      '-Somente reservas ELATAM (proibido aplicar desconto em locs GDS);',
+      '-Permitido até 20% de desconto (acima de 6%, avaliar com seu gestor);',
+      '-Permitido até 10% de desconto para rotas com voos codeshare LA*DL (acima de 6%, avaliar com seu gestor);',
+      '-Desconto somente para origem BR;',
+      '-Desconto somente para paxs ADTs;',
+      '-Não permitido para voos DOMÉSTICOS;',
+      '-Não permitido para rotas com voos OFFLINE;',
+      '-Não permitido para o novo voo GRU/BRC;',
+      '-Considerar tarifa original sempre SEM "Q";',
+      '-Proibido aplicar tourcode ou designator nas emissões com desconto manual.',
+    ],
+    fields: [
+      {
+        name: 'unit',
+        label: '1. UNIDADE',
+        type: 'select',
+        required: true,
+        placeholder: 'Selecionar sua resposta',
+        gridCols: 2,
+      },
+      {
+        name: 'gds_locator',
+        label: '2. LOCALIZADOR GDS (NÃO É O LOC LATAM)',
+        type: 'text',
+        required: true,
+        placeholder: 'Insira sua resposta',
+        helperText: 'Somente 1 loc por formulário',
+        gridCols: 2,
+      },
+      {
+        name: 'pax_count',
+        label: '3. QUANTIDADE PAX ADT',
+        type: 'number',
+        required: true,
+        min: 1,
+        placeholder: '1',
+        helperText: 'Informar quantos paxs ADTs existem neste loc',
+        gridCols: 2,
+      },
+      {
+        name: 'pax_name',
+        label: '4. SOBRENOME/NOME - ADT1/1',
+        type: 'text',
+        required: true,
+        placeholder: 'Insira sua resposta',
+        helperText: 'Copie e cole o item nominal do ADT1',
+        gridCols: 2,
+      },
+      {
+        name: 'tem_surcharge_q',
+        label: '5. TEM SURCHARGE "Q" NA CONSTRUÇÃO TARIFÁRIA?',
+        type: 'radio',
+        required: true,
+        options: ['SIM', 'NÃO'],
+        gridCols: 2,
+      },
+      {
+        name: 'valor_surcharge_q_usd',
+        label: '6. VALOR TOTAL DO SURCHARGE "Q" EM USD (POR PAX)',
+        type: 'number',
+        required: true,
+        min: 0,
+        placeholder: 'Insira o valor inteiro',
+        helperText:
+          'Somente número (não usar centavos, ponto ou vírgula) — O valor deve ser um número',
+        dependsOn: {
+          field: 'tem_surcharge_q',
+          condition: (val) => val === 'SIM',
+        },
+        validation: {
+          customValidator: (val, allValues) => {
+            if (allValues.tem_surcharge_q === 'SIM') {
+              if (val === undefined || val === null || String(val).trim() === '') {
+                return 'Campo obrigatório quando há surcharge Q'
+              }
+              const num = Number(val)
+              if (isNaN(num) || num < 0) {
+                return 'O valor deve ser um número válido'
+              }
+            }
+            return null
+          },
+        },
+        gridCols: 2,
+      },
+      {
+        name: 'tarifa_original_usd',
+        label: '7. TARIFA ORIGINAL UNITÁRIA EM USD (SEM "Q")',
+        type: 'number',
+        required: true,
+        min: 0,
+        placeholder: 'Insira o valor inteiro',
+        helperText:
+          'Somente número (não usar centavos, ponto ou vírgula) — O valor deve ser um número',
+        gridCols: 2,
+      },
+      {
+        name: 'discount_percentage',
+        label: '8. % DESCONTO',
+        type: 'number',
+        required: true,
+        min: 0,
+        max: 6,
+        placeholder: 'Insira um número menor ou igual a 6',
+        helperText: 'Somente número (não usar sinal %, ponto ou vírgula) - MÁXIMO 6%',
+        validation: {
+          customValidator: (val) => {
+            if (val === undefined || val === null || String(val).trim() === '') {
+              return 'Campo obrigatório'
+            }
+            const num = Number(val)
+            if (isNaN(num)) return 'O valor deve ser um número'
+            if (num < 0) return 'O percentual não pode ser negativo'
+            if (num > 6) return 'Insira um número menor ou igual a 6'
+            return null
+          },
+        },
+        gridCols: 2,
+      },
+      {
+        name: 'manual_ou_portal',
+        label: '9. MANUAL OU PORTAL PRIVADO?',
+        type: 'radio',
+        required: true,
+        options: ['PORTAL PRIVADO', 'MANUAL'],
+        gridCols: 2,
+      },
+      {
+        name: 'numero_id',
+        label: '10. NÚMERO DO ID',
+        type: 'number',
+        required: true,
+        placeholder: 'O valor deve ser um número',
+        helperText: 'O valor deve ser um número',
+        dependsOn: {
+          field: 'manual_ou_portal',
+          condition: (val) => val === 'PORTAL PRIVADO',
+        },
+        validation: {
+          customValidator: (val, allValues) => {
+            if (allValues.manual_ou_portal === 'PORTAL PRIVADO') {
+              if (val === undefined || val === null || String(val).trim() === '') {
+                return 'Campo obrigatório para Portal Privado'
+              }
+              if (isNaN(Number(val))) {
+                return 'O valor deve ser um número'
+              }
+            }
+            return null
+          },
+        },
+        gridCols: 2,
+      },
+      {
+        name: 'justificativa',
+        label: '11. JUSTIFICATIVA',
+        type: 'radio',
+        required: true,
+        options: ['CONCORRÊNCIA CIA', 'CONCORRÊNCIA CONSOLIDADORA', 'ERRO INTERNO', 'Outra'],
+        gridCols: 2,
+      },
+      {
+        name: 'approver_name',
+        label: '12. APROVADOR',
+        type: 'select',
+        required: true,
+        placeholder: 'Selecionar sua resposta',
+        gridCols: 2,
+      },
+      {
+        name: 'destino',
+        label: '13. DESTINO',
+        type: 'text',
+        required: true,
+        placeholder: 'Ex: CDG, AMS, MIA, JFK, SCL',
+        helperText: 'Informe o código do destino',
+        gridCols: 2,
+      },
+      {
+        name: 'advp',
+        label: '14. ADVP',
+        type: 'select',
+        required: true,
+        placeholder: 'Selecionar sua resposta',
+        options: ['D+30 ou mais', 'Menos de D+30 (Exceção SSA/FOR)', 'Não aplicável'],
+        gridCols: 2,
+      },
+    ],
   },
 ]
 

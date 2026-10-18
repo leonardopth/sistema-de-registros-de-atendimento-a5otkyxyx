@@ -10,6 +10,9 @@ export interface WaiverConfigRecord {
   approvers_latam: string[]
   approvers_afkl: string[]
   approvers_assistencia: string[]
+  approvers_gol?: string[]
+  approvers_aa?: string[]
+  approvers_latam2?: string[]
   approvers_default?: string[]
   airlines_config?: Record<string, unknown>
   updated_by?: string
@@ -68,7 +71,15 @@ export interface WaiverHistoryRecord {
 /**
  * Definição declarativa e extensível de campos de formulário dinâmico
  */
-export type FieldType = 'text' | 'number' | 'select' | 'radio' | 'date' | 'textarea' | 'code_paste'
+export type FieldType =
+  | 'text'
+  | 'number'
+  | 'email'
+  | 'select'
+  | 'radio'
+  | 'date'
+  | 'textarea'
+  | 'code_paste'
 
 export interface DynamicFormField {
   name: string
@@ -102,5 +113,12 @@ export interface AirlineFormConfig {
   description: string
   rules: string[]
   fields: DynamicFormField[]
-  approversKey: 'approvers_latam' | 'approvers_afkl' | 'approvers_assistencia' | 'approvers_default'
+  approversKey:
+    | 'approvers_latam'
+    | 'approvers_afkl'
+    | 'approvers_assistencia'
+    | 'approvers_gol'
+    | 'approvers_aa'
+    | 'approvers_latam2'
+    | 'approvers_default'
 }

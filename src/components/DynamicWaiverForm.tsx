@@ -104,9 +104,10 @@ export function DynamicWaiverForm({
           </Label>
         </div>
 
-        {field.type === 'text' && (
+        {(field.type === 'text' || field.type === 'email') && (
           <Input
             id={field.name}
+            type={field.type === 'email' ? 'email' : 'text'}
             value={value}
             disabled={disabled}
             placeholder={field.placeholder}

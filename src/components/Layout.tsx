@@ -387,7 +387,7 @@ export default function Layout() {
               </Button>
               <div className="text-center pt-1">
                 <span className="text-[10px] text-slate-400 font-mono tracking-tight">
-                  v0.0.272
+                  v0.0.273
                 </span>
               </div>
             </>
@@ -422,7 +422,7 @@ export default function Layout() {
                   Sair
                 </TooltipContent>
               </Tooltip>
-              <span className="text-[9px] text-slate-400 font-mono text-center">v272</span>
+              <span className="text-[9px] text-slate-400 font-mono text-center">v273</span>
             </div>
           )}
         </div>

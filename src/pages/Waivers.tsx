@@ -480,9 +480,11 @@ export default function Waivers() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">Todas as Companhias</SelectItem>
-                    <SelectItem value="latam">LATAM — Isenções</SelectItem>
-                    <SelectItem value="afkl">Air France / KLM</SelectItem>
-                    <SelectItem value="assistencia">Assistência Aeroporto</SelectItem>
+                    {AIRLINE_CONFIGS.filter((a) => a.active && !a.comingSoon).map((a) => (
+                      <SelectItem key={a.key} value={a.key}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
