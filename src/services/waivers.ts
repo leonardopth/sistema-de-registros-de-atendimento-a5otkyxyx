@@ -301,6 +301,23 @@ export async function updateWaiverStatus(params: {
 }
 
 /**
+ * Dispara envio de e-mail de aprovação para o aprovador da solicitação
+ */
+export async function sendWaiverApprovalEmail(
+  waiverId: string,
+): Promise<{ success: boolean; recipient?: string }> {
+  try {
+    return await pb.send('/backend/v1/waivers/send-approval-email', {
+      method: 'POST',
+      body: { waiver_id: waiverId },
+    })
+  } catch (error) {
+    console.warn(`Erro ao enviar e-mail de aprovação para waiver ${waiverId}:`, error)
+    return { success: false }
+  }
+}
+
+/**
  * Busca histórico da solicitação
  */
 export async function getWaiverHistory(requestId: string): Promise<WaiverHistoryRecord[]> {

@@ -26,7 +26,7 @@ import { useToast } from '@/hooks/use-toast'
 import { DynamicWaiverForm } from '@/components/DynamicWaiverForm'
 import { AIRLINE_CONFIGS } from '@/constants/waivers'
 import type { AirlineFormConfig, WaiverConfigRecord, WaiverRequestRecord } from '@/types/waiver'
-import { createWaiverRequest } from '@/services/waivers'
+import { createWaiverRequest, sendWaiverApprovalEmail } from '@/services/waivers'
 import { cn } from '@/lib/utils'
 
 interface NewWaiverWizardModalProps {
@@ -243,9 +243,16 @@ export function NewWaiverWizardModal({
         form_data: formData,
       })
 
+      // Dispara envio do e-mail de aprovação (além do gatilho automático de hook)
+      try {
+        await sendWaiverApprovalEmail(created.id)
+      } catch (mailErr) {
+        console.warn('Disparo explícito de e-mail de aprovação:', mailErr)
+      }
+
       toast({
         title: 'Solicitação enviada com sucesso!',
-        description: `Seu pedido para ${selectedAirline.name} foi protocolado com status Pendente.`,
+        description: `Seu pedido para ${selectedAirline.name} foi protocolado e o e-mail de aprovação foi encaminhado ao gestor.`,
       })
 
       onRequestCreated(created)

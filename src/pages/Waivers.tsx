@@ -209,6 +209,7 @@ export default function Waivers() {
     const total = scopedRequests.length
     const pendentes = scopedRequests.filter((r) => r.status === 'Pendente').length
     const emAnalise = scopedRequests.filter((r) => r.status === 'Em análise').length
+    const standby = scopedRequests.filter((r) => r.status === 'Standby').length
     const aprovadas = scopedRequests.filter((r) => r.status === 'Aprovada').length
     const negociadas = scopedRequests.filter((r) => r.status === 'Negociada').length
     const recusadas = scopedRequests.filter((r) => r.status === 'Recusada').length
@@ -240,6 +241,7 @@ export default function Waivers() {
       total,
       pendentes,
       emAnalise,
+      standby,
       aprovadas,
       negociadas,
       recusadas,
@@ -271,6 +273,15 @@ export default function Waivers() {
             className="bg-blue-50 text-blue-700 border-blue-300 font-semibold"
           >
             <Clock className="h-3 w-3 mr-1" /> Em análise
+          </Badge>
+        )
+      case 'Standby':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-amber-100 text-amber-900 border-amber-400 font-semibold shadow-xs"
+          >
+            <Clock className="h-3 w-3 mr-1 text-amber-700" /> Standby
           </Badge>
         )
       case 'Aprovada':
@@ -365,11 +376,11 @@ export default function Waivers() {
       </div>
 
       {/* Cards de Métricas / Resumo Rápido */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         <Card className="border-slate-200 shadow-sm bg-white">
           <CardContent className="p-3.5 space-y-1">
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-tight">
-              Total Solicitações
+              Total
             </span>
             <div className="flex items-center justify-between">
               <span className="text-2xl font-black text-slate-900">{metrics.total}</span>
@@ -398,6 +409,18 @@ export default function Waivers() {
             <div className="flex items-center justify-between">
               <span className="text-2xl font-black text-blue-800">{metrics.emAnalise}</span>
               <Clock className="h-4 w-4 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-amber-300 bg-amber-100/60 shadow-sm">
+          <CardContent className="p-3.5 space-y-1">
+            <span className="text-[11px] font-semibold text-amber-900 uppercase tracking-tight">
+              Standby
+            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-black text-amber-950">{metrics.standby}</span>
+              <Clock className="h-4 w-4 text-amber-700" />
             </div>
           </CardContent>
         </Card>
@@ -499,6 +522,7 @@ export default function Waivers() {
                     <SelectItem value="ALL">Todos os Status</SelectItem>
                     <SelectItem value="Pendente">Pendente</SelectItem>
                     <SelectItem value="Em análise">Em análise</SelectItem>
+                    <SelectItem value="Standby">Standby</SelectItem>
                     <SelectItem value="Aprovada">Aprovada</SelectItem>
                     <SelectItem value="Negociada">Negociada</SelectItem>
                     <SelectItem value="Recusada">Recusada</SelectItem>

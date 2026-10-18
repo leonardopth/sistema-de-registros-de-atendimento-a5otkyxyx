@@ -141,12 +141,14 @@ export function WaiverDetailModal({
         negotiatedAmount: parsedNegAmount,
         actionLabel:
           newStatus === 'Em análise'
-            ? 'Início de Análise'
-            : newStatus === 'Aprovada'
-              ? 'Aprovação Concedida'
-              : newStatus === 'Negociada'
-                ? 'Aprovação com Negociação'
-                : 'Solicitação Recusada',
+            ? 'Retorno / Início de Análise'
+            : newStatus === 'Standby'
+              ? 'Colocado em Standby'
+              : newStatus === 'Aprovada'
+                ? 'Aprovação Concedida'
+                : newStatus === 'Negociada'
+                  ? 'Aprovação com Negociação'
+                  : 'Solicitação Recusada',
       })
 
       toast({
@@ -180,6 +182,15 @@ export function WaiverDetailModal({
         return (
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
             <Clock className="h-3 w-3 mr-1" /> Em análise
+          </Badge>
+        )
+      case 'Standby':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-amber-100 text-amber-900 border-amber-400 font-semibold shadow-xs"
+          >
+            <Clock className="h-3 w-3 mr-1 text-amber-700" /> Standby
           </Badge>
         )
       case 'Aprovada':
@@ -601,6 +612,34 @@ export function WaiverDetailModal({
                     onClick={() => handleApplyDecision('Em análise')}
                   >
                     <Clock className="h-3.5 w-3.5 mr-1" /> Assumir Análise
+                  </Button>
+                )}
+
+                {/* Opção para colocar em Standby quando em Pendente ou Em análise */}
+                {(request.status === 'Pendente' || request.status === 'Em análise') && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="text-xs border-amber-300 text-amber-800 bg-amber-50/50 hover:bg-amber-100"
+                    disabled={submitting}
+                    onClick={() => handleApplyDecision('Standby')}
+                  >
+                    <Clock className="h-3.5 w-3.5 mr-1 text-amber-600" /> Colocar em Standby
+                  </Button>
+                )}
+
+                {/* Se estiver em Standby, opção para voltar para Em análise */}
+                {request.status === 'Standby' && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="text-xs border-blue-300 text-blue-700 bg-blue-50/50 hover:bg-blue-100"
+                    disabled={submitting}
+                    onClick={() => handleApplyDecision('Em análise')}
+                  >
+                    <Clock className="h-3.5 w-3.5 mr-1 text-blue-600" /> Retomar Análise
                   </Button>
                 )}
               </div>
