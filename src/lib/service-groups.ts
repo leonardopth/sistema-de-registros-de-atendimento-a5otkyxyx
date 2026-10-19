@@ -18,6 +18,22 @@ export const SERVICE_GROUP_OPTIONS: { value: ServiceGroup; label: string; descri
 
 export const SERVICE_GROUP_VALUES = SERVICE_GROUP_OPTIONS.map((o) => o.value)
 
+export const SERVICE_GROUP_INBOX_MAP: Record<ServiceGroup, string> = {
+  SAO: 'atendimento.sao@rexturadvance.com.br',
+  SPI: 'atendimento.spi@rexturadvance.com.br',
+  SUL: 'atendimento.sul@rexturadvance.com.br',
+  BR1: 'atendimento.br1@rexturadvance.com.br',
+  BR2: 'atendimento.br2@rexturadvance.com.br',
+  LOT: 'atendimento.lot@rexturadvance.com.br',
+  Concierge: 'concierge@rexturadvance.com.br',
+  Exclusivo: 'exclusivo@rexturadvance.com.br',
+}
+
+export function getServiceGroupInbox(group?: string | null): string {
+  if (!group) return ''
+  return SERVICE_GROUP_INBOX_MAP[group as ServiceGroup] || ''
+}
+
 export function getServiceGroupLabel(value: string): string {
   return SERVICE_GROUP_OPTIONS.find((o) => o.value === value)?.label ?? value
 }

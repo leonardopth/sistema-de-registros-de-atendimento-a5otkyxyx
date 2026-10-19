@@ -23,7 +23,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { ControlTowerEmailRecord, ControlTowerStatus } from '@/types/control_tower'
 import { formatGMT3DateTime } from '@/lib/timezone'
 import { SlaCountdownBadge } from '@/components/SlaCountdownBadge'
-import { getServiceGroupLabel } from '@/lib/service-groups'
+import { getServiceGroupLabel, getServiceGroupInbox } from '@/lib/service-groups'
+import { buildOutlookWebComposeUrl, buildOutlookMailtoUrl } from '@/services/outlook-integration'
 import {
   getAnalyzedSignals,
   normalizeSignals,
@@ -102,6 +103,7 @@ export function ControlTowerDetailModal({
   const [confirmRegenerateOpen, setConfirmRegenerateOpen] = useState(false)
   const [copiedDraft, setCopiedDraft] = useState(false)
   const [openingOutlook, setOpeningOutlook] = useState(false)
+  const [openingMailto, setOpeningMailto] = useState(false)
 
   useEffect(() => {
     if (!email || !open) {
@@ -206,6 +208,14 @@ export function ControlTowerDetailModal({
       return raw
     }
     return `Re: ${raw}`
+  }, [email])
+
+  // Endereço da caixa compartilhada vinculado à conversa (com fallback para mapa de núcleos)
+  const sharedInboxAddress = useMemo(() => {
+    if (!email) return ''
+    const direct = (email.inbox_address || '').trim()
+    if (direct) return direct
+    return getServiceGroupInbox(email.service_group)
   }, [email])
 
   if (!email) return null
@@ -316,8 +326,8 @@ export function ControlTowerDetailModal({
     }
   }
 
-  // Abrir no Outlook via mailto: URL-encoded com quebras %0D%0A
-  const handleOpenOutlook = async () => {
+  // Abrir no Outlook na Web (OWA) dentro da caixa compartilhada do núcleo
+  const handleOpenOutlookWeb = async () => {
     if (!email) return
     const recipient = clientRecipient.email || email.sender_email
     if (!recipient) {
@@ -341,8 +351,10 @@ export function ControlTowerDetailModal({
     }
 
     setOpeningOutlook(true)
+    const senderUsed = sharedInboxAddress || 'caixa_pessoal'
+    const isShared = Boolean(sharedInboxAddress)
+
     try {
-      // Registrar na timeline / auditoria da conversa
       const currentUser = pb.authStore.record
       await createAuditLog({
         user: currentUser?.id,
@@ -350,10 +362,13 @@ export function ControlTowerDetailModal({
         entity: 'control_tower_emails',
         entity_id: email.id,
         details: {
+          channel: 'outlook_web',
           recipient_email: recipient,
           recipient_name: clientRecipient.name || email.sender_name || '',
           subject: replySubject,
-          inbox_address: email.inbox_address || '',
+          sender_email: senderUsed,
+          inbox_address: sharedInboxAddress,
+          is_shared_mailbox: isShared,
           service_group: email.service_group || '',
           thread_id: email.thread_id || email.id,
           draft_length: bodyText.length,
@@ -362,38 +377,123 @@ export function ControlTowerDetailModal({
           consultant_id: currentUser?.id,
           sentiment: email.sentiment_label,
           opened_at: new Date().toISOString(),
-          note: 'Resposta redigida e aberta no Outlook pelo consultor',
+          note: isShared
+            ? `Resposta redigida e aberta no Outlook Web na caixa compartilhada (${sharedInboxAddress})`
+            : 'Resposta redigida e aberta no Outlook Web na caixa pessoal (núcleo sem caixa cadastrada)',
         },
       })
 
-      // Montar mailto com quebras de linha %0D%0A
-      const normalizedBody = bodyText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-      const bodyWithCrLf = normalizedBody.replace(/\n/g, '\r\n')
-      const encodedSubject = encodeURIComponent(replySubject)
-      const encodedBody = encodeURIComponent(bodyWithCrLf)
-      const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodedSubject}&body=${encodedBody}`
-
-      // Disparar abertura no cliente Outlook local do usuário
-      window.location.href = mailtoUrl
-
-      toast({
-        title: 'Abrindo no Outlook...',
-        description: `E-mail montado para ${recipient}. Lembre-se de clicar em "Enviar" no Outlook utilizando a caixa compartilhada do núcleo.`,
+      const composeUrl = buildOutlookWebComposeUrl({
+        to: recipient,
+        subject: replySubject,
+        body: bodyText,
+        sharedMailbox: sharedInboxAddress || undefined,
       })
+
+      window.open(composeUrl, '_blank', 'noopener,noreferrer')
+
+      if (isShared) {
+        toast({
+          title: 'Abrindo no Outlook Web...',
+          description: `Mensagem pronta na caixa compartilhada (${sharedInboxAddress}) para ${recipient}. Confira e clique em enviar.`,
+        })
+      } else {
+        toast({
+          title: 'Abrindo no Outlook Web (caixa pessoal)...',
+          description: `Conversa sem caixa compartilhada vinculada. A mensagem foi aberta na sua caixa pessoal para ${recipient}.`,
+        })
+      }
     } catch (err) {
-      console.error('Erro ao registrar resposta ou abrir Outlook:', err)
+      console.error('Erro ao registrar resposta ou abrir Outlook Web:', err)
       toast({
         variant: 'destructive',
         title: 'Erro ao registrar abertura',
-        description: 'Falha ao gravar evento de auditoria, mas tentando abrir o Outlook.',
+        description: 'Falha ao gravar evento de auditoria, mas tentando abrir o Outlook Web.',
       })
-      // Tenta abrir mesmo se a auditoria falhar
-      const normalizedBody = bodyText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-      const bodyWithCrLf = normalizedBody.replace(/\n/g, '\r\n')
-      const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(replySubject)}&body=${encodeURIComponent(bodyWithCrLf)}`
-      window.location.href = mailtoUrl
+      const composeUrl = buildOutlookWebComposeUrl({
+        to: recipient,
+        subject: replySubject,
+        body: bodyText,
+        sharedMailbox: sharedInboxAddress || undefined,
+      })
+      window.open(composeUrl, '_blank', 'noopener,noreferrer')
     } finally {
       setOpeningOutlook(false)
+    }
+  }
+
+  // Fallback: abrir na caixa pessoal do consultor via mailto / cliente local
+  const handleOpenPersonalMailbox = async () => {
+    if (!email) return
+    const recipient = clientRecipient.email || email.sender_email
+    if (!recipient) {
+      toast({
+        variant: 'destructive',
+        title: 'Destinatário não encontrado',
+        description: 'Não foi possível identificar o e-mail do cliente para resposta.',
+      })
+      return
+    }
+
+    const bodyText = replyText.trim()
+    if (!bodyText) {
+      toast({
+        variant: 'destructive',
+        title: 'Campo de resposta vazio',
+        description: 'Digite uma resposta antes de abrir na sua caixa.',
+      })
+      return
+    }
+
+    setOpeningMailto(true)
+    try {
+      const currentUser = pb.authStore.record
+      await createAuditLog({
+        user: currentUser?.id,
+        action: 'control_tower_reply_opened_personal_mailbox',
+        entity: 'control_tower_emails',
+        entity_id: email.id,
+        details: {
+          channel: 'mailto_personal',
+          recipient_email: recipient,
+          recipient_name: clientRecipient.name || email.sender_name || '',
+          subject: replySubject,
+          sender_email: currentUser?.email || 'caixa_pessoal',
+          inbox_address: sharedInboxAddress,
+          is_shared_mailbox: false,
+          service_group: email.service_group || '',
+          thread_id: email.thread_id || email.id,
+          draft_length: bodyText.length,
+          draft_snippet: bodyText.substring(0, 180),
+          consultant_name: currentUser?.name || currentUser?.email || 'Consultor',
+          consultant_id: currentUser?.id,
+          sentiment: email.sentiment_label,
+          opened_at: new Date().toISOString(),
+          note: 'Resposta aberta na caixa pessoal do consultor via cliente local (mailto)',
+        },
+      })
+
+      const mailtoUrl = buildOutlookMailtoUrl({
+        to: recipient,
+        subject: replySubject,
+        body: bodyText,
+      })
+      window.location.href = mailtoUrl
+
+      toast({
+        title: 'Abrindo na sua caixa pessoal...',
+        description: `E-mail montado no cliente local para ${recipient}.`,
+      })
+    } catch (err) {
+      console.error('Erro ao registrar abertura na caixa pessoal:', err)
+      const mailtoUrl = buildOutlookMailtoUrl({
+        to: recipient,
+        subject: replySubject,
+        body: bodyText,
+      })
+      window.location.href = mailtoUrl
+    } finally {
+      setOpeningMailto(false)
     }
   }
 
@@ -919,42 +1019,69 @@ export function ControlTowerDetailModal({
             </div>
 
             {/* Barra de Ação de Envio via Outlook + Dica */}
-            <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-              <div className="flex items-start gap-2 text-[11px] text-blue-900 leading-tight">
+            <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-2.5 text-[11px] text-blue-900 leading-tight">
                 <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
+                <div className="space-y-0.5">
                   <p className="font-semibold text-blue-950">
-                    Envio seguro realizado pelo Microsoft Outlook
+                    Envio via Caixa Compartilhada (
+                    {sharedInboxAddress || email.service_group || 'Núcleo'})
                   </p>
                   <p className="text-blue-800 text-[10.5px]">
-                    Ao clicar no botão ao lado, o seu cliente de e-mail abrirá com o destinatário,
-                    assunto e corpo já preenchidos. O disparo final acontece pela{' '}
-                    <strong>
-                      caixa compartilhada do núcleo ({email.service_group || 'atendimento'})
-                    </strong>
-                    .
+                    {sharedInboxAddress ? (
+                      <>
+                        A mensagem abrirá pronta na{' '}
+                        <strong>caixa compartilhada do seu núcleo</strong> (
+                        <span className="font-mono font-medium">{sharedInboxAddress}</span>) —
+                        confira e envie.
+                      </>
+                    ) : (
+                      <>
+                        Nenhuma caixa compartilhada cadastrada para o núcleo{' '}
+                        <strong>{email.service_group || 'atual'}</strong>. A mensagem abrirá na sua
+                        caixa pessoal.
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto">
                 <Button
                   type="button"
-                  onClick={handleOpenOutlook}
+                  onClick={handleOpenOutlookWeb}
                   disabled={!replyText.trim() || openingOutlook}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-8 text-xs px-3.5 shadow-sm gap-1.5 w-full sm:w-auto"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-8 text-xs px-3.5 shadow-sm gap-1.5"
+                  title={
+                    sharedInboxAddress
+                      ? `Abrir compose no Outlook Web dentro da caixa ${sharedInboxAddress}`
+                      : 'Abrir compose no Outlook Web'
+                  }
                 >
                   {openingOutlook ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Preparando...</span>
+                      <span>Abrindo...</span>
                     </>
                   ) : (
                     <>
-                      <Send className="h-3.5 w-3.5" />
+                      <ExternalLink className="h-3.5 w-3.5" />
                       <span>Abrir no Outlook</span>
                     </>
                   )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleOpenPersonalMailbox}
+                  disabled={!replyText.trim() || openingMailto}
+                  className="h-8 text-[11px] text-slate-600 hover:text-slate-900 hover:bg-blue-100/60 px-2.5"
+                  title="Abrir no cliente local/desktop na sua caixa de e-mail pessoal"
+                >
+                  {openingMailto ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                  abrir na minha caixa
                 </Button>
               </div>
             </div>

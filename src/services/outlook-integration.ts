@@ -139,6 +139,60 @@ export const getEmailLogs = async (): Promise<EmailLogRecord[]> => {
   }
 }
 
+/**
+ * Utilitários para deep links do Microsoft Outlook (OWA Web e Mailto local).
+ */
+
+export interface OutlookComposeParams {
+  to: string
+  subject: string
+  body: string
+  /**
+   * Endereço da caixa compartilhada do núcleo (ex.: atendimento.br2@rexturadvance.com.br).
+   * Quando informado, o compose do Outlook Web abre no contexto da caixa compartilhada.
+   */
+  sharedMailbox?: string
+}
+
+/**
+ * Monta a URL de compose do Outlook na Web (OWA / outlook.office.com).
+ * Para caixas compartilhadas: https://outlook.office.com/mail/{sharedMailbox}/action/compose?to=...&subject=...&body=...
+ * Para a caixa pessoal do usuário (sem sharedMailbox): https://outlook.office.com/mail/deeplink/compose?to=...&subject=...&body=...
+ */
+export function buildOutlookWebComposeUrl(params: OutlookComposeParams): string {
+  const { to, subject, body, sharedMailbox } = params
+  const cleanMailbox = (sharedMailbox || '').trim()
+
+  const queryParams = new URLSearchParams()
+  if (to) queryParams.set('to', to)
+  if (subject) queryParams.set('subject', subject)
+  if (body) queryParams.set('body', body)
+
+  const queryString = queryParams.toString()
+
+  if (cleanMailbox) {
+    // Path padrão aceito pelo OWA para compose dentro de uma caixa compartilhada
+    return `https://outlook.office.com/mail/${encodeURIComponent(cleanMailbox)}/action/compose?${queryString}`
+  }
+
+  // Deeplink padrão do OWA para a caixa pessoal
+  return `https://outlook.office.com/mail/deeplink/compose?${queryString}`
+}
+
+/**
+ * Monta o link clássico mailto: que dispara o cliente Outlook desktop / local do usuário.
+ */
+export function buildOutlookMailtoUrl(params: {
+  to: string
+  subject: string
+  body: string
+}): string {
+  const { to, subject, body } = params
+  const normalizedBody = (body || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const bodyWithCrLf = normalizedBody.replace(/\n/g, '\r\n')
+  return `mailto:${encodeURIComponent(to || '')}?subject=${encodeURIComponent(subject || '')}&body=${encodeURIComponent(bodyWithCrLf)}`
+}
+
 export const getEmailLogsByRecord = async (serviceRecordId: string): Promise<EmailLogRecord[]> => {
   if (!serviceRecordId) return []
   try {
