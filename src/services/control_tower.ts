@@ -173,3 +173,33 @@ export async function createControlTowerEmail(
 ): Promise<ControlTowerEmailRecord> {
   return await pb.collection('control_tower_emails').create<ControlTowerEmailRecord>(data)
 }
+
+export interface GenerateReplyDraftResponse {
+  success: boolean
+  draft: string
+  recipient_email: string
+  recipient_name?: string
+  subject: string
+  sentiment_label: string
+  sentiment_intensity?: string
+  reservation_number?: string
+  detected_dates?: string[]
+  messages_count: number
+}
+
+export async function generateControlTowerReplyDraft(params: {
+  emailId: string
+  threadId?: string
+}): Promise<GenerateReplyDraftResponse> {
+  return await pb.send<GenerateReplyDraftResponse>(
+    '/backend/v1/control-tower/generate-reply-draft',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        email_id: params.emailId,
+        thread_id: params.threadId,
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    },
+  )
+}

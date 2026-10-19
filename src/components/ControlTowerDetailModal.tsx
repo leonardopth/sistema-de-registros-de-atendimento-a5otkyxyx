@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Dialog,
@@ -7,8 +7,19 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
 import { ControlTowerEmailRecord, ControlTowerStatus } from '@/types/control_tower'
 import { formatGMT3DateTime } from '@/lib/timezone'
 import { SlaCountdownBadge } from '@/components/SlaCountdownBadge'
@@ -18,11 +29,13 @@ import {
   normalizeSignals,
   getSentimentVisual,
 } from '@/lib/control-tower-signals'
-import { getThreadMessages } from '@/services/control_tower'
+import { getThreadMessages, generateControlTowerReplyDraft } from '@/services/control_tower'
+import { createAuditLog } from '@/services/audit-log'
+import { useToast } from '@/hooks/use-toast'
 import pb from '@/lib/pocketbase/client'
+import hubAiLogo from '@/assets/icone-hub-ai-neon-com-headset-e-chat-fe7bd.png'
 import {
   Mail,
-  Clock,
   User,
   Building,
   Tag,
@@ -38,6 +51,12 @@ import {
   ChevronUp,
   ExternalLink,
   Headphones,
+  Sparkles,
+  Send,
+  RotateCcw,
+  Check,
+  Copy,
+  Info,
 } from 'lucide-react'
 
 interface ControlTowerDetailModalProps {
@@ -64,16 +83,34 @@ export function ControlTowerDetailModal({
   currentUserId,
 }: ControlTowerDetailModalProps) {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [threadMessages, setThreadMessages] = useState<ControlTowerEmailRecord[]>([])
   const [loadingThread, setLoadingThread] = useState(false)
   const [expandedMsgIds, setExpandedMsgIds] = useState<Record<string, boolean>>({})
   const [linkedServiceRecordId, setLinkedServiceRecordId] = useState<string | null>(null)
   const [checkingAttendance, setCheckingAttendance] = useState(false)
 
+  // Estados da Seção Responder ao Cliente
+  const [replyText, setReplyText] = useState('')
+  const [generatingDraft, setGeneratingDraft] = useState(false)
+  const [hasManualEdit, setHasManualEdit] = useState(false)
+  const [lastDraftMetadata, setLastDraftMetadata] = useState<{
+    sentiment?: string
+    reservation?: string
+    generatedAt?: string
+  } | null>(null)
+  const [confirmRegenerateOpen, setConfirmRegenerateOpen] = useState(false)
+  const [copiedDraft, setCopiedDraft] = useState(false)
+  const [openingOutlook, setOpeningOutlook] = useState(false)
+
   useEffect(() => {
     if (!email || !open) {
       setThreadMessages([])
       setLinkedServiceRecordId(null)
+      setReplyText('')
+      setHasManualEdit(false)
+      setLastDraftMetadata(null)
+      setCopiedDraft(false)
       return
     }
 
@@ -135,6 +172,42 @@ export function ControlTowerDetailModal({
     checkLink()
   }, [email, open])
 
+  // Destinatário do cliente (último remetente da thread que não seja a própria caixa)
+  const clientRecipient = useMemo(() => {
+    if (!email) return { email: '', name: '' }
+    const inbox = (email.inbox_address || '').toLowerCase().trim()
+
+    // Percorrer thread de trás para frente para pegar a última mensagem do cliente
+    if (threadMessages.length > 0) {
+      for (let i = threadMessages.length - 1; i >= 0; i--) {
+        const msg = threadMessages[i]
+        const sender = (msg.sender_email || '').toLowerCase().trim()
+        if (sender && (!inbox || sender !== inbox)) {
+          return {
+            email: msg.sender_email,
+            name: msg.sender_name || email.expand?.client?.name || '',
+          }
+        }
+      }
+    }
+
+    return {
+      email: email.sender_email,
+      name: email.sender_name || email.expand?.client?.name || '',
+    }
+  }, [email, threadMessages])
+
+  // Assunto formatado com "Re:" se não tiver
+  const replySubject = useMemo(() => {
+    if (!email) return ''
+    const raw = (email.subject || '').trim()
+    if (!raw) return 'Re: Atendimento RexturAdvance'
+    if (/^\s*re\s*:/i.test(raw)) {
+      return raw
+    }
+    return `Re: ${raw}`
+  }, [email])
+
   if (!email) return null
 
   const priorityColor =
@@ -175,6 +248,153 @@ export function ControlTowerDetailModal({
       ...prev,
       [msgId]: !prev[msgId],
     }))
+  }
+
+  // Gerar minuta de resposta com IA
+  const handleGenerateDraft = async (force = false) => {
+    if (!email) return
+    if (!force && replyText.trim() && hasManualEdit) {
+      setConfirmRegenerateOpen(true)
+      return
+    }
+
+    setGeneratingDraft(true)
+    try {
+      const res = await generateControlTowerReplyDraft({
+        emailId: email.id,
+        threadId: email.thread_id,
+      })
+
+      if (res && res.draft) {
+        setReplyText(res.draft)
+        setHasManualEdit(false)
+        setLastDraftMetadata({
+          sentiment: res.sentiment_label,
+          reservation: res.reservation_number,
+          generatedAt: new Date().toISOString(),
+        })
+        toast({
+          title: 'Minuta gerada com sucesso pelo HUB AI',
+          description: `Tom adaptado ao sentimento ${res.sentiment_label || 'detectado'}. Você pode revisar e editar antes de abrir no Outlook.`,
+        })
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Não foi possível gerar a minuta',
+          description: 'A IA não retornou conteúdo. Tente novamente em alguns instantes.',
+        })
+      }
+    } catch (err: unknown) {
+      console.error('Erro ao gerar minuta:', err)
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao gerar minuta com HUB AI',
+        description: err instanceof Error ? err.message : 'Falha na comunicação com o assistente.',
+      })
+    } finally {
+      setGeneratingDraft(false)
+      setConfirmRegenerateOpen(false)
+    }
+  }
+
+  // Copiar minuta para a área de transferência
+  const handleCopyDraft = async () => {
+    if (!replyText.trim()) return
+    try {
+      await navigator.clipboard.writeText(replyText)
+      setCopiedDraft(true)
+      setTimeout(() => setCopiedDraft(false), 2000)
+      toast({
+        title: 'Texto copiado!',
+        description: 'A resposta foi copiada para a área de transferência.',
+      })
+    } catch (_) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao copiar texto',
+      })
+    }
+  }
+
+  // Abrir no Outlook via mailto: URL-encoded com quebras %0D%0A
+  const handleOpenOutlook = async () => {
+    if (!email) return
+    const recipient = clientRecipient.email || email.sender_email
+    if (!recipient) {
+      toast({
+        variant: 'destructive',
+        title: 'Destinatário não encontrado',
+        description: 'Não foi possível identificar o e-mail do cliente para resposta.',
+      })
+      return
+    }
+
+    const bodyText = replyText.trim()
+    if (!bodyText) {
+      toast({
+        variant: 'destructive',
+        title: 'Campo de resposta vazio',
+        description:
+          'Digite uma resposta ou clique em "Gerar Minuta (HUB AI)" antes de abrir no Outlook.',
+      })
+      return
+    }
+
+    setOpeningOutlook(true)
+    try {
+      // Registrar na timeline / auditoria da conversa
+      const currentUser = pb.authStore.record
+      await createAuditLog({
+        user: currentUser?.id,
+        action: 'control_tower_reply_opened_outlook',
+        entity: 'control_tower_emails',
+        entity_id: email.id,
+        details: {
+          recipient_email: recipient,
+          recipient_name: clientRecipient.name || email.sender_name || '',
+          subject: replySubject,
+          inbox_address: email.inbox_address || '',
+          service_group: email.service_group || '',
+          thread_id: email.thread_id || email.id,
+          draft_length: bodyText.length,
+          draft_snippet: bodyText.substring(0, 180),
+          consultant_name: currentUser?.name || currentUser?.email || 'Consultor',
+          consultant_id: currentUser?.id,
+          sentiment: email.sentiment_label,
+          opened_at: new Date().toISOString(),
+          note: 'Resposta redigida e aberta no Outlook pelo consultor',
+        },
+      })
+
+      // Montar mailto com quebras de linha %0D%0A
+      const normalizedBody = bodyText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+      const bodyWithCrLf = normalizedBody.replace(/\n/g, '\r\n')
+      const encodedSubject = encodeURIComponent(replySubject)
+      const encodedBody = encodeURIComponent(bodyWithCrLf)
+      const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodedSubject}&body=${encodedBody}`
+
+      // Disparar abertura no cliente Outlook local do usuário
+      window.location.href = mailtoUrl
+
+      toast({
+        title: 'Abrindo no Outlook...',
+        description: `E-mail montado para ${recipient}. Lembre-se de clicar em "Enviar" no Outlook utilizando a caixa compartilhada do núcleo.`,
+      })
+    } catch (err) {
+      console.error('Erro ao registrar resposta ou abrir Outlook:', err)
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao registrar abertura',
+        description: 'Falha ao gravar evento de auditoria, mas tentando abrir o Outlook.',
+      })
+      // Tenta abrir mesmo se a auditoria falhar
+      const normalizedBody = bodyText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+      const bodyWithCrLf = normalizedBody.replace(/\n/g, '\r\n')
+      const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(replySubject)}&body=${encodeURIComponent(bodyWithCrLf)}`
+      window.location.href = mailtoUrl
+    } finally {
+      setOpeningOutlook(false)
+    }
   }
 
   return (
@@ -566,6 +786,180 @@ export function ControlTowerDetailModal({
             )}
           </div>
 
+          {/* SEÇÃO: RESPONDER AO CLIENTE (MINUTA IA + OUTLOOK) */}
+          <div className="space-y-2.5 pt-3 border-t-2 border-indigo-100 bg-gradient-to-b from-indigo-50/40 via-white to-white -mx-6 px-6 py-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-md bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-xs">
+                  <Mail className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    Responder ao Cliente
+                    <Badge
+                      variant="outline"
+                      className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px] py-0 px-1.5 font-semibold gap-1"
+                    >
+                      <img src={hubAiLogo} alt="HUB AI" className="h-3 w-3 object-contain" />
+                      HUB AI
+                    </Badge>
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Minuta redigida por inteligência artificial com envio final pelo Microsoft
+                    Outlook
+                  </p>
+                </div>
+              </div>
+
+              {/* Botões de Ação do Topo da Minuta */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleGenerateDraft(false)}
+                  disabled={generatingDraft}
+                  className="h-7 text-xs font-semibold text-indigo-700 border-indigo-300 bg-white hover:bg-indigo-50 shadow-xs gap-1.5"
+                >
+                  {generatingDraft ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
+                      <span>Gerando minuta...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+                      <span>Gerar Minuta (HUB AI)</span>
+                    </>
+                  )}
+                </Button>
+
+                {replyText.trim() && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyDraft}
+                    className="h-7 text-xs text-slate-600 hover:text-slate-900"
+                    title="Copiar texto da minuta"
+                  >
+                    {copiedDraft ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-600 mr-1" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    {copiedDraft ? 'Copiado!' : 'Copiar'}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Cabeçalho de contexto da resposta (Destinatário e Assunto) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 bg-slate-50 rounded-md border border-slate-200 text-[11px]">
+              <div>
+                <span className="text-slate-400 font-semibold block text-[10px] uppercase">
+                  Destinatário (Cliente)
+                </span>
+                <p className="font-semibold text-slate-800 truncate" title={clientRecipient.email}>
+                  {clientRecipient.name
+                    ? `${clientRecipient.name} <${clientRecipient.email}>`
+                    : clientRecipient.email || '—'}
+                </p>
+              </div>
+              <div>
+                <span className="text-slate-400 font-semibold block text-[10px] uppercase">
+                  Assunto da Mensagem
+                </span>
+                <p className="font-semibold text-slate-800 truncate" title={replySubject}>
+                  {replySubject || '—'}
+                </p>
+              </div>
+            </div>
+
+            {/* Metadados da Minuta Gerada */}
+            {lastDraftMetadata && (
+              <div className="flex items-center justify-between text-[11px] text-indigo-700 bg-indigo-50/70 px-2.5 py-1 rounded border border-indigo-100 flex-wrap gap-1">
+                <span className="flex items-center gap-1 font-medium">
+                  <Sparkles className="h-3 w-3" />
+                  Minuta contextualizada com o histórico (
+                  {email.sentiment_label ? `Sentimento: ${email.sentiment_label}` : 'IA'})
+                  {lastDraftMetadata.reservation
+                    ? ` • Reserva: ${lastDraftMetadata.reservation}`
+                    : ''}
+                </span>
+                {hasManualEdit && (
+                  <span className="text-amber-700 font-semibold text-[10px] flex items-center gap-1">
+                    ✏️ Editado manualmente pelo consultor
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Textarea de Redação da Resposta */}
+            <div className="space-y-1.5">
+              <Textarea
+                rows={6}
+                value={replyText}
+                onChange={(e) => {
+                  setReplyText(e.target.value)
+                  setHasManualEdit(true)
+                }}
+                placeholder="Clique em 'Gerar Minuta (HUB AI)' para redigir uma sugestão automática ou comece a digitar aqui a resposta ao cliente..."
+                className="w-full text-xs font-sans p-3 border-slate-300 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 leading-relaxed resize-y bg-white text-slate-800 placeholder:text-slate-400"
+              />
+              <div className="flex items-center justify-between text-[11px] text-slate-500">
+                <span>{replyText.length} caracteres digitados</span>
+                {replyText.trim() && (
+                  <span className="text-slate-400">
+                    Você pode revisar e alterar livremente qualquer trecho antes de abrir no
+                    Outlook.
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Barra de Ação de Envio via Outlook + Dica */}
+            <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+              <div className="flex items-start gap-2 text-[11px] text-blue-900 leading-tight">
+                <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-blue-950">
+                    Envio seguro realizado pelo Microsoft Outlook
+                  </p>
+                  <p className="text-blue-800 text-[10.5px]">
+                    Ao clicar no botão ao lado, o seu cliente de e-mail abrirá com o destinatário,
+                    assunto e corpo já preenchidos. O disparo final acontece pela{' '}
+                    <strong>
+                      caixa compartilhada do núcleo ({email.service_group || 'atendimento'})
+                    </strong>
+                    .
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                <Button
+                  type="button"
+                  onClick={handleOpenOutlook}
+                  disabled={!replyText.trim() || openingOutlook}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-8 text-xs px-3.5 shadow-sm gap-1.5 w-full sm:w-auto"
+                >
+                  {openingOutlook ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Preparando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-3.5 w-3.5" />
+                      <span>Abrir no Outlook</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+
           {/* Ações de Status e Ciclo de Vida da Conversa Inteira */}
           <div className="space-y-1.5 pt-2 border-t border-slate-200">
             <span className="text-[11px] font-bold text-slate-700 block">
@@ -662,6 +1056,31 @@ export function ControlTowerDetailModal({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Confirmação de Sobrescrita da Minuta Manual */}
+      <AlertDialog open={confirmRegenerateOpen} onOpenChange={setConfirmRegenerateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-amber-600" />
+              Substituir texto editado manualmente?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-slate-600">
+              Você já fez alterações manuais no campo de resposta. Se gerar uma nova minuta agora, o
+              texto atual será substituído pela nova versão sugerida pelo HUB AI.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs h-8">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleGenerateDraft(true)}
+              className="text-xs h-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+            >
+              Sim, Gerar Nova Minuta
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

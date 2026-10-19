@@ -2912,3 +2912,276 @@ routerAdd(
   },
   $apis.requireAuth(),
 )
+
+// 5. Endpoint para gerar minuta de resposta ao cliente com Skip AI (HUB AI)
+routerAdd(
+  'POST',
+  '/backend/v1/control-tower/generate-reply-draft',
+  (e) => {
+    try {
+      var body = e.requestInfo().body || {}
+      var emailId = (body.email_id || '').trim()
+      var threadId = (body.thread_id || '').trim()
+
+      if (!emailId && !threadId) {
+        return e.badRequestError('email_id ou thread_id é obrigatório.')
+      }
+
+      var rootRecord = null
+      if (emailId) {
+        try {
+          rootRecord = $app.findRecordById('control_tower_emails', emailId)
+        } catch (_) {}
+      }
+
+      var effectiveThreadId =
+        threadId ||
+        (rootRecord ? rootRecord.getString('thread_id') : '') ||
+        (rootRecord ? rootRecord.id : '')
+
+      var messages = []
+      if (effectiveThreadId) {
+        try {
+          messages = $app.findRecordsByFilter(
+            'control_tower_emails',
+            "thread_id = '" + effectiveThreadId + "' || id = '" + effectiveThreadId + "'",
+            'received_at, created',
+            50,
+            0,
+          )
+        } catch (_) {}
+      }
+
+      if ((!messages || messages.length === 0) && rootRecord) {
+        messages = [rootRecord]
+      }
+
+      if (!messages || messages.length === 0) {
+        return e.badRequestError('Nenhuma mensagem encontrada para a conversa informada.')
+      }
+
+      var currentRecord = rootRecord || messages[messages.length - 1]
+      var clientName = currentRecord.getString('sender_name') || ''
+      var clientEmail = currentRecord.getString('sender_email') || ''
+      var inboxAddress = currentRecord.getString('inbox_address') || ''
+      var serviceGroup = currentRecord.getString('service_group') || ''
+      var team = currentRecord.getString('team') || 'Nacional'
+      var reservationNumber = currentRecord.getString('reservation_number') || ''
+
+      var consultantName = e.auth
+        ? e.auth.getString('name') || e.auth.getString('email')
+        : 'Consultor'
+
+      // Se tiver vínculo com cliente
+      var clientCompany = ''
+      var clientId = currentRecord.getString('client')
+      if (clientId) {
+        try {
+          var clRec = $app.findRecordById('clients', clientId)
+          if (!clientName) clientName = clRec.getString('name')
+          clientCompany = clRec.getString('company') || ''
+          if (!clientEmail) clientEmail = clRec.getString('email')
+        } catch (_) {}
+      }
+
+      // Analisar toda a thread
+      var threadTranscript = ''
+      var allReservations = []
+      var allDates = []
+      var worstSentiment = currentRecord.getString('sentiment_label') || 'Neutro'
+      var worstIntensity = currentRecord.getString('sentiment_intensity') || 'Leve'
+      var lastClientSenderName = clientName
+      var lastClientSenderEmail = clientEmail
+
+      function parseList(val) {
+        if (!val) return []
+        if (Array.isArray(val)) return val
+        if (typeof val === 'string') {
+          try {
+            var p = JSON.parse(val)
+            if (Array.isArray(p)) return p
+          } catch (_) {}
+          return [val]
+        }
+        return []
+      }
+
+      for (var i = 0; i < messages.length; i++) {
+        var m = messages[i]
+        var sName = m.getString('sender_name')
+        var sEmail = m.getString('sender_email')
+        var sLabel = m.getString('sentiment_label')
+        var sInt = m.getString('sentiment_intensity')
+
+        if (sLabel === 'Crítico') {
+          worstSentiment = 'Crítico'
+          worstIntensity = 'Forte'
+        } else if (sLabel === 'Frustrado' && worstSentiment !== 'Crítico') {
+          worstSentiment = 'Frustrado'
+          worstIntensity = sInt || 'Moderado'
+        }
+
+        var rNum = m.getString('reservation_number')
+        if (rNum && allReservations.indexOf(rNum) === -1) {
+          allReservations.push(rNum)
+        }
+
+        var dts = parseList(m.get('detected_dates'))
+        for (var d = 0; d < dts.length; d++) {
+          if (allDates.indexOf(dts[d]) === -1) allDates.push(dts[d])
+        }
+
+        // Atualiza último remetente do lado do cliente (ignora remetente igual à caixa do núcleo)
+        if (sEmail && sEmail.toLowerCase() !== inboxAddress.toLowerCase()) {
+          lastClientSenderEmail = sEmail
+          if (sName) lastClientSenderName = sName
+        }
+
+        threadTranscript +=
+          '---\n' +
+          'Mensagem #' +
+          (i + 1) +
+          ' | De: ' +
+          (sName ? sName + ' <' + sEmail + '>' : sEmail) +
+          ' | Em: ' +
+          (m.getString('received_at') || m.getString('created')) +
+          '\n' +
+          'Assunto: ' +
+          m.getString('subject') +
+          '\n' +
+          'Conteúdo:\n' +
+          (m.getString('body_snippet') || '(sem conteúdo)') +
+          '\n'
+      }
+
+      if (!reservationNumber && allReservations.length > 0) {
+        reservationNumber = allReservations[0]
+      }
+
+      var customerSalutation = lastClientSenderName
+        ? lastClientSenderName.split(' ')[0]
+        : clientCompany || 'Cliente'
+
+      var systemPrompt =
+        'Você é o assistente executivo e motor de IA HUB AI da RexturAdvance (consolidadora e agência corporativa de viagens).\n' +
+        'Sua missão é redigir uma MINUTA DE RESPOSTA AO CLIENTE pronta, profissional, clara, cordial e assertiva em Português do Brasil.\n' +
+        'A resposta será enviada pelo consultor através do Microsoft Outlook pela caixa compartilhada de atendimento do núcleo.\n\n' +
+        'DIRETRIZES FUNDAMENTAIS:\n' +
+        '1. Tom de voz:\n' +
+        '   - Se o cliente apresentar sentimento "Frustrado" ou "Crítico": adote um tom altamente empático, compreensivo, prestativo e calmo. Demonstre prioridade total na solução e peça desculpas pelo transtorno caso aplicável.\n' +
+        '   - Se o cliente estiver Neutro ou Positivo: adote um tom profissional, cordial, ágil e prestativo.\n' +
+        '2. Dados específicos:\n' +
+        '   - Mencione os dados detectados se pertinentes (ex.: número de reserva/localizador: ' +
+        (reservationNumber || allReservations.join(', ') || 'conforme informado') +
+        ', datas de viagem: ' +
+        (allDates.join(', ') || 'identificadas') +
+        ').\n' +
+        '3. Estrutura da resposta:\n' +
+        '   - Saudação inicial calorosa e personalizada (ex.: "Olá, ' +
+        customerSalutation +
+        '," ou "Prezado(a) ' +
+        customerSalutation +
+        ',")\n' +
+        '   - Agradecimento pelo contato e posicionamento claro sobre a solicitação\n' +
+        '   - Esclarecimento, solução ou próximos passos de forma transparente e estruturada\n' +
+        '   - Colocar-se à disposição para qualquer suporte adicional\n' +
+        '   - Despedida cordial\n' +
+        '   - Assinatura padrão do consultor: Atenciosamente,\n' +
+        consultantName +
+        '\nEquipe de Atendimento - Núcleo ' +
+        (serviceGroup || 'HUB AI') +
+        '\nRexturAdvance\n\n' +
+        '4. Formato de saída:\n' +
+        '   - Retorne APENAS o texto da mensagem pronta para o consultor revisar e enviar no Outlook.\n' +
+        '   - NÃO coloque prefácios como "Aqui está a minuta:", NÃO use markdown de código (sem ```), apenas parágrafos de texto legíveis.'
+
+      var userPrompt =
+        'Dados do Atendimento:\n' +
+        '- Cliente: ' +
+        (lastClientSenderName || clientEmail) +
+        (clientCompany ? ' (' + clientCompany + ')' : '') +
+        '\n' +
+        '- Núcleo / Caixa: ' +
+        serviceGroup +
+        ' (' +
+        (inboxAddress || 'caixa compartilhada') +
+        ')\n' +
+        '- Equipe: ' +
+        team +
+        '\n' +
+        '- Sentimento Geral: ' +
+        worstSentiment +
+        ' (' +
+        worstIntensity +
+        ')\n' +
+        '- Reserva/PNR: ' +
+        (reservationNumber || 'Não informada') +
+        '\n' +
+        '- Datas detectadas: ' +
+        (allDates.length > 0 ? allDates.join(', ') : 'Não detectadas') +
+        '\n\n' +
+        'Histórico Completo da Conversa (' +
+        messages.length +
+        ' mensagem(ns)):\n' +
+        threadTranscript +
+        '\n\nRedija a minuta de resposta ao cliente agora:'
+
+      var draftText = ''
+      try {
+        var aiRes = $ai.chat({
+          model: 'fast',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+        })
+        if (aiRes && aiRes.choices && aiRes.choices[0] && aiRes.choices[0].message) {
+          draftText = aiRes.choices[0].message.content.trim()
+        }
+      } catch (aiErr) {
+        $app.logger().warn('Erro ao chamar Skip AI para minuta de resposta: ' + String(aiErr))
+      }
+
+      // Fallback heurístico caso a chamada IA falhe
+      if (!draftText) {
+        var isUnhappy = worstSentiment === 'Frustrado' || worstSentiment === 'Crítico'
+        draftText =
+          'Olá, ' +
+          customerSalutation +
+          '!\n\n' +
+          (isUnhappy
+            ? 'Agradecemos o seu contato e lamentamos muito pelo transtorno e pela espera. Estamos priorizando a sua solicitação com toda a atenção necessária.\n\n'
+            : 'Agradecemos o seu contato com a nossa equipe de atendimento.\n\n') +
+          (reservationNumber
+            ? 'Em relação à reserva ' + reservationNumber + ':\n'
+            : 'Em relação à sua solicitação:\n') +
+          'Já estamos analisando todas as informações da sua mensagem para oferecer o melhor retorno e resolver a sua demanda o mais rápido possível.\n\n' +
+          'Caso tenha qualquer informação adicional ou urgência imediata, pode nos responder por este mesmo canal.\n\n' +
+          'Atenciosamente,\n' +
+          consultantName +
+          '\n' +
+          'Equipe de Atendimento - Núcleo ' +
+          (serviceGroup || 'HUB AI') +
+          '\n' +
+          'RexturAdvance'
+      }
+
+      return e.json(200, {
+        success: true,
+        draft: draftText,
+        recipient_email: lastClientSenderEmail,
+        recipient_name: lastClientSenderName,
+        subject: currentRecord.getString('subject') || '',
+        sentiment_label: worstSentiment,
+        sentiment_intensity: worstIntensity,
+        reservation_number: reservationNumber,
+        detected_dates: allDates,
+        messages_count: messages.length,
+      })
+    } catch (err) {
+      $app.logger().error('generate-reply-draft falhou: ' + String(err))
+      return e.badRequestError('Erro ao gerar minuta de resposta: ' + String(err))
+    }
+  },
+  $apis.requireAuth(),
+)
