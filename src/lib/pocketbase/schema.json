@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19T18:36:39.823Z",
+  "generatedAt": "2026-10-21T20:41:47.309Z",
   "collections": [
     {
       "name": "users",
@@ -134,6 +134,7 @@
             "Almoço",
             "Treinamento",
             "Reunião",
+            "Ausente",
             "Offline"
           ]
         },
@@ -148,6 +149,19 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "last_heartbeat_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "presence_source",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["auto", "manual"]
         }
       ],
       "indexes": [
@@ -592,6 +606,12 @@
         {
           "name": "ai_summary_edited_by_user",
           "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "flight_data",
+          "type": "json",
           "required": false,
           "system": false
         }
@@ -2013,6 +2033,7 @@
             "Almoço",
             "Treinamento",
             "Reunião",
+            "Ausente",
             "Offline"
           ]
         },
@@ -2028,6 +2049,7 @@
             "Almoço",
             "Treinamento",
             "Reunião",
+            "Ausente",
             "Offline"
           ]
         },
@@ -3127,6 +3149,12 @@
         },
         {
           "name": "sentiment_reasons",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "flight_data",
           "type": "json",
           "required": false,
           "system": false

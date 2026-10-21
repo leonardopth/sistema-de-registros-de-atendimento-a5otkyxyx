@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/hooks/use-auth'
+import { usePresence } from '@/hooks/use-presence'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { MasterRoute } from '@/components/MasterRoute'
 import { GestaoUsuariosRoute } from '@/components/GestaoUsuariosRoute'
@@ -41,12 +42,18 @@ import MetasDesempenho from '@/pages/MetasDesempenho'
 import Login from '@/pages/Login'
 import NotFound from '@/pages/NotFound'
 
+function PresenceHeartbeat() {
+  usePresence()
+  return null
+}
+
 const App = () => (
   <BrowserRouter>
     <AuthProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <PresenceHeartbeat />
         <ErrorBoundary>
           <Routes>
             <Route path="/login" element={<Login />} />

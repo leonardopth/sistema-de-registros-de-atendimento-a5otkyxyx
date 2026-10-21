@@ -53,6 +53,7 @@ export type CollaboratorStatus =
   | 'Almoço'
   | 'Treinamento'
   | 'Reunião'
+  | 'Ausente'
   | 'Offline'
 
 export interface CollaboratorStatusLog {
@@ -145,6 +146,8 @@ export interface UserRecord {
   email_notifications?: boolean
   current_status?: CollaboratorStatus
   status_updated_at?: string
+  last_heartbeat_at?: string
+  presence_source?: 'auto' | 'manual'
   external_id?: string
   created?: string
   updated?: string

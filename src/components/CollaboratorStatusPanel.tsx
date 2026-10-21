@@ -18,6 +18,7 @@ import {
   getCollaboratorStatusLogs,
   calculateTimePerStatus,
   formatMinutes,
+  deriveCollaboratorStatus,
 } from '@/services/collaborator-status'
 import { UserRecord, CollaboratorStatusLog, CollaboratorStatus } from '@/types/service_record'
 import { getUsers } from '@/services/users'
@@ -87,6 +88,24 @@ export function CollaboratorStatusPanel({
     }
   }
 
+  // Deriva o status em tempo real de cada usuário considerando heartbeat e pausa manual
+  const usersWithDerivedStatus = useMemo(() => {
+    return users.map((u) => {
+      const derived = deriveCollaboratorStatus({
+        current_status: u.current_status,
+        presence_source: u.presence_source,
+        last_heartbeat_at: u.last_heartbeat_at,
+        status_updated_at: u.status_updated_at,
+      })
+      return {
+        ...u,
+        derivedStatus: derived.status,
+        isAutomatic: derived.isAutomatic,
+        lastActiveMinutesAgo: derived.lastActiveMinutesAgo,
+      }
+    })
+  }, [users])
+
   const countsByStatus = useMemo(() => {
     const counts: Record<string, number> = {
       Disponível: 0,
@@ -95,25 +114,26 @@ export function CollaboratorStatusPanel({
       Almoço: 0,
       Treinamento: 0,
       Reunião: 0,
+      Ausente: 0,
       Offline: 0,
     }
-    users.forEach((u) => {
-      const s = u.current_status || 'Offline'
+    usersWithDerivedStatus.forEach((u) => {
+      const s = u.derivedStatus || 'Offline'
       if (counts[s] !== undefined) counts[s]++
       else counts.Offline++
     })
     return counts
-  }, [users])
+  }, [usersWithDerivedStatus])
 
   const filteredUsers = useMemo(() => {
     if (showOnlyAvailable) {
-      return users.filter((u) => u.current_status === 'Disponível')
+      return usersWithDerivedStatus.filter((u) => u.derivedStatus === 'Disponível')
     }
     if (statusFilter !== 'todos') {
-      return users.filter((u) => (u.current_status || 'Offline') === statusFilter)
+      return usersWithDerivedStatus.filter((u) => u.derivedStatus === statusFilter)
     }
-    return users
-  }, [users, showOnlyAvailable, statusFilter])
+    return usersWithDerivedStatus
+  }, [usersWithDerivedStatus, showOnlyAvailable, statusFilter])
 
   const timePerStatusHistory = useMemo(() => {
     return calculateTimePerStatus(historyLogs)
@@ -187,7 +207,7 @@ export function CollaboratorStatusPanel({
           {/* Grid de colaboradores */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {filteredUsers.map((colab) => {
-              const currentStatus: CollaboratorStatus = colab.current_status || 'Offline'
+              const currentStatus: CollaboratorStatus = colab.derivedStatus || 'Offline'
               const cfg = STATUS_CONFIG[currentStatus] || STATUS_CONFIG.Offline
               const initials =
                 colab.name
@@ -204,7 +224,9 @@ export function CollaboratorStatusPanel({
                     'p-3 rounded-lg border transition-all flex flex-col justify-between gap-2 bg-white hover:border-slate-300',
                     currentStatus === 'Disponível'
                       ? 'border-emerald-200 bg-emerald-50/20'
-                      : 'border-slate-200',
+                      : currentStatus === 'Ausente'
+                        ? 'border-amber-200 bg-amber-50/20'
+                        : 'border-slate-200',
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -224,23 +246,38 @@ export function CollaboratorStatusPanel({
                   </div>
 
                   <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border',
-                        cfg.bgColor,
-                        cfg.textColor,
-                        cfg.borderColor,
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border',
+                          cfg.bgColor,
+                          cfg.textColor,
+                          cfg.borderColor,
+                        )}
+                      >
+                        <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dotColor)} />
+                        {cfg.label}
+                      </span>
+                      {colab.isAutomatic && currentStatus !== 'Offline' && (
+                        <span
+                          className="text-[9px] px-1 py-0.2 rounded bg-slate-100 text-slate-500 font-mono"
+                          title="Status gerido automaticamente por presença/inatividade"
+                        >
+                          auto
+                        </span>
                       )}
-                    >
-                      <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dotColor)} />
-                      {cfg.label}
-                    </span>
+                      {colab.lastActiveMinutesAgo != null && currentStatus === 'Ausente' && (
+                        <span className="text-[10px] text-amber-700">
+                          {colab.lastActiveMinutesAgo}m sem interagir
+                        </span>
+                      )}
+                    </div>
 
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleOpenHistory(colab)}
-                      className="h-6 px-1.5 text-[10px] text-slate-500 hover:text-slate-900"
+                      className="h-6 px-1.5 text-[10px] text-slate-500 hover:text-slate-900 ml-auto"
                       title="Ver histórico de status"
                     >
                       <History className="h-3 w-3 mr-1" /> Histórico

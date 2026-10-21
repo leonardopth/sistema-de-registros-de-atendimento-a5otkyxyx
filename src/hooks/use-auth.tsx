@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import pb from '@/lib/pocketbase/client'
+import { markUserOffline, sendUserHeartbeat } from '@/services/collaborator-status'
 
 interface AuthContextType {
   user: any
@@ -108,6 +109,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         pb.authStore.clear()
         return { error: new Error('Rejeitado'), approvalStatus: 'Rejeitado' }
       }
+      // Imediatamente ao logar com sucesso, envia heartbeat e ativa status Disponível se não estiver em pausa manual
+      if (res.record?.id) {
+        sendUserHeartbeat(res.record.id, true).catch(() => {})
+      }
       return { error: null }
     } catch (error: any) {
       return { error, approvalStatus: error?.data?.approval_status }
@@ -115,6 +120,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const signOut = () => {
+    const currentId = user?.id || pb.authStore.record?.id
+    if (currentId) {
+      // Tenta marcar o usuário como Offline imediatamente no logout
+      markUserOffline(currentId).catch(() => {})
+    }
     pb.authStore.clear()
   }
 
